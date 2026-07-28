@@ -2,6 +2,8 @@
 
 An AI-powered medical diagnostic assistant that uses an actor–critic architecture to conduct and evaluate multi-turn diagnostic conversations.
 
+For more details check this out https://mhervin47.github.io/DiffDx/
+
 ## Overview
 
 DiffDx simulates a clinical diagnostic dialogue. A patient describes their symptoms through a web portal, and an AI doctor conducts a structured conversation to narrow down a differential diagnosis — asking follow-up questions, tracking probabilities, and knowing when it has enough confidence to stop.

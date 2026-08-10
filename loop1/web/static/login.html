@@ -43,8 +43,9 @@
       color: #94a3b8; font-family: 'Sora', sans-serif;
       font-size: 13px; font-weight: 700; text-decoration: none;
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      transition: all .2s;
+      transition: background 150ms, border-color 150ms, color 150ms, box-shadow 150ms;
     }
+    .back-btn:active { transform: scale(.96); transition: transform 80ms ease-out !important; }
     .back-btn:hover {
       color: #f1f5f9;
       border-color: rgba(16,185,129,.4);
@@ -74,10 +75,15 @@
     }
 
     /* Role picker card */
+    @keyframes card-load {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
     .glass-card {
       width: 100%; max-width: 460px;
+      animation: card-load 360ms cubic-bezier(.16,1,.3,1) both;
       background: rgba(255,255,255,.04);
-      backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      backdrop-filter: blur(28px) saturate(180%); -webkit-backdrop-filter: blur(28px) saturate(180%);
       border: 1px solid rgba(255,255,255,.09);
       border-radius: 24px;
       box-shadow: 0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04) inset;
@@ -105,8 +111,13 @@
       background: rgba(255,255,255,.03);
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 16px; padding: 24px 14px;
-      cursor: pointer; transition: all .22s cubic-bezier(.16,1,.3,1);
+      cursor: pointer;
+      transition: background 200ms cubic-bezier(.16,1,.3,1), border-color 200ms, box-shadow 200ms, transform 200ms cubic-bezier(.16,1,.3,1);
       display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .role-card:active {
+      transform: scale(.96) !important;
+      transition: transform 80ms ease-out !important;
     }
     .role-card:hover {
       background: rgba(16,185,129,.05);
@@ -149,16 +160,23 @@
     .guest-line a:hover { color: #34d399; }
 
     /* Auth card (step 2) */
+    @keyframes auth-card-in {
+      from { opacity: 0; transform: scale(.97) translateY(10px); }
+      to   { opacity: 1; transform: scale(1)   translateY(0); }
+    }
     .auth-card {
       display: none; width: 100%; max-width: 420px;
       background: rgba(255,255,255,.04);
-      backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      backdrop-filter: blur(28px) saturate(180%); -webkit-backdrop-filter: blur(28px) saturate(180%);
       border: 1px solid rgba(255,255,255,.09);
       border-radius: 24px;
       box-shadow: 0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04) inset;
       overflow: hidden;
     }
-    .auth-card.show { display: block; }
+    .auth-card.show {
+      display: block;
+      animation: auth-card-in 280ms cubic-bezier(.16,1,.3,1) both;
+    }
 
     .auth-head {
       padding: 28px 28px 0;
@@ -229,9 +247,10 @@
     .submit-btn {
       width: 100%; padding: 13px; border-radius: 9999px;
       font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 800;
-      border: none; cursor: pointer; margin-top: 6px;
-      transition: all .25s cubic-bezier(.16,1,.3,1);
+      border: none; cursor: pointer; margin-top: 6px; position: relative;
+      transition: transform 150ms cubic-bezier(.16,1,.3,1), box-shadow 150ms;
     }
+    .submit-btn:active { transform: scale(.97); transition: transform 80ms ease-out !important; }
     .submit-btn.patient-btn {
       background: linear-gradient(135deg, #059669, #10b981);
       color: #021a12;
@@ -458,18 +477,27 @@ if (typeof getAuthToken === 'function' && getAuthToken()) {
 const _redirect = new URLSearchParams(location.search).get('next') || '/patient-info';
 
 function selectRole(role) {
-  document.getElementById('role-picker').style.display = 'none';
-  if (role === 'doctor') {
-    document.getElementById('doctor-card').classList.add('show');
-    setTimeout(() => document.getElementById('doc-email').focus(), 50);
-  } else {
-    document.getElementById('patient-card').classList.add('show');
-    setTimeout(() => document.getElementById('signin-email').focus(), 50);
-  }
+  const picker = document.getElementById('role-picker');
+  picker.style.transition = 'opacity 160ms, transform 160ms';
+  picker.style.opacity = '0';
+  picker.style.transform = 'scale(.97)';
+  setTimeout(() => {
+    picker.style.display = 'none';
+    picker.style.opacity = '';
+    picker.style.transform = '';
+    if (role === 'doctor') {
+      document.getElementById('doctor-card').classList.add('show');
+      setTimeout(() => document.getElementById('doc-email').focus(), 50);
+    } else {
+      document.getElementById('patient-card').classList.add('show');
+      setTimeout(() => document.getElementById('signin-email').focus(), 50);
+    }
+  }, 160);
 }
 
 function backToRolePicker() {
   document.getElementById('role-picker').style.display = '';
+  document.getElementById('role-picker').style.animation = 'card-load 280ms cubic-bezier(.16,1,.3,1) both';
   document.getElementById('patient-card').classList.remove('show');
   document.getElementById('doctor-card').classList.remove('show');
   ['signin-error','reg-error','doc-error'].forEach(id => {

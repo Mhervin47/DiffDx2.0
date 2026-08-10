@@ -712,3 +712,59 @@ label {
   .modal-box { margin: 12px; width: calc(100% - 24px) !important; max-width: none !important; }
   .metric-cards { flex-direction: column; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   APPLE DESIGN — fluid interface improvements
+   Based on WWDC 2018 Designing Fluid Interfaces + WWDC 2020 Typography
+═══════════════════════════════════════════════════════ */
+
+/* §1 Response — feedback on pointer-down, not just hover */
+.btn:active          { transform: scale(0.97) !important; transition: transform 80ms ease-out !important; }
+.nav-back:active     { transform: scale(0.97); transition: transform 80ms ease-out; }
+.card:active         { transform: scale(0.99); }
+.nav-user-btn:active { opacity: 0.7; transition: opacity 80ms; }
+a:active             { opacity: 0.65; transition: opacity 80ms; }
+
+/* §4 Transitions — replace `all` (expensive) with targeted properties */
+.btn       { transition: transform 150ms cubic-bezier(.16,1,.3,1), box-shadow 150ms, background 150ms, border-color 150ms; }
+.card      { transition: background 200ms cubic-bezier(.16,1,.3,1), border-color 200ms, box-shadow 200ms, transform 200ms cubic-bezier(.16,1,.3,1); }
+.nav-back  { transition: background 150ms, border-color 150ms, color 150ms, transform 80ms; }
+.glass     { transition: background 150ms, border-color 150ms; }
+input, select, textarea { transition: border-color 150ms, box-shadow 150ms, background 150ms; }
+
+/* §11 Frame smoothness — compositor-friendly: only transform + opacity for animations */
+.diff-bar-fill { will-change: width; }
+.typing-dot    { will-change: opacity, transform; }
+
+/* §12 Materials — stronger saturation per Apple material spec */
+.nav { backdrop-filter: blur(28px) saturate(180%); -webkit-backdrop-filter: blur(28px) saturate(180%); }
+.nav-user-dropdown { backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); }
+.answer-bar { backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); }
+
+/* §14 Reduced motion — cross-fade, not slide/spring */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 80ms !important;
+  }
+  .btn:hover, .card:hover, .metric-card:hover, .nav-back:hover { transform: none !important; }
+  .diff-bar-fill { transition: none; }
+}
+
+/* §14 Reduced transparency — solid surfaces when OS requests it */
+@media (prefers-reduced-transparency: reduce) {
+  .nav, .glass, .glass-strong, .card, .metric-card, .closing-card,
+  .answer-bar, .convo-header, .nav-user-dropdown {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(13,13,26,.97) !important;
+  }
+}
+
+/* §15 Typography — size-specific letter-spacing (never one value for all sizes) */
+h1 { letter-spacing: -.04em;  font-optical-sizing: auto; }
+h2 { letter-spacing: -.028em; font-optical-sizing: auto; }
+h3 { letter-spacing: -.018em; font-optical-sizing: auto; }
+h4 { letter-spacing: -.008em; font-optical-sizing: auto; }
+h5, h6 { letter-spacing: 0;   font-optical-sizing: auto; }

@@ -9,6 +9,7 @@ dist/
 # Environment & secrets
 .env
 .env.*
+!.env.example
 
 # Virtual environment
 .venv/

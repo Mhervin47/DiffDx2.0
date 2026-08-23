@@ -26,20 +26,17 @@ _RETRYABLE_STATUS = {500, 502, 503, 504}  # 429 handled separately via fallback
 # When a provider hits 429, try these fallbacks in order
 _FALLBACK_CHAIN: dict[str, list[str]] = {
     "groq": [
-        "meta-llama/llama-4-scout-17b-16e-instruct",  # 30k TPM on groq, separate bucket
-        "openrouter/google/gemma-4-31b-it:free",
-        "openrouter/meta-llama/llama-3.3-70b-instruct:free",
-        "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
-    ],
-    "gemini": ["groq/llama-3.3-70b-versatile"],
-    "openrouter": [
-        "openrouter/meta-llama/llama-3.3-70b-instruct:free",
         "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
         "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
-        "openrouter/openai/gpt-oss-20b:free",
-        "meta-llama/llama-4-scout-17b-16e-instruct",  # groq fallback last resort
+        "openrouter/google/gemma-4-31b-it:free",
     ],
-    "cerebras": ["groq/llama-3.3-70b-versatile"],
+    "gemini": ["openrouter/nvidia/nemotron-3-super-120b-a12b:free"],
+    "openrouter": [
+        "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+        "openrouter/google/gemma-4-31b-it:free",
+        "groq/qwen/qwen3.6-27b",  # last resort — capped at 8000 TPM on groq free tier
+    ],
+    "cerebras": ["openrouter/nvidia/nemotron-3-super-120b-a12b:free"],
 }
 
 

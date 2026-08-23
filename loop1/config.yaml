@@ -3,10 +3,10 @@ logging:
   schema_version: 0.5.0
   session_dir: logs/sessions
 models:
-  compressor: groq/llama-3.3-70b-versatile
-  doctor: groq/llama-3.3-70b-versatile
+  compressor: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+  doctor: openrouter/nvidia/nemotron-3-super-120b-a12b:free
   embedder: sentence-transformers/all-MiniLM-L6-v2
-  profile_updater: groq/llama-3.3-70b-versatile
+  profile_updater: openrouter/nvidia/nemotron-3-super-120b-a12b:free
 prompt_versions:
   compressor: v0.2
   doctor: v0.6

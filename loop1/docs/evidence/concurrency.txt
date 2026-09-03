@@ -1,0 +1,69 @@
+DiffDx v2 — Task 3: concurrency proof
+Captured 2026-09-03. N=20 concurrent booking attempts, same doctor, same slot.
+Ran via: PYTHONPATH=src:. .venv/bin/python scripts/concurrency_demo.py --mode {blob,relational} --n 20
+
+=== blob mode — the code running in production today ===
+mode            sent   success  conflict    rows in DB
+blob              20         9        11             1
+
+9 of 20 clients were told "booked" (HTTP 200). Only 1 row survived in the
+database. 8 successful-looking bookings vanished with no error to anyone —
+classic silent lost-update corruption from read-whole-collection ->
+mutate -> write-whole-collection with no locking.
+
+Note on this number vs. an idealized "20/20 succeed, 1 survives" table:
+reality is messier. With 20 real OS processes racing, some spawn with
+enough scheduling jitter to see the slot already removed by an earlier
+writer and correctly get rejected (11 of them, here) — the other 9 land
+inside the same narrow read-modify-write window and all believe they
+succeeded. The core finding is unchanged either way: multiple clients get
+a false "success," and the database silently disagrees with what they
+were told. Re-running this will not reproduce the exact same 9/11 split —
+it's exposing a real race, not a deterministic bug — but the pattern
+(success count > 1, rows in DB == 1) reproduces reliably.
+
+=== relational mode — Task 1's schema, exercised directly via the repository layer ===
+
+SQLite:
+mode            sent   success  conflict    rows in DB
+relational        20         1        19             1
+
+Real Postgres 16 (genuine overlapping transactions, not SQLite's
+single-writer serialization — the stronger proof):
+mode            sent   success  conflict    rows in DB
+relational        20         1        19             1
+
+Exactly 1 success, 19 clean ConflictErrors (mapped to 409 once Task 4
+wires routers to the repository layer), zero unhandled exceptions, exactly
+1 row in the database — on both dialects, reproducibly. The
+UNIQUE (doctor_id, slot_datetime) WHERE status <> 'cancelled' partial
+index from Task 1 makes double-booking impossible at the database level,
+not "hopefully impossible in Python."
+
+=== Methodology note ===
+
+The original task description assumed both modes could hit a live HTTP
+endpoint. That's not true for relational mode yet — Task 4 (split the
+monolith) hasn't happened, so nothing in web/api.py routes through
+diffdx.repositories. Relational mode instead opens N concurrent SQLAlchemy
+sessions (real OS threads, one session each) and calls
+AppointmentRepository.book() directly — this proves the thing that
+actually matters (the DB constraint), without prematurely wiring routers
+ahead of Task 4. See TASK3_CONCURRENCY_PROOF.md §2 for the full reasoning.
+
+Blob mode also changed from the original plan: a live single-worker
+uvicorn server accidentally serializes requests (the async handler blocks
+the one event loop during its synchronous DB calls), which hides the bug
+rather than reproducing it. Multiple uvicorn workers against the same
+SQLite file hit "disk I/O error" on the dev machine, reproducible even
+from the sqlite3 CLI independent of this script — an environment
+limitation, not the thing under test. Blob mode instead calls the actual
+_load_doctors/_save_doctors/_load_appointments/_save_appointments
+functions from web/api.py directly, in N real OS processes via
+multiprocessing — a more precise reproduction of the storage race, since
+the auth/routing/session ceremony around the real endpoint is irrelevant
+to it. See scripts/concurrency_demo.py's module docstring for the full
+account, including why a short sleep between read and write was added to
+restore the read-modify-write window the live endpoint has naturally (it
+does real work — file handling, session lookups — in that window) that a
+minimal reproduction otherwise strips out.

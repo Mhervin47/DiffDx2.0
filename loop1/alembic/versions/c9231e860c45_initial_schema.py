@@ -387,3 +387,22 @@ def downgrade() -> None:
     op.execute("DROP INDEX uq_users_email_lower")
     op.drop_table('users')
     # ### end Alembic commands ###
+
+    # Postgres native enum TYPEs are not dropped by op.drop_table() — without
+    # this, a downgrade-then-upgrade cycle fails with "type already exists"
+    # on the next CREATE TYPE. No-op on SQLite (no native enum types there).
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        for enum_name in (
+            "user_role",
+            "appointment_status",
+            "urgency_tier",
+            "waitlist_status",
+            "test_category",
+            "test_priority",
+            "test_result_status",
+            "plan_item_source",
+            "second_opinion_status",
+            "message_sender_role",
+        ):
+            op.execute(f"DROP TYPE IF EXISTS {enum_name}")

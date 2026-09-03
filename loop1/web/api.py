@@ -52,6 +52,7 @@ from loop3.routing.router import route as compute_routing
 from web.api_session import APISession
 
 from diffdx.routers.auth import router as auth_router
+from diffdx.routers.doctors import router as doctors_router
 from diffdx.routers.messaging import router as messaging_router
 from diffdx.routers.session_booking import router as session_booking_router
 from diffdx.routers.sessions import router as sessions_router
@@ -87,6 +88,7 @@ app.add_middleware(NoCacheStaticMiddleware)
 # Task 4 (split the monolith): routers peeled off one domain at a time.
 # See TASK4_SPLIT_ROUTERS.md for what's moved and what's still here.
 app.include_router(auth_router)
+app.include_router(doctors_router)
 app.include_router(messaging_router)
 app.include_router(sessions_router)
 app.include_router(session_booking_router)
@@ -1053,49 +1055,6 @@ async def update_appointment_status(appt_id: str, req: StatusRequest, request: R
                 )
 
     return {"status": req.status}
-
-
-@app.get("/api/doctors")
-async def list_all_doctors():
-    """Return all doctors (name, specialty, hospital, rating, avatar_initials, available_slots) for patient search."""
-    doctors = _load_doctors()
-    blocked_data = _load_blocked_dates()
-    now = datetime.now(timezone.utc).isoformat()
-
-    def future_slots(doc_id, slots):
-        blocked_dates = {d["date"] for d in blocked_data.get(doc_id, [])}
-        out = []
-        for s in slots:
-            try:
-                if s >= now[:16] and s[:10] not in blocked_dates:
-                    out.append(s)
-            except Exception:
-                pass
-        return out
-
-    return {"doctors": [
-        {
-            "id": d["id"],
-            "name": d["name"],
-            "specialty": d["specialty"],
-            "hospital": d["hospital"],
-            "rating": d["rating"],
-            "avatar_initials": d.get("avatar_initials", d["name"][:2].upper()),
-            "available_slots": future_slots(d.get("id", ""), d.get("available_slots", [])),
-        }
-        for d in doctors
-    ]}
-
-
-@app.get("/api/doctors/{doctor_id}/slots")
-async def get_doctor_slots(doctor_id: str, request: Request):
-    """Return available slots for a doctor (for rescheduling)."""
-    _require_doctor(request)
-    doctors = _load_doctors()
-    doc = next((d for d in doctors if d["id"] == doctor_id), None)
-    if doc is None:
-        raise HTTPException(status_code=404, detail="Doctor not found.")
-    return {"slots": doc.get("available_slots", [])}
 
 
 @app.patch("/api/doctor/appointments/{appt_id}/reschedule")

@@ -212,7 +212,8 @@ async def get_patient_history_timeline(user: dict = Depends(get_current_user)):
 # Feature 6 — Pre-visit Symptom Intake
 @router.post("/api/patient/appointments/{appt_id}/intake")
 async def save_intake(appt_id: str, req: IntakeRequest, request: Request):
-    from web.api import _patient_appt_or_403, _save_appointments
+    from web.api import _save_appointments
+    from diffdx.routers.appointments4 import _patient_appt_or_403
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
     appt["intake"] = {
@@ -230,10 +231,10 @@ async def request_refill(appt_id: str, req: RefillRequest, request: Request):
         _get_user_from_request,
         _load_doctors,
         _load_users,
-        _patient_appt_or_403,
         _save_appointments,
         _send_email_notification,
     )
+    from diffdx.routers.appointments4 import _patient_appt_or_403
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
     patient_user = _get_user_from_request(request)

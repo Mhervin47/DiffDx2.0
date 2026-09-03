@@ -54,6 +54,7 @@ from web.api_session import APISession
 from diffdx.routers.appointments import router as appointments_router
 from diffdx.routers.appointments2 import router as appointments2_router
 from diffdx.routers.appointments3 import router as appointments3_router
+from diffdx.routers.appointments4 import router as appointments4_router
 from diffdx.routers.auth import router as auth_router
 from diffdx.routers.doctors import router as doctors_router
 from diffdx.routers.messaging import router as messaging_router
@@ -95,6 +96,7 @@ app.add_middleware(NoCacheStaticMiddleware)
 app.include_router(appointments_router)
 app.include_router(appointments2_router)
 app.include_router(appointments3_router)
+app.include_router(appointments4_router)
 app.include_router(auth_router)
 app.include_router(doctors_router)
 app.include_router(messaging_router)
@@ -226,8 +228,6 @@ _CASES_DIR = _repo_root / "test_cases"
 # trim this list further as more routers peel off (see TASK4_SPLIT_ROUTERS.md).
 from diffdx.schemas.appointments import (
     BlockDateRequest,
-    PatientRescheduleRequest,
-    RatingRequest,
     SecondOpinionRequest,
     SecondOpinionResponseRequest,
     TagsRequest,
@@ -722,6 +722,38 @@ def _load_report_from_disk(session_id: str) -> dict | None:
         return None
 
 
+# Genuinely shared across multiple routers (appointments2.py,
+# session_booking.py, sessions.py) — was accidentally deleted during an
+# earlier Task 4 extraction (swept up along with a route removal that
+# didn't account for a helper sitting between routes) and went undetected
+# because lazy imports only fail at call time, not at route-registration
+# time, and sampled smoke tests didn't happen to exercise the affected
+# routes. Restored here from source read earlier in this session. See
+# TASK4_SPLIT_ROUTERS.md for the static-check tooling added after this
+# was caught, to prevent this class of bug going forward.
+def _get_final_differential(session_id: str):
+    """Return (differential, confidence) from live session or disk."""
+    session = _sessions.get(session_id)
+    if session is not None and session.complete and session._final_record is not None:
+        diff = [(d.dx, d.prob) for d in session._final_record.final_differential]
+        confidence = diff[0][1] if diff else 0.0
+        return diff, confidence
+    # Fall back to disk
+    rec = _load_report_from_disk(session_id)
+    if rec is None:
+        return None, None
+    raw_diff = rec.get("final_differential", [])
+    # Normalise: may be list of dicts {"dx":..,"prob":..} or list of [dx, prob]
+    diff = []
+    for item in raw_diff:
+        if isinstance(item, dict):
+            diff.append((item["dx"], item["prob"]))
+        elif isinstance(item, (list, tuple)) and len(item) == 2:
+            diff.append((item[0], item[1]))
+    confidence = diff[0][1] if diff else 0.0
+    return diff, confidence
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -748,315 +780,6 @@ _MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 # Loaded from disk so uploads survive server restarts between upload and booking
 _session_test_uploads: dict = _load_session_uploads()  # session_id → { test_id → record }
-
-
-@app.post("/api/patient/appointments/{appt_id}/files")
-async def upload_patient_file(
-    appt_id: str, request: Request,
-    file: UploadFile = File(...),
-    test_order_id: str | None = None,       # ties file to a doctor-ordered test
-    suggested_test_id: str | None = None,   # ties file to an AI-suggested test
-    suggested_test_name: str | None = None, # human label for the suggested test
-):
-    appointments, appt = _patient_appt_or_403(appt_id, request)
-    _ALLOWED_UPLOAD_TYPES = {
-        "application/pdf", "image/jpeg", "image/png",
-        "image/gif", "image/webp", "image/heic",
-    }
-    content_type = (file.content_type or "").split(";")[0].strip().lower()
-    if content_type not in _ALLOWED_UPLOAD_TYPES:
-        raise HTTPException(
-            status_code=415,
-            detail="Only PDF and image files (JPEG, PNG, GIF, WebP, HEIC) are allowed.",
-        )
-    raw = await file.read()
-    if len(raw) > _MAX_FILE_BYTES:
-        raise HTTPException(status_code=413, detail="File too large (max 10 MB).")
-    data_b64 = base64.b64encode(raw).decode("ascii")
-    # Store file bytes separately so appointments JSON stays small
-    _save_file_data(appt_id, file.filename, data_b64)
-    record = {
-        "filename": file.filename,
-        "size_bytes": len(raw),
-        "uploaded_at": datetime.now(timezone.utc).isoformat(),
-        "mime_type": file.content_type or "application/octet-stream",
-        "test_order_id": test_order_id or None,
-        "suggested_test_id": suggested_test_id or None,
-        "suggested_test_name": suggested_test_name or None,
-    }
-    files = appt.setdefault("patient_files", [])
-    # Replace any existing file with the same name
-    files[:] = [f for f in files if f.get("filename") != file.filename]
-    files.append(record)
-    # Mark the matched doctor-ordered test as having results uploaded
-    if test_order_id:
-        for t in appt.get("test_orders", []):
-            if t.get("id") == test_order_id:
-                t["results_uploaded"] = True
-                t["results_filename"] = file.filename
-                break
-    # Mark the matched suggested test as uploaded
-    if suggested_test_id:
-        sug_uploads = appt.setdefault("suggested_test_uploads", {})
-        sug_uploads[suggested_test_id] = {
-            "filename": file.filename,
-            "uploaded_at": record["uploaded_at"],
-            "test_name": suggested_test_name or suggested_test_id,
-        }
-    _save_appointments(appointments)
-    return {"saved": True, "filename": file.filename, "size_bytes": len(raw)}
-
-
-@app.get("/api/patient/appointments/{appt_id}/files")
-async def list_patient_files(appt_id: str, request: Request):
-    _appointments, appt = _patient_appt_or_403(appt_id, request)
-    files = [
-        {k: v for k, v in f.items() if k != "data_b64"}
-        for f in appt.get("patient_files", [])
-    ]
-    return {"files": files}
-
-
-@app.delete("/api/patient/appointments/{appt_id}/files/{filename}")
-async def delete_patient_file(appt_id: str, filename: str, request: Request):
-    appointments, appt = _patient_appt_or_403(appt_id, request)
-    files = appt.get("patient_files", [])
-    new_files = [f for f in files if f.get("filename") != filename]
-    if len(new_files) == len(files):
-        raise HTTPException(status_code=404, detail="File not found.")
-    appt["patient_files"] = new_files
-    _save_appointments(appointments)
-    return {"deleted": True}
-
-
-@app.get("/api/patient/appointments/{appt_id}/files/{filename}")
-async def download_patient_file(appt_id: str, filename: str, request: Request):
-    """Download a patient file. Auth accepted via Bearer header or ?token= query for direct links."""
-    user = _get_user_from_request(request)
-    if not user:
-        token = request.query_params.get("token", "")
-        if token:
-            user_id = _TOKENS.get(token)
-            if not user_id:
-                users = _load_users()
-                for uid, u in users.items():
-                    if token in u.get("tokens", []):
-                        _TOKENS[token] = uid
-                        user_id = uid
-                        break
-            if user_id:
-                user = _load_users().get(user_id)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated.")
-
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
-    if appt is None:
-        raise HTTPException(status_code=404, detail="Appointment not found.")
-    # Allow both the owning patient and the assigned doctor to download
-    is_owner = appt.get("patient_user_id") == user["id"]
-    is_doctor = user.get("role") == "doctor" and appt.get("doctor_id") == user.get("doctor_id")
-    if not (is_owner or is_doctor):
-        raise HTTPException(status_code=403, detail="Not permitted.")
-
-    rec = next((f for f in appt.get("patient_files", []) if f.get("filename") == filename), None)
-    if rec is None:
-        raise HTTPException(status_code=404, detail="File not found.")
-    raw_b64 = (
-        _load_file_data(appt_id, filename)
-        or _load_file_data(f"session:{appt.get('session_id', '')}", filename)
-        or rec.get("data_b64", "")
-    )
-    if not raw_b64:
-        raise HTTPException(status_code=404, detail="File data not found.")
-    data = base64.b64decode(raw_b64)
-    return Response(
-        content=data,
-        media_type=rec.get("mime_type", "application/octet-stream"),
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-# ---------------------------------------------------------------------------
-# Feature: Appointment cancellation (patient)
-# ---------------------------------------------------------------------------
-
-@app.delete("/api/patient/appointments/{appt_id}")
-async def cancel_patient_appointment(appt_id: str, request: Request):
-    """Patient cancels their own upcoming appointment."""
-    user = _get_user_from_request(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated.")
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
-    if appt is None:
-        raise HTTPException(status_code=404, detail="Appointment not found.")
-    if appt.get("patient_user_id") != user["id"]:
-        raise HTTPException(status_code=403, detail="Not your appointment.")
-    if appt.get("status") not in ("upcoming", None):
-        raise HTTPException(status_code=400, detail="Only upcoming appointments can be cancelled.")
-    appt["status"] = "cancelled"
-    appt["cancelled_at"] = datetime.now(timezone.utc).isoformat()
-    appt["cancelled_by"] = "patient"
-    _save_appointments(appointments)
-    # Return the slot to the doctor's available pool
-    freed_slot = appt.get("slot", "")
-    if freed_slot:
-        doctors = _load_doctors()
-        doc = next((d for d in doctors if d["id"] == appt.get("doctor_id")), None)
-        if doc is not None:
-            slots = set(doc.get("available_slots", []))
-            slots.add(freed_slot)
-            doc["available_slots"] = sorted(slots)
-            _save_doctors(doctors)
-    _send_email_notification(
-        to=user.get("email", ""),
-        subject="Appointment Cancelled",
-        body=f"Your appointment with {appt.get('doctor_name','your doctor')} on {appt.get('slot','')} has been cancelled.",
-    )
-    return {"cancelled": True, "freed_slot": freed_slot}
-
-
-@app.delete("/api/patient/appointments/{appt_id}/dismiss")
-async def patient_dismiss_appointment(appt_id: str, request: Request):
-    """Permanently remove a cancelled or missed appointment from the patient's view."""
-    user = _get_user_from_request(request)
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
-    if appt is None:
-        raise HTTPException(status_code=404, detail="Appointment not found.")
-    if appt.get("patient_user_id") != user.get("id"):
-        raise HTTPException(status_code=403, detail="Not your appointment.")
-    now_iso = datetime.now(timezone.utc).isoformat()[:16]
-    status = appt.get("status", "")
-    slot = appt.get("slot", "")
-    is_missed = status == "upcoming" and slot < now_iso
-    if status != "cancelled" and not is_missed:
-        raise HTTPException(status_code=400, detail="Only cancelled or missed appointments can be deleted.")
-    del appointments[appt_id]
-    _save_appointments(appointments)
-    return {"dismissed": True}
-
-
-@app.delete("/api/doctor/appointments/{appt_id}/dismiss")
-async def doctor_dismiss_appointment(appt_id: str, request: Request):
-    """Permanently remove a cancelled appointment from the doctor's list."""
-    doctor = _require_doctor(request)
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
-    if appt is None:
-        raise HTTPException(status_code=404, detail="Appointment not found.")
-    if appt.get("doctor_id") != doctor.get("doctor_id"):
-        raise HTTPException(status_code=403, detail="Not your appointment.")
-    if appt.get("status") != "cancelled":
-        raise HTTPException(status_code=400, detail="Only cancelled appointments can be removed.")
-    del appointments[appt_id]
-    _save_appointments(appointments)
-    return {"dismissed": True}
-
-
-@app.get("/api/patient/doctors/{doctor_id}/slots")
-async def patient_get_doctor_slots(doctor_id: str, request: Request):
-    """Return available slots for a doctor — patient-facing, no doctor auth."""
-    _get_user_from_request(request)
-    doctors = _load_doctors()
-    doc = next((d for d in doctors if d["id"] == doctor_id), None)
-    if doc is None:
-        raise HTTPException(status_code=404, detail="Doctor not found.")
-    now_iso = datetime.now(timezone.utc).isoformat()
-    available = [s for s in doc.get("available_slots", []) if s >= now_iso]
-    return {"slots": sorted(available), "doctor_name": doc.get("name", "")}
-
-
-@app.post("/api/patient/appointments/{appt_id}/reschedule")
-async def patient_reschedule_appointment(appt_id: str, req: PatientRescheduleRequest, request: Request):
-    """Cancel old appointment and book same doctor at new_slot."""
-    user = _get_user_from_request(request)
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
-    if appt is None:
-        raise HTTPException(status_code=404, detail="Appointment not found.")
-    if appt.get("patient_user_id") != user.get("id"):
-        raise HTTPException(status_code=403, detail="Not your appointment.")
-    if appt.get("status") not in (None, "upcoming", "confirmed"):
-        raise HTTPException(status_code=400, detail="Only upcoming appointments can be rescheduled.")
-
-    doctors = _load_doctors()
-    doc = next((d for d in doctors if d["id"] == appt.get("doctor_id")), None)
-    if doc is None:
-        raise HTTPException(status_code=400, detail="Doctor not found.")
-    if req.new_slot not in doc.get("available_slots", []):
-        raise HTTPException(status_code=400, detail="Slot is no longer available.")
-
-    # Mark old appointment cancelled and return its slot
-    old_slot = appt.get("slot", "")
-    appt["status"] = "cancelled"
-    appt["cancelled_at"] = datetime.now(timezone.utc).isoformat()
-    appt["cancelled_by"] = "patient_reschedule"
-    _save_appointments(appointments)
-    if old_slot:
-        slots_set = set(doc.get("available_slots", []))
-        slots_set.add(old_slot)
-        doc["available_slots"] = sorted(slots_set)
-
-    # Remove new slot from doctor's available pool
-    available = doc.get("available_slots", [])
-    if req.new_slot in available:
-        available.remove(req.new_slot)
-    doc["available_slots"] = available
-    _save_doctors(doctors)
-
-    # Create new appointment
-    new_appt_id = str(uuid.uuid4())
-    new_appt = {
-        "appointment_id": new_appt_id,
-        "session_id": appt.get("session_id", ""),
-        "patient_user_id": user["id"],
-        "patient_name": user.get("name", ""),
-        "doctor_id": doc["id"],
-        "doctor_name": doc.get("name", ""),
-        "specialty": doc.get("specialty", appt.get("specialty", "")),
-        "slot": req.new_slot,
-        "status": "upcoming",
-        "note": req.note or appt.get("note", ""),
-        "booked_at": datetime.now(timezone.utc).isoformat(),
-        "rescheduled_from": appt_id,
-        "is_followup": appt.get("is_followup", False),
-        "parent_appointment_id": appt.get("parent_appointment_id", ""),
-        "patient_files": appt.get("patient_files", []),
-        "primary_diagnosis": appt.get("primary_diagnosis", ""),
-        "urgency": appt.get("urgency", "routine"),
-        "chief_complaint": appt.get("chief_complaint", ""),
-    }
-    appointments = _load_appointments()
-    appointments[new_appt_id] = new_appt
-    _save_appointments(appointments)
-    return {"rescheduled": True, "new_appt_id": new_appt_id, "new_slot": req.new_slot}
-
-
-# ---------------------------------------------------------------------------
-# Feature: Post-visit rating (patient submits, doctor reads)
-# ---------------------------------------------------------------------------
-
-@app.post("/api/patient/appointments/{appt_id}/rating")
-async def submit_rating(appt_id: str, req: RatingRequest, request: Request):
-    """Patient submits a 1-5 star rating after a visit."""
-    user = _get_user_from_request(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated.")
-    if not (1 <= req.rating <= 5):
-        raise HTTPException(status_code=400, detail="Rating must be 1-5.")
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
-    if appt is None:
-        raise HTTPException(status_code=404, detail="Appointment not found.")
-    if appt.get("patient_user_id") != user["id"]:
-        raise HTTPException(status_code=403, detail="Not your appointment.")
-    if appt.get("status") != "seen":
-        raise HTTPException(status_code=400, detail="Can only rate completed visits.")
-    appt["rating"] = {"stars": req.rating, "comment": req.comment, "submitted_at": datetime.now(timezone.utc).isoformat()}
-    _save_appointments(appointments)
-    return {"saved": True}
 
 
 # ---------------------------------------------------------------------------

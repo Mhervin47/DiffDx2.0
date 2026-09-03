@@ -28,6 +28,25 @@ and verified this session:
   `web/api.py` first. Unlike auth's helpers (genuinely shared across many
   domains, stayed behind), domain-private helpers should move with their
   routes when you verify they're private.
+- `diffdx/routers/sessions.py` + `session_booking.py` — the AI diagnostic
+  flow, `/api/cases/*` + `/api/session/*` (9 routes + `/api/tts`, bundled
+  in since it sat contiguously inside this domain's block — see below).
+  Split into two files (the domain didn't fit in 400 lines as one):
+  `sessions.py` has cases/tts/start/start-custom/turn/report/routing,
+  `session_booking.py` has the two biggest/most complex routes
+  (suggested-tests, book) separately. Two real findings here, both
+  handled: (1) `/api/tts` is registered **twice** in the original app —
+  this router's Sarvam implementation (registered first, wins) and a
+  completely different, permanently-unreachable ElevenLabs proxy ~1900
+  lines later in `web/api.py`. Pre-existing bug, left exactly as-is
+  (dead code stays dead, in the same relative order) since fixing it
+  would be a behavior change this task isn't supposed to make — verified
+  by hitting the live endpoint and confirming it returns the Sarvam
+  path's error, not ElevenLabs's. (2) `_get_final_differential` is used
+  by both this domain and a not-yet-split route elsewhere — left behind
+  in `web/api.py`, lazily imported, unlike the domain-private helpers
+  that did move fully (`_CASE_META`, `_load_profile`, `_profile_summary`,
+  `_suggested_tests_cache`).
 
 **Verified, not just written:**
 - `diff /tmp/routes_before.txt /tmp/routes_after.txt` — empty (dump routes
@@ -35,14 +54,21 @@ and verified this session:
   r in app.routes if hasattr(r, 'methods')]`, sorted)
 - Live smoke test: register → login → /me → /profile → add dependent → get
   dependents → confirmed 401 without a token — all identical to before
-- Full `pytest tests/` — same 17 pre-existing failures either way (verified
-  via `git stash` to confirm they fail identically on unmodified code),
-  zero new failures introduced. Note: `test_retrieval.py`'s exemplar tests
-  are flaky/non-deterministic independent of this work — two runs on
-  *unmodified* code produced different wrong exemplar sets each time (see
-  `SYSTEM_DOCS.md`'s own troubleshooting note on unseeded MMR tie-breaking).
-  Don't be alarmed if the exact failing count shifts by one between runs.
-- `web/api.py`: 3,892 → 3,633 → 3,456 lines (2 of 8+ domains extracted so far)
+- Live smoke test for sessions: started a real session against case_01
+  (actual LLM call), submitted a turn (also real LLM), session completed
+  at its confidence threshold, fetched the report — the full AI flow
+  works end to end after the move, not just route registration
+- Full `pytest tests/` — same pre-existing failures either way (verified
+  via `git stash` on the auth commit to confirm they fail identically on
+  unmodified code), zero new failures introduced across all three
+  domains. Note: `test_retrieval.py`'s exemplar tests are flaky/
+  non-deterministic independent of this work — different runs on
+  *unmodified* code produce different results each time (see
+  `SYSTEM_DOCS.md`'s own troubleshooting note on unseeded MMR
+  tie-breaking) — don't be alarmed if the exact failing count shifts by
+  one or two between runs.
+- `web/api.py`: 3,892 → 3,633 → 3,456 → 2,811 lines (3 of 8+ domains
+  extracted so far)
 
 **Important finding: routes are not always grouped contiguously by
 domain.** `auth` and `messaging` both happened to be single contiguous
@@ -96,77 +122,77 @@ For each remaining router domain:
 8. Re-run the relevant smoke test for that domain + `pytest tests/` (same
    baseline failures, no new ones).
 
-## 1a. sessions.py — precise mapping, ready to execute
+## 1a. sessions.py — mostly done, one piece left
 
-This domain's boundaries are already mapped out (line numbers as of this
-session's last commit — re-grep to confirm before trusting them, since
-earlier domain extractions shift everything after them):
+**Done** (`diffdx/routers/sessions.py` + `session_booking.py`, this
+session): `/api/cases`, `/api/cases/{id}`, `/api/tts` (the winning Sarvam
+one), `/api/session/start`, `/start-custom`, `/turn`, `/report`,
+`/routing`, `/suggested-tests`, `/book`. Verified with a live smoke test
+of the actual AI flow (start → real LLM turn → session completion →
+report), not just route registration — see §0 above.
 
-**Contiguous block, lines 921–1494** (`/api/cases`, `/api/cases/{case_id}`,
-`/api/session/start`, `/api/session/start-custom`,
-`/api/session/{id}/turn`, `/api/session/{id}/report`,
-`/api/session/{id}/routing`, `/api/session/{id}/suggested-tests` GET,
-`/api/session/{id}/book`) — one clean cut, same recipe as auth/messaging.
+**Not done**: `/api/session/{id}/suggested-test-files` POST and GET.
+These were noted as "far away" from the rest of the domain (originally
+~1200 lines later in `web/api.py`, interleaved with unrelated
+patient/doctor routes) and deliberately left for a separate pass rather
+than risk a rushed non-contiguous extraction in the same push as the
+much bigger `book_appointment`/`suggested-tests` work. Find them fresh
+with `grep -n '@app\.\(get\|post\)("/api/session/{session_id}/suggested-test-files' web/api.py`
+— line numbers have shifted since the note above was written. Same
+recipe: read the two functions verbatim, check what they use
+(`_session_test_uploads`, `_save_file_data`/`_load_file_data`,
+`_load_session_uploads` looked likely based on what `book_appointment`
+already imports — verify, don't assume), add them to
+`session_booking.py` if that keeps it under 400 lines, otherwise a third
+file in this domain.
 
-**Two far-away routes, ~2583 and ~2644**:
-`/api/session/{id}/suggested-test-files` POST and GET. Extract these
-individually after the main block — find them fresh (line numbers will
-have shifted once the 574-line block above is removed), cut just those
-two functions, leave everything around them untouched.
-
-Watch for on `/api/session/{id}/book` (the biggest, most important route
-in this domain — this is the exact code Task 3's concurrency demo proved
-loses data under concurrent load): it touches an unusually large set of
-shared helpers — `_get_final_differential`, `compute_routing` (from
-`loop3.routing.router`), `_load_report_from_disk`, `_sessions` (the live
-in-memory session dict), `_load_doctors`/`_save_doctors`,
-`_load_appointments`/`_save_appointments`, `_load_session_uploads`/
-`_save_session_uploads`, `_session_test_uploads` (another module dict),
-`_load_file_data`/`_save_file_data`, `_load_users`, `_add_session_to_user`,
-`_load_session_report_from_db`, plus the `BookRequest` schema. Move it
-last within this domain, after the simpler routes are proven working, and
-give it its own extra-careful smoke test (start a session, get a real
-question, book it, confirm the appointment actually appears) — don't just
-trust the route diff for this one given what's riding on it.
-
-Also check `/api/tts` (3 routes, not yet located precisely) and the bare
-`/api/doctors` + `/api/doctors/{id}/slots` (2 routes, lines ~1701/1733 as
-of the last commit) — small, likely easy wins alongside this domain or
-right after it.
+Also still open: `/api/doctors` + `/api/doctors/{id}/slots` (2 routes,
+bare doctor directory, not the appointment-mutation-heavy
+`/api/doctor/*`) — small, likely an easy win, not yet located precisely
+in current line numbers.
 
 ## 2. Target layout (from the original spec, unchanged)
 
 ```
 loop1/src/diffdx/
-  main.py                 # app factory, middleware, exception handlers, lifespan — NOT DONE
-  config.py               # done
-  dependencies.py         # started — add more as each domain needs them
+  main.py                        # app factory, middleware, exception handlers, lifespan — NOT DONE
+  config.py                      # done
+  dependencies.py                # started — add more as each domain needs them
   routers/
-    auth.py               # done (11 routes)
-    sessions.py            # /api/session/*, /api/cases/* — NOT DONE
-    appointments.py        # /api/appointments, /api/patient/appointments/* — NOT DONE
-    doctors.py              # /api/doctor/*, /api/doctors/* — NOT DONE
-    messaging.py            # /api/messages/* — NOT DONE
-    files.py                 # upload/download routes — NOT DONE
-    pages.py                 # HTML-serving routes — NOT DONE
-    health.py                 # /health, /ready — NOT DONE (these may not exist yet — check)
-  services/               # business logic, no FastAPI imports — EMPTY, see §4
+    auth.py                      # done (11 routes)
+    messaging.py                 # done (5 routes)
+    sessions.py                  # done (9 routes: cases x2, tts, session x6)
+    session_booking.py           # done (2 routes: suggested-tests, book — split
+                                  #   out of sessions.py to stay under 400 lines)
+    <suggested-test-files still outstanding — see §1a>
+    appointments.py               # /api/appointments, /api/patient/appointments/* — NOT DONE
+    doctors.py                     # /api/doctor/*, /api/doctors/* — NOT DONE
+    files.py                        # upload/download routes — NOT DONE
+    pages.py                        # HTML-serving routes — NOT DONE
+    health.py                        # /health, /ready — NOT DONE (may not exist yet — check)
+  services/                      # business logic, no FastAPI imports — EMPTY, see §4
   schemas/
-    auth.py                 # done
+    auth.py                       # done
+    sessions.py                    # done
     <others as domains move>
 ```
 
-Measured route counts per prefix, this session (re-check — will drift as
-domains move):
+Measured route counts per prefix at session start (re-check — will have
+drifted, both from domains moving and because the counts below predate
+this session's sessions.py work):
 
 ```
 33  /api/doctor/*      (includes appointment mutations — big, entangled)
 19  /api/patient/*      (also entangled with appointments)
- 9  /api/session/*       (+ 2 /api/cases — see §1a, ready to execute)
- 3  /api/tts
- 2  /api/doctors (bare) + /api/doctors/{id}/slots
- 2  /api/cases
- 1  /api/appointments   (GET, patient-side list)
+ 9  /api/session/*       DONE (this session)
+ 3  /api/tts              1 DONE (bundled into sessions.py), 2 remain
+                            (GET /api/tts/voices, POST /api/tts — the
+                            latter is the permanently-shadowed dead code
+                            noted in §0/§1a; leave both where they are,
+                            not worth a whole pass to move unreachable code)
+ 2  /api/doctors (bare) + /api/doctors/{id}/slots     still open
+ 2  /api/cases          DONE (this session, bundled into sessions.py)
+ 1  /api/appointments   (GET, patient-side list) — still open
  7  page routes (session.html, report.html, patient-info.html, login.html,
     history.html, doctor-portal, doctor-portal.html — check for dupes)
 ```
@@ -179,20 +205,19 @@ alone is 33 routes and heavily mixed with appointment-mutation logic
 smallest/safest genuinely first:
 
 1. ~~`doctors.py`~~ — reassessed, see above; do last alongside appointments
-2. ~~`messaging.py`~~ — **done** this session
-3. `sessions.py` + `cases` — **mapped and ready**, see §1a
-4. `tts` (3 routes) — small, standalone, do alongside sessions.py or
-   right after
-5. bare `doctors` (2 routes: list + slots) — small, safe
-6. `pages.py` — check what's actually left; likely short
-7. `health.py` — check if `/health`/`/ready` exist yet; if not, new
+2. ~~`messaging.py`~~ — **done**
+3. ~~`sessions.py` + `session_booking.py` + `cases`~~ — **done**, one loose
+   end (`suggested-test-files`, see §1a)
+4. bare `doctors` (2 routes: list + slots) — small, safe, do next
+5. `pages.py` — check what's actually left; likely short
+6. `health.py` — check if `/health`/`/ready` exist yet; if not, new
    functionality (fine, Task 7's Dockerfile wants a `HEALTHCHECK` hitting
    `/health`)
-8. `appointments.py` + `doctors.py` (the entangled 33+19+1 routes) —
+7. `appointments.py` + `doctors.py` (the entangled 33+19+1 routes) —
    biggest, most stateful, do last with the pattern well-proven. May need
-   splitting into more than one file each to stay under 400 lines; the
-   spec's naming may not map cleanly to how entangled these actually are
-   — use judgment, note the deviation if the layout changes
+   splitting into more than one file each to stay under 400 lines (the
+   sessions.py precedent: splitting a domain across 2+ files when it's
+   genuinely too big is fine, don't force it into one oversized file)
 
 ## 3. Real remaining work this pass didn't do
 

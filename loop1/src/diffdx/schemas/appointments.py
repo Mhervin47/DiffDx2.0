@@ -126,3 +126,46 @@ class ProposeRescheduleRequest(BaseModel):
 
 class RescheduleResponseRequest(BaseModel):
     action: str  # 'accept' or 'decline'
+
+
+class ScheduleRange(BaseModel):
+    start: str   # "HH:MM"
+    end: str     # "HH:MM"
+
+
+class ScheduleTemplateRequest(BaseModel):
+    template: dict[str, list[ScheduleRange]]   # {"mon":[{start,end}], ...}
+    weeks: int = 4
+
+
+class IntakeRequest(BaseModel):
+    feeling: str = ""
+    symptoms: list[str] = []
+    severity: int = 5
+    changes: str = ""
+    medications: list[str] = []
+    allergies: str = ""
+    tests_done: list[str] = []
+
+
+class RefillRequest(BaseModel):
+    medications: list[dict] = []
+    note: str = ""
+
+
+class DirectBookRequest(BaseModel):
+    doctor_id: str
+    slot: str
+    note: str = ""
+    dependent_id: str | None = None
+    patient_name_override: str | None = None
+
+
+class PatientRescheduleRequest(BaseModel):
+    new_slot: str
+    note: str = ""
+
+
+class RatingRequest(BaseModel):
+    rating: int        # 1-5
+    comment: str = ""

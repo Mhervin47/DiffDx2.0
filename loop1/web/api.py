@@ -55,6 +55,7 @@ from diffdx.routers.appointments import router as appointments_router
 from diffdx.routers.appointments2 import router as appointments2_router
 from diffdx.routers.appointments3 import router as appointments3_router
 from diffdx.routers.appointments4 import router as appointments4_router
+from diffdx.routers.appointments5 import router as appointments5_router
 from diffdx.routers.auth import router as auth_router
 from diffdx.routers.doctors import router as doctors_router
 from diffdx.routers.messaging import router as messaging_router
@@ -97,6 +98,7 @@ app.include_router(appointments_router)
 app.include_router(appointments2_router)
 app.include_router(appointments3_router)
 app.include_router(appointments4_router)
+app.include_router(appointments5_router)
 app.include_router(auth_router)
 app.include_router(doctors_router)
 app.include_router(messaging_router)
@@ -223,16 +225,9 @@ _CASES_DIR = _repo_root / "test_cases"
 # ---------------------------------------------------------------------------
 
 # This domain's request schemas all moved to diffdx/schemas/appointments.py
-# as part of Task 4's router split. Only the ones still used by routes in
-# this file that haven't moved to their own router yet get imported back —
-# trim this list further as more routers peel off (see TASK4_SPLIT_ROUTERS.md).
-from diffdx.schemas.appointments import (
-    BlockDateRequest,
-    SecondOpinionRequest,
-    SecondOpinionResponseRequest,
-    TagsRequest,
-    WaitlistRequest,
-)
+# as part of Task 4's router split. As of appointments5.py (the domain's
+# last router), every route that used one of these has moved out of this
+# file, so nothing needs to be imported back here anymore.
 
 
 # ---------------------------------------------------------------------------
@@ -783,59 +778,6 @@ _session_test_uploads: dict = _load_session_uploads()  # session_id → { test_i
 
 
 # ---------------------------------------------------------------------------
-# Feature: Symptom history across sessions (patient)
-# ---------------------------------------------------------------------------
-
-@app.get("/api/patient/symptom-history")
-async def get_symptom_history(request: Request):
-    """Return aggregated symptoms from all past sessions for the authenticated patient."""
-    user = _get_user_from_request(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated.")
-    appointments = _load_appointments()
-    entries = []
-    for appt in appointments.values():
-        if appt.get("patient_user_id") != user["id"]:
-            continue
-        if appt.get("status") not in ("seen", "upcoming"):
-            continue
-        session_id = appt.get("session_id")
-        symptoms = []
-        if session_id:
-            jsonl_path = _repo_root / "logs" / f"session_{session_id}.jsonl"
-            if jsonl_path.exists():
-                try:
-                    for line in jsonl_path.read_text(encoding="utf-8").splitlines():
-                        if not line.strip():
-                            continue
-                        ev = json.loads(line)
-                        profile = ev.get("patient_profile", {})
-                        for s in profile.get("symptoms", []):
-                            name = s.get("name", "")
-                            if name and name not in symptoms:
-                                symptoms.append(name)
-                except Exception:
-                    pass
-        report = _load_report_from_disk(session_id) if session_id else None
-        if report:
-            for s in report.get("final_profile", {}).get("symptoms", []):
-                name = s.get("name", "")
-                if name and name not in symptoms:
-                    symptoms.append(name)
-        if symptoms or appt.get("primary_diagnosis"):
-            entries.append({
-                "appointment_id": appt["appointment_id"],
-                "slot": appt.get("slot", ""),
-                "doctor_name": appt.get("doctor_name", ""),
-                "primary_diagnosis": appt.get("primary_diagnosis", ""),
-                "symptoms": symptoms,
-                "status": appt.get("status", ""),
-            })
-    entries.sort(key=lambda e: e["slot"], reverse=True)
-    return {"history": entries}
-
-
-# ---------------------------------------------------------------------------
 # Feature: Patient messaging
 # ---------------------------------------------------------------------------
 
@@ -853,14 +795,6 @@ def _load_blocked_dates() -> dict:
 
 def _save_blocked_dates(data: dict) -> None:
     _db_save("blocked_dates", data)
-
-
-def _load_second_opinions() -> list:
-    return _db_load("second_opinions", [])
-
-
-def _save_second_opinions(opinions: list) -> None:
-    _db_save("second_opinions", opinions)
 
 
 # ---------------------------------------------------------------------------
@@ -889,313 +823,6 @@ def _send_email_notification(to: str, subject: str, body: str) -> None:
             s.sendmail(msg["From"], [to], msg.as_string())
     except Exception:
         pass  # never block the main flow
-
-
-# ---------------------------------------------------------------------------
-# Feature: Appointment Waitlist
-# ---------------------------------------------------------------------------
-
-@app.post("/api/patient/waitlist")
-async def join_waitlist(req: WaitlistRequest, request: Request):
-    user = _get_user_from_request(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated.")
-    waitlist = _load_waitlist()
-    # Check if already waiting for this doctor
-    existing = next(
-        (e for e in waitlist
-         if e.get("patient_user_id") == user["id"]
-         and e.get("doctor_id") == req.doctor_id
-         and e.get("status") == "waiting"),
-        None,
-    )
-    if existing:
-        raise HTTPException(status_code=409, detail="Already on the waitlist for this doctor.")
-    entry = {
-        "id": str(uuid.uuid4()),
-        "patient_user_id": user["id"],
-        "patient_name": user.get("name", ""),
-        "doctor_id": req.doctor_id,
-        "doctor_name": req.doctor_name,
-        "specialty": req.specialty,
-        "note": req.note,
-        "joined_at": datetime.now(timezone.utc).isoformat(),
-        "status": "waiting",
-    }
-    waitlist.append(entry)
-    _save_waitlist(waitlist)
-    return {"joined": True, "entry": entry}
-
-
-@app.get("/api/patient/waitlist")
-async def get_patient_waitlist(request: Request):
-    user = _get_user_from_request(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated.")
-    waitlist = _load_waitlist()
-    mine = [e for e in waitlist if e.get("patient_user_id") == user["id"]]
-    return {"waitlist": mine}
-
-
-@app.delete("/api/patient/waitlist/{entry_id}")
-async def leave_waitlist(entry_id: str, request: Request):
-    user = _get_user_from_request(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated.")
-    waitlist = _load_waitlist()
-    new_list = [e for e in waitlist if not (e.get("id") == entry_id and e.get("patient_user_id") == user["id"])]
-    if len(new_list) == len(waitlist):
-        raise HTTPException(status_code=404, detail="Waitlist entry not found.")
-    _save_waitlist(new_list)
-    return {"removed": True}
-
-
-@app.get("/api/doctor/waitlist")
-async def get_doctor_waitlist(request: Request):
-    doctor = _require_doctor(request)
-    doctor_id = doctor.get("doctor_id")
-    waitlist = _load_waitlist()
-    mine = [e for e in waitlist if e.get("doctor_id") == doctor_id and e.get("status") == "waiting"]
-    mine.sort(key=lambda e: e.get("joined_at", ""))
-    return {"waitlist": mine, "count": len(mine)}
-
-
-# ---------------------------------------------------------------------------
-# Feature: Block Specific Dates
-# ---------------------------------------------------------------------------
-
-@app.post("/api/doctor/blocked-dates")
-async def block_date(req: BlockDateRequest, request: Request):
-    doctor = _require_doctor(request)
-    doctor_id = doctor.get("doctor_id")
-    data = _load_blocked_dates()
-    if doctor_id not in data:
-        data[doctor_id] = []
-    # Remove any existing entry for this date
-    data[doctor_id] = [d for d in data[doctor_id] if d.get("date") != req.date]
-    data[doctor_id].append({"date": req.date, "reason": req.reason})
-    data[doctor_id].sort(key=lambda d: d["date"])
-    _save_blocked_dates(data)
-    return {"blocked": True}
-
-
-@app.get("/api/doctor/blocked-dates")
-async def get_blocked_dates(request: Request):
-    doctor = _require_doctor(request)
-    doctor_id = doctor.get("doctor_id")
-    data = _load_blocked_dates()
-    return {"blocked_dates": data.get(doctor_id, [])}
-
-
-@app.delete("/api/doctor/blocked-dates/{date}")
-async def unblock_date(date: str, request: Request):
-    doctor = _require_doctor(request)
-    doctor_id = doctor.get("doctor_id")
-    data = _load_blocked_dates()
-    if doctor_id not in data:
-        raise HTTPException(status_code=404, detail="No blocked dates found.")
-    new_list = [d for d in data[doctor_id] if d.get("date") != date]
-    if len(new_list) == len(data.get(doctor_id, [])):
-        raise HTTPException(status_code=404, detail="Date not found in blocked list.")
-    data[doctor_id] = new_list
-    _save_blocked_dates(data)
-    return {"unblocked": True}
-
-
-# ---------------------------------------------------------------------------
-# Feature: Patient Tagging
-# ---------------------------------------------------------------------------
-
-@app.patch("/api/doctor/appointments/{appt_id}/tags")
-async def update_patient_tags(appt_id: str, req: TagsRequest, request: Request):
-    doctor = _require_doctor(request)
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
-    if appt is None:
-        raise HTTPException(status_code=404, detail="Appointment not found.")
-    if appt.get("doctor_id") != doctor.get("doctor_id"):
-        raise HTTPException(status_code=403, detail="Not your appointment.")
-    appt["patient_tags"] = req.tags
-    appt["tags_updated_at"] = datetime.now(timezone.utc).isoformat()
-    _save_appointments(appointments)
-    return {"saved": True, "tags": req.tags}
-
-
-# ---------------------------------------------------------------------------
-# Feature: Prescription Renewal Reminders
-# ---------------------------------------------------------------------------
-
-import re as _re
-
-def _parse_duration_days(duration_str: str) -> int | None:
-    """Parse a duration string like '7 days', '2 weeks', '1 month' into days."""
-    if not duration_str:
-        return None
-    m = _re.search(r'(\d+)\s*(day|week|month)', duration_str.lower())
-    if not m:
-        return None
-    n, unit = int(m.group(1)), m.group(2)
-    if unit == "day":
-        return n
-    if unit == "week":
-        return n * 7
-    if unit == "month":
-        return n * 30
-    return None
-
-
-@app.get("/api/doctor/renewal-reminders")
-async def get_renewal_reminders(request: Request):
-    """Return appointments where the patient has submitted a pending refill request."""
-    doctor = _require_doctor(request)
-    doctor_id = doctor.get("doctor_id")
-    appointments = _load_appointments()
-    results = []
-    for appt in appointments.values():
-        if appt.get("doctor_id") != doctor_id:
-            continue
-        refill = appt.get("refill_request")
-        if not refill or refill.get("status") == "fulfilled":
-            continue
-        meds = refill.get("medications", [])
-        med_names = [m if isinstance(m, str) else m.get("drug", "") for m in meds]
-        results.append({
-            "appointment_id": appt.get("appointment_id"),
-            "patient_name": appt.get("patient_name", ""),
-            "medications": med_names,
-            "note": refill.get("note", ""),
-            "requested_at": refill.get("requested_at", appt.get("slot", "")),
-            "slot": appt.get("slot", ""),
-        })
-    results.sort(key=lambda r: r["requested_at"], reverse=True)
-    return {"reminders": results, "count": len(results)}
-
-
-# ---------------------------------------------------------------------------
-# Feature: Second Opinion Request
-# ---------------------------------------------------------------------------
-
-@app.post("/api/doctor/appointments/{appt_id}/second-opinion")
-async def request_second_opinion(appt_id: str, req: SecondOpinionRequest, request: Request):
-    doctor = _require_doctor(request)
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
-    if appt is None:
-        raise HTTPException(status_code=404, detail="Appointment not found.")
-    if appt.get("doctor_id") != doctor.get("doctor_id"):
-        raise HTTPException(status_code=403, detail="Not your appointment.")
-
-    opinions = _load_second_opinions()
-    opinion_id = str(uuid.uuid4())
-    now_str = datetime.now(timezone.utc).isoformat()
-
-    # Build patient summary from appointment
-    diagnosis = appt.get("primary_diagnosis", "")
-    patient_summary = f"Diagnosis: {diagnosis}" if diagnosis else "No diagnosis yet"
-
-    opinion = {
-        "id": opinion_id,
-        "from_doctor_id": doctor.get("doctor_id"),
-        "from_doctor_name": doctor.get("name", ""),
-        "to_doctor_id": req.to_doctor_id,
-        "to_doctor_name": req.to_doctor_name,
-        "appointment_id": appt_id,
-        "patient_name": appt.get("patient_name", ""),
-        "patient_summary": patient_summary,
-        "note": req.note,
-        "requested_at": now_str,
-        "status": "pending",
-        "response": "",
-    }
-    opinions.append(opinion)
-    _save_second_opinions(opinions)
-
-    # Store on appointment
-    appt["second_opinion"] = {
-        "to_doctor_id": req.to_doctor_id,
-        "to_doctor_name": req.to_doctor_name,
-        "requested_at": now_str,
-        "status": "pending",
-        "opinion_id": opinion_id,
-    }
-    _save_appointments(appointments)
-
-    # Email the receiving doctor
-    users = _load_users()
-    to_doctor_user = next(
-        (u for u in users.values() if u.get("doctor_id") == req.to_doctor_id),
-        None,
-    )
-    if to_doctor_user:
-        _send_email_notification(
-            to=to_doctor_user.get("email", ""),
-            subject=f"Second Opinion Request — {appt.get('patient_name', 'Patient')}",
-            body=(
-                f"Hi {req.to_doctor_name},\n\n"
-                f"Dr. {doctor.get('name', '')} is requesting a second opinion on a patient.\n\n"
-                f"Patient: {appt.get('patient_name', '')}\n"
-                f"Summary: {patient_summary}\n"
-                + (f"Note: {req.note}\n" if req.note else "")
-                + f"\nPlease log in to the doctor portal to review and respond.\n"
-            ),
-        )
-
-    return {"requested": True, "opinion_id": opinion_id}
-
-
-@app.get("/api/doctor/second-opinions/inbox")
-async def get_second_opinion_inbox(request: Request):
-    """Return second opinion requests sent TO this doctor."""
-    doctor = _require_doctor(request)
-    doctor_id = doctor.get("doctor_id")
-    opinions = _load_second_opinions()
-    inbox = [o for o in opinions if o.get("to_doctor_id") == doctor_id]
-    inbox.sort(key=lambda o: o.get("requested_at", ""), reverse=True)
-    return {"inbox": inbox, "count": len(inbox)}
-
-
-@app.patch("/api/doctor/second-opinions/{opinion_id}/respond")
-async def respond_to_second_opinion(opinion_id: str, req: SecondOpinionResponseRequest, request: Request):
-    doctor = _require_doctor(request)
-    opinions = _load_second_opinions()
-    opinion = next((o for o in opinions if o.get("id") == opinion_id), None)
-    if opinion is None:
-        raise HTTPException(status_code=404, detail="Second opinion request not found.")
-    if opinion.get("to_doctor_id") != doctor.get("doctor_id"):
-        raise HTTPException(status_code=403, detail="This request is not addressed to you.")
-    opinion["response"] = req.response
-    opinion["status"] = "responded"
-    opinion["responded_at"] = datetime.now(timezone.utc).isoformat()
-    _save_second_opinions(opinions)
-
-    # Update appointment record
-    appointments = _load_appointments()
-    appt = appointments.get(opinion.get("appointment_id", ""))
-    if appt and appt.get("second_opinion"):
-        appt["second_opinion"]["status"] = "responded"
-        appt["second_opinion"]["response"] = req.response
-        _save_appointments(appointments)
-
-    # Email the requesting doctor
-    users = _load_users()
-    from_doctor_user = next(
-        (u for u in users.values() if u.get("doctor_id") == opinion.get("from_doctor_id")),
-        None,
-    )
-    if from_doctor_user:
-        _send_email_notification(
-            to=from_doctor_user.get("email", ""),
-            subject=f"Second Opinion Response — {opinion.get('patient_name', 'Patient')}",
-            body=(
-                f"Hi {opinion.get('from_doctor_name', 'Doctor')},\n\n"
-                f"Dr. {doctor.get('name', '')} has responded to your second opinion request.\n\n"
-                f"Patient: {opinion.get('patient_name', '')}\n"
-                f"Response: {req.response}\n"
-                f"\nPlease log in to the doctor portal to view the full response.\n"
-            ),
-        )
-
-    return {"responded": True}
 
 
 # ---------------------------------------------------------------------------

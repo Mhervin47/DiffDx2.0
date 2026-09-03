@@ -54,6 +54,7 @@ from web.api_session import APISession
 from diffdx.routers.auth import router as auth_router
 from diffdx.routers.doctors import router as doctors_router
 from diffdx.routers.messaging import router as messaging_router
+from diffdx.routers.pages import router as pages_router
 from diffdx.routers.session_booking import router as session_booking_router
 from diffdx.routers.sessions import router as sessions_router
 
@@ -90,6 +91,7 @@ app.add_middleware(NoCacheStaticMiddleware)
 app.include_router(auth_router)
 app.include_router(doctors_router)
 app.include_router(messaging_router)
+app.include_router(pages_router)
 app.include_router(sessions_router)
 app.include_router(session_booking_router)
 
@@ -821,35 +823,6 @@ def _load_report_from_disk(session_id: str) -> dict | None:
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
-
-# HTML page routes — serve clean URLs without .html extension
-_html = lambda name: FileResponse(
-    _static_dir / name,
-    media_type="text/html",
-    headers={"Cache-Control": "no-store"},
-)
-
-@app.get("/patient-info")
-async def page_patient_info(): return _html("patient-info.html")
-
-@app.get("/history")
-async def page_history(): return _html("history.html")
-
-@app.get("/login")
-async def page_login(): return _html("login.html")
-
-@app.get("/doctor-portal")
-async def page_doctor_portal(): return _html("doctor-portal.html")
-
-@app.get("/doctor-portal.html")
-async def page_doctor_portal_html(): return _html("doctor-portal.html")
-
-@app.get("/session/{session_id}")
-async def page_session(session_id: str): return _html("session.html")
-
-@app.get("/report/{session_id}")
-async def page_report(session_id: str): return _html("report.html")
-
 
 @app.get("/api/appointments")
 async def get_patient_appointments(request: Request):

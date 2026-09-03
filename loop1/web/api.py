@@ -56,6 +56,7 @@ from diffdx.routers.appointments2 import router as appointments2_router
 from diffdx.routers.appointments3 import router as appointments3_router
 from diffdx.routers.appointments4 import router as appointments4_router
 from diffdx.routers.appointments5 import router as appointments5_router
+from diffdx.routers.appointments6 import router as appointments6_router
 from diffdx.routers.auth import router as auth_router
 from diffdx.routers.doctors import router as doctors_router
 from diffdx.routers.messaging import router as messaging_router
@@ -99,6 +100,7 @@ app.include_router(appointments2_router)
 app.include_router(appointments3_router)
 app.include_router(appointments4_router)
 app.include_router(appointments5_router)
+app.include_router(appointments6_router)
 app.include_router(auth_router)
 app.include_router(doctors_router)
 app.include_router(messaging_router)
@@ -225,7 +227,7 @@ _CASES_DIR = _repo_root / "test_cases"
 # ---------------------------------------------------------------------------
 
 # This domain's request schemas all moved to diffdx/schemas/appointments.py
-# as part of Task 4's router split. As of appointments5.py (the domain's
+# as part of Task 4's router split. As of appointments6.py (the domain's
 # last router), every route that used one of these has moved out of this
 # file, so nothing needs to be imported back here anymore.
 

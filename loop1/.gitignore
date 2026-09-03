@@ -32,3 +32,4 @@ web/data/*.json
 web/data/*.db
 web/data/*.db-wal
 web/data/*.db-shm
+web/data/files/

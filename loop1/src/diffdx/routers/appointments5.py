@@ -28,6 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from diffdx.db.engine import get_session
+from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.scheduling import BlockedDateRepository, WaitlistRepository
 from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
@@ -62,9 +63,16 @@ def _parse_duration_days(duration_str: str) -> int | None:
 # ---------------------------------------------------------------------------
 
 @router.get("/api/patient/symptom-history")
-async def get_symptom_history(request: Request):
-    """Return aggregated symptoms from all past sessions for the authenticated patient."""
+async def get_symptom_history(request: Request, db: Session = Depends(get_session)):
+    """Return aggregated symptoms from all past sessions for the authenticated patient.
+
+    Phase C of the appointments cutover (see
+    TASK17_APPOINTMENTS_FLIP_DERIVED_ROUTES.md): same compose-and-substitute
+    pattern as every prior flip — status/session_id/primary_diagnosis/
+    doctor_name/slot become relationally sourced where a row exists.
+    """
     from web.api import (
+        _compose_appointment_dict,
         _get_user_from_request,
         _load_appointments,
         _load_report_from_disk,
@@ -75,11 +83,16 @@ async def get_symptom_history(request: Request):
     user = _get_user_from_request(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated.")
+    composed_by_id = {
+        str(dto.id): _compose_appointment_dict(db, dto)
+        for dto in AppointmentRepository(db).list_for_patient(uuid.UUID(user["id"]))
+    }
     appointments = _load_appointments()
     entries = []
-    for appt in appointments.values():
-        if appt.get("patient_user_id") != user["id"]:
+    for appt_id, raw_appt in appointments.items():
+        if raw_appt.get("patient_user_id") != user["id"]:
             continue
+        appt = composed_by_id.get(appt_id, raw_appt)
         if appt.get("status") not in ("seen", "upcoming"):
             continue
         session_id = appt.get("session_id")

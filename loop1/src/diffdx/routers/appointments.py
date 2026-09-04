@@ -82,20 +82,36 @@ async def get_patient_appointments(user: dict = Depends(get_current_user), db: S
 
 
 @router.get("/api/patient/test-notifications")
-async def get_test_notifications(request: Request):
-    """Return pending test order count for the logged-in patient (used for nav badge)."""
-    from web.api import _get_user_from_request, _load_appointments
+async def get_test_notifications(request: Request, db: Session = Depends(get_session)):
+    """Return pending test order count for the logged-in patient (used for nav badge).
+
+    Phase C of the appointments cutover (see
+    TASK17_APPOINTMENTS_FLIP_DERIVED_ROUTES.md): the filter (`test_orders`
+    truthy) stays blob-truth, same principle as every prior flip — only
+    the doctor_name/slot/session_id read for matched entries is
+    substituted with composed data where available. Preserves a
+    pre-existing, unrelated bug found while doing this: `"appt_id":
+    a.get("id")` has always been None (blob records only ever have
+    "appointment_id", never "id") — not fixed, a composed dict doesn't
+    have an "id" key either, so this stays exactly as broken as before.
+    """
+    from web.api import _compose_appointment_dict, _get_user_from_request, _load_appointments
 
     user = _get_user_from_request(request)
     if not user:
         return {"count": 0, "appointments": []}
+    composed_by_id = {
+        str(dto.id): _compose_appointment_dict(db, dto)
+        for dto in AppointmentRepository(db).list_for_patient(uuid.UUID(user["id"]))
+    }
     appointments = _load_appointments()
     pending = [
-        {"appt_id": a.get("id"), "doctor_name": a.get("doctor_name"), "slot": a.get("slot"),
-         "session_id": a.get("session_id"), "test_count": len(a.get("test_orders", [])),
+        {"appt_id": a.get("id"), "doctor_name": entry.get("doctor_name"), "slot": entry.get("slot"),
+         "session_id": entry.get("session_id"), "test_count": len(a.get("test_orders", [])),
          "has_stat": any(t.get("priority") == "stat" for t in a.get("test_orders", []))}
-        for a in appointments.values()
+        for appt_id, a in appointments.items()
         if a.get("patient_user_id") == user["id"] and a.get("test_orders")
+        for entry in [composed_by_id.get(appt_id, a)]
     ]
     return {"count": sum(p["test_count"] for p in pending), "appointments": pending}
 

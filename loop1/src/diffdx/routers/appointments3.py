@@ -96,13 +96,32 @@ async def apply_schedule_template(req: ScheduleTemplateRequest, doctor_user: dic
 
 # Feature 3 — No-show Analytics
 @router.get("/api/doctor/analytics")
-async def get_doctor_analytics(doctor_user: dict = Depends(require_role("doctor"))):
-    """Compute KPI / utilization / no-show analytics from the doctor's appointments."""
-    from web.api import _load_appointments, _load_doctors
+async def get_doctor_analytics(doctor_user: dict = Depends(require_role("doctor")), db: Session = Depends(get_session)):
+    """Compute KPI / utilization / no-show analytics from the doctor's appointments.
+
+    Phase C of the appointments cutover (see
+    TASK17_APPOINTMENTS_FLIP_DERIVED_ROUTES.md): same compose-and-substitute
+    pattern as every prior flip — status/slot/patient_name (all the KPI
+    computation below reads) become relationally sourced where a row
+    exists. open_slots/capacity stay directory-blob-sourced, unrelated to
+    appointments.
+    """
+    from web.api import _compose_appointment_dict, _load_appointments, _load_doctors
 
     doctor_id = doctor_user.get("doctor_id")
+    composed_by_id = {}
+    doctor_dto = UserRepository(db).get_by_doctor_id(doctor_id) if doctor_id else None
+    if doctor_dto is not None:
+        composed_by_id = {
+            str(dto.id): _compose_appointment_dict(db, dto)
+            for dto in AppointmentRepository(db).list_for_doctor(doctor_dto.id)
+        }
     appointments = _load_appointments()
-    mine = [a for a in appointments.values() if a.get("doctor_id") == doctor_id]
+    mine = [
+        composed_by_id.get(appt_id, a)
+        for appt_id, a in appointments.items()
+        if a.get("doctor_id") == doctor_id
+    ]
 
     doctors = _load_doctors()
     doc = next((d for d in doctors if d["id"] == doctor_id), None)
@@ -193,12 +212,27 @@ async def get_doctor_analytics(doctor_user: dict = Depends(require_role("doctor"
 
 # Feature 5 — Patient Appointment History Timeline
 @router.get("/api/patient/history")
-async def get_patient_history_timeline(user: dict = Depends(get_current_user)):
-    """Return the patient's own appointments newest-first, with session_id where available."""
-    from web.api import _load_appointments
+async def get_patient_history_timeline(user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
+    """Return the patient's own appointments newest-first, with session_id where available.
 
+    Phase C of the appointments cutover (see
+    TASK17_APPOINTMENTS_FLIP_DERIVED_ROUTES.md): same compose-and-substitute
+    pattern as every prior flip — session_id/slot/doctor_name/specialty/
+    primary_diagnosis/status become relationally sourced where a row
+    exists; prescriptions stays blob-sourced regardless (Task 13).
+    """
+    from web.api import _compose_appointment_dict, _load_appointments
+
+    composed_by_id = {
+        str(dto.id): _compose_appointment_dict(db, dto)
+        for dto in AppointmentRepository(db).list_for_patient(uuid.UUID(user["id"]))
+    }
     appointments = _load_appointments()
-    mine = [a for a in appointments.values() if a.get("patient_user_id") == user["id"]]
+    mine = [
+        composed_by_id.get(appt_id, a)
+        for appt_id, a in appointments.items()
+        if a.get("patient_user_id") == user["id"]
+    ]
     mine.sort(key=lambda a: a.get("slot", ""), reverse=True)
     out = []
     for a in mine:

@@ -100,6 +100,7 @@ class AppointmentRepository:
         note: str | None = None,
         is_followup: bool = False,
         parent_appointment_id: uuid.UUID | None = None,
+        rescheduled_from_id: uuid.UUID | None = None,
     ) -> AppointmentDTO:
         """Create a booking. Raises ConflictError if the doctor is already
         booked at this slot (the DB-level UNIQUE (doctor_id, slot_datetime)
@@ -121,6 +122,7 @@ class AppointmentRepository:
             note=note,
             is_followup=is_followup,
             parent_appointment_id=parent_appointment_id,
+            rescheduled_from_id=rescheduled_from_id,
         )
         if booked_at is not None:
             appt.booked_at = booked_at

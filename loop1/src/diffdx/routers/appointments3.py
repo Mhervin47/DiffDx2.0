@@ -14,12 +14,17 @@ observable behavior change (Task 4 promises zero of those).
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 
+from diffdx.db.engine import get_session
 from diffdx.dependencies import get_current_user, require_role
+from diffdx.repositories.appointments import AppointmentRepository
+from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
     DirectBookRequest,
     IntakeRequest,
@@ -28,6 +33,7 @@ from diffdx.schemas.appointments import (
 )
 
 router = APIRouter(tags=["appointments"])
+_log = logging.getLogger(__name__)
 
 # Feature 2 — Weekly Schedule Template
 _WEEKDAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -351,7 +357,7 @@ async def get_pending_refills(request: Request):
 
 # Feature 8 — Doctor Search + Direct Booking
 @router.post("/api/patient/book-direct")
-async def book_direct(req: DirectBookRequest, user: dict = Depends(get_current_user)):
+async def book_direct(req: DirectBookRequest, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     from web.api import _load_blocked_dates, _load_doctors, _save_appointments, _save_doctors, _send_email_notification, _load_appointments
 
     doctors = _load_doctors()
@@ -393,6 +399,28 @@ async def book_direct(req: DirectBookRequest, user: dict = Depends(get_current_u
 
     doctor["available_slots"] = [s for s in doctor["available_slots"] if s != req.slot]
     _save_doctors(doctors)
+
+    try:
+        doctor_dto = UserRepository(db).get_by_doctor_id(req.doctor_id)
+        if doctor_dto is not None:
+            slot_dt = datetime.fromisoformat(req.slot)
+            if slot_dt.tzinfo is None:
+                slot_dt = slot_dt.replace(tzinfo=timezone.utc)
+            AppointmentRepository(db).book(
+                id=uuid.UUID(appt_id),
+                patient_id=uuid.UUID(user["id"]),
+                doctor_id=doctor_dto.id,
+                slot_datetime=slot_dt,
+                urgency="routine",
+                patient_age=user.get("age"),
+                patient_sex=user.get("sex"),
+                patient_bmi=user.get("bmi"),
+                note=req.note or None,
+            )
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of direct booking failed for appointment %s", appt_id, exc_info=True)
 
     # Email confirmation
     slot_fmt = req.slot.replace("T", " at ").replace(":00", "")

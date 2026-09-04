@@ -29,16 +29,22 @@ appointments3.py:
 from __future__ import annotations
 
 import base64
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
+from sqlalchemy.orm import Session
 
+from diffdx.db.engine import get_session
 from diffdx.dependencies import get_current_user, require_role
+from diffdx.repositories.appointments import AppointmentRepository
+from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import PatientRescheduleRequest, RatingRequest
 
 router = APIRouter(tags=["appointments"])
+_log = logging.getLogger(__name__)
 
 
 def _patient_appt_or_403(appt_id: str, request: Request) -> tuple[dict, dict]:
@@ -182,9 +188,9 @@ async def download_patient_file(appt_id: str, filename: str, request: Request):
 
 
 @router.delete("/api/patient/appointments/{appt_id}")
-async def cancel_patient_appointment(appt_id: str, user: dict = Depends(get_current_user)):
+async def cancel_patient_appointment(appt_id: str, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     """Patient cancels their own upcoming appointment."""
-    from web.api import _load_appointments, _load_doctors, _save_appointments, _save_doctors, _send_email_notification
+    from web.api import _ensure_relational_appointment, _load_appointments, _load_doctors, _save_appointments, _save_doctors, _send_email_notification
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -208,6 +214,16 @@ async def cancel_patient_appointment(appt_id: str, user: dict = Depends(get_curr
             slots.add(freed_slot)
             doc["available_slots"] = sorted(slots)
             _save_doctors(doctors)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            AppointmentRepository(db).cancel(appt_uuid, cancelled_by="patient", cancelled_at=datetime.now(timezone.utc))
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of cancellation failed for appointment %s", appt_id, exc_info=True)
+
     _send_email_notification(
         to=user.get("email", ""),
         subject="Appointment Cancelled",
@@ -273,9 +289,9 @@ async def patient_get_doctor_slots(doctor_id: str, request: Request):
 
 
 @router.post("/api/patient/appointments/{appt_id}/reschedule")
-async def patient_reschedule_appointment(appt_id: str, req: PatientRescheduleRequest, request: Request):
+async def patient_reschedule_appointment(appt_id: str, req: PatientRescheduleRequest, request: Request, db: Session = Depends(get_session)):
     """Cancel old appointment and book same doctor at new_slot."""
-    from web.api import _get_user_from_request, _load_appointments, _load_doctors, _save_appointments, _save_doctors
+    from web.api import _ensure_relational_appointment, _get_user_from_request, _load_appointments, _load_doctors, _save_appointments, _save_doctors
 
     user = _get_user_from_request(request)
     appointments = _load_appointments()
@@ -337,13 +353,39 @@ async def patient_reschedule_appointment(appt_id: str, req: PatientRescheduleReq
     appointments = _load_appointments()
     appointments[new_appt_id] = new_appt
     _save_appointments(appointments)
+
+    try:
+        old_uuid = _ensure_relational_appointment(db, appt)
+        doctor_dto = UserRepository(db).get_by_doctor_id(doc["id"])
+        if old_uuid is not None and doctor_dto is not None:
+            AppointmentRepository(db).cancel(old_uuid, cancelled_by="patient_reschedule", cancelled_at=datetime.now(timezone.utc))
+            slot_dt = datetime.fromisoformat(req.new_slot)
+            if slot_dt.tzinfo is None:
+                slot_dt = slot_dt.replace(tzinfo=timezone.utc)
+            AppointmentRepository(db).book(
+                id=uuid.UUID(new_appt_id),
+                patient_id=uuid.UUID(user["id"]),
+                doctor_id=doctor_dto.id,
+                slot_datetime=slot_dt,
+                urgency=new_appt.get("urgency", "routine"),
+                chief_complaint=new_appt.get("chief_complaint") or None,
+                primary_diagnosis=new_appt.get("primary_diagnosis") or None,
+                note=new_appt.get("note") or None,
+                is_followup=new_appt.get("is_followup", False),
+                rescheduled_from_id=old_uuid,
+            )
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of patient reschedule failed for appointment %s", appt_id, exc_info=True)
+
     return {"rescheduled": True, "new_appt_id": new_appt_id, "new_slot": req.new_slot}
 
 
 @router.post("/api/patient/appointments/{appt_id}/rating")
-async def submit_rating(appt_id: str, req: RatingRequest, user: dict = Depends(get_current_user)):
+async def submit_rating(appt_id: str, req: RatingRequest, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     """Patient submits a 1-5 star rating after a visit."""
-    from web.api import _load_appointments, _save_appointments
+    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     if not (1 <= req.rating <= 5):
         raise HTTPException(status_code=400, detail="Rating must be 1-5.")
@@ -355,6 +397,17 @@ async def submit_rating(appt_id: str, req: RatingRequest, user: dict = Depends(g
         raise HTTPException(status_code=403, detail="Not your appointment.")
     if appt.get("status") != "seen":
         raise HTTPException(status_code=400, detail="Can only rate completed visits.")
-    appt["rating"] = {"stars": req.rating, "comment": req.comment, "submitted_at": datetime.now(timezone.utc).isoformat()}
+    submitted_at = datetime.now(timezone.utc)
+    appt["rating"] = {"stars": req.rating, "comment": req.comment, "submitted_at": submitted_at.isoformat()}
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            AppointmentRepository(db).set_rating(appt_uuid, stars=req.rating, comment=req.comment, submitted_at=submitted_at)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of rating failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True}

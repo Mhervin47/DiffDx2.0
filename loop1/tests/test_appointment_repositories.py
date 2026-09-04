@@ -470,6 +470,26 @@ def test_appointment_reschedule_success(session_maker):
         assert rescheduled.slot_datetime == new_slot
 
 
+def test_appointment_book_with_rescheduled_from_id(session_maker):
+    """appointments4.py::patient_reschedule_appointment cancels the old
+    appointment and books a genuinely new one linked via
+    rescheduled_from_id — confirm book() accepts and persists it."""
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    old_slot = datetime.now(timezone.utc) + timedelta(days=1)
+    old_appt_id = _make_appointment(session_maker, patient_id, doctor_id, slot=old_slot)
+
+    with session_maker() as session:
+        AppointmentRepository(session).cancel(old_appt_id, cancelled_by="patient_reschedule", cancelled_at=datetime.now(timezone.utc))
+        new_appt = AppointmentRepository(session).book(
+            patient_id=patient_id, doctor_id=doctor_id,
+            slot_datetime=old_slot + timedelta(hours=1),
+            rescheduled_from_id=old_appt_id,
+        )
+        session.commit()
+        assert new_appt.rescheduled_from_id == old_appt_id
+
+
 def test_appointment_reschedule_missing_raises_not_found(session_maker):
     with session_maker() as session:
         with pytest.raises(NotFoundError):

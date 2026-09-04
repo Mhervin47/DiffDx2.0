@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from diffdx.db import models  # noqa: F401 — registers all models on Base
@@ -34,6 +34,17 @@ from diffdx.repositories.scheduling import BlockedDateRepository, WaitlistReposi
 @pytest.fixture
 def session_maker(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", connect_args={"check_same_thread": False})
+
+    # SQLite doesn't enforce foreign-key constraints (incl. ON DELETE
+    # CASCADE) unless this is set per-connection, unlike Postgres — same
+    # fix applied to the app's real engine in diffdx/db/engine.py. This
+    # fixture builds its own engine directly, so it needs its own copy.
+    @event.listens_for(engine, "connect")
+    def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     Base.metadata.create_all(engine)
     yield sessionmaker(bind=engine, expire_on_commit=False)
     engine.dispose()
@@ -591,3 +602,47 @@ def test_ensure_relational_appointment_returns_none_when_doctor_unresolvable(ses
     with session_maker() as session:
         result = _ensure_relational_appointment(session, blob_appt)
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# AppointmentRepository.delete — dismiss-route deletion semantics fix
+# ---------------------------------------------------------------------------
+
+def test_appointment_delete_removes_row_and_returns_true(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        assert AppointmentRepository(session).delete(appt_id) is True
+        session.commit()
+
+    with session_maker() as session:
+        assert AppointmentRepository(session).get_by_id(appt_id) is None
+
+
+def test_appointment_delete_missing_id_returns_false(session_maker):
+    with session_maker() as session:
+        assert AppointmentRepository(session).delete(uuid.uuid4()) is False
+
+
+def test_appointment_delete_cascades_to_sub_entities(session_maker):
+    """Deleting an Appointment must cascade to every sub-entity table
+    (ondelete="CASCADE" on appointment_id) — the whole shadow tree goes
+    with it, matching the blob's own "permanently remove" semantics."""
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        SuggestedTestRepository(session).create(appt_id, test="CBC", category="blood")
+        ReferralRepository(session).upsert(appt_id, specialty="Cardiology")
+        session.commit()
+
+    with session_maker() as session:
+        assert AppointmentRepository(session).delete(appt_id) is True
+        session.commit()
+
+    with session_maker() as session:
+        assert SuggestedTestRepository(session).list_for_appointment(appt_id) == []
+        assert ReferralRepository(session).get_for_appointment(appt_id) is None

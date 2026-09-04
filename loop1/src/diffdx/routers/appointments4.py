@@ -233,8 +233,16 @@ async def cancel_patient_appointment(appt_id: str, user: dict = Depends(get_curr
 
 
 @router.delete("/api/patient/appointments/{appt_id}/dismiss")
-async def patient_dismiss_appointment(appt_id: str, request: Request):
-    """Permanently remove a cancelled or missed appointment from the patient's view."""
+async def patient_dismiss_appointment(appt_id: str, request: Request, db: Session = Depends(get_session)):
+    """Permanently remove a cancelled or missed appointment from the patient's view.
+
+    Real bug fixed here (see TASK18_APPOINTMENTS_DISMISS_DELETE_FIX.md):
+    "permanently remove" must also delete the relational shadow row, not
+    just the blob one — get_doctor_appointment_detail (Task 14) does a
+    relational-first lookup with no check that the blob still has the
+    entry, so a surviving relational row after dismiss made a
+    "permanently removed" appointment still fully fetchable by id.
+    """
     from web.api import _get_user_from_request, _load_appointments, _save_appointments
 
     user = _get_user_from_request(request)
@@ -252,12 +260,27 @@ async def patient_dismiss_appointment(appt_id: str, request: Request):
         raise HTTPException(status_code=400, detail="Only cancelled or missed appointments can be deleted.")
     del appointments[appt_id]
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = uuid.UUID(appt_id)
+        AppointmentRepository(db).delete(appt_uuid)
+        db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of dismiss (delete) failed for appointment %s", appt_id, exc_info=True)
+
     return {"dismissed": True}
 
 
 @router.delete("/api/doctor/appointments/{appt_id}/dismiss")
-async def doctor_dismiss_appointment(appt_id: str, doctor: dict = Depends(require_role("doctor"))):
-    """Permanently remove a cancelled appointment from the doctor's list."""
+async def doctor_dismiss_appointment(
+    appt_id: str, doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
+    """Permanently remove a cancelled appointment from the doctor's list.
+
+    Real bug fixed here (see TASK18_APPOINTMENTS_DISMISS_DELETE_FIX.md) —
+    same reasoning as patient_dismiss_appointment above.
+    """
     from web.api import _load_appointments, _save_appointments
 
     appointments = _load_appointments()
@@ -270,6 +293,15 @@ async def doctor_dismiss_appointment(appt_id: str, doctor: dict = Depends(requir
         raise HTTPException(status_code=400, detail="Only cancelled appointments can be removed.")
     del appointments[appt_id]
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = uuid.UUID(appt_id)
+        AppointmentRepository(db).delete(appt_uuid)
+        db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of dismiss (delete) failed for appointment %s", appt_id, exc_info=True)
+
     return {"dismissed": True}
 
 

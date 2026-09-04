@@ -185,3 +185,17 @@ class AppointmentRepository:
                 detail=f"Doctor {doctor_id} is already booked at {new_slot_datetime.isoformat()}.",
             ) from exc
         return _to_dto(appt)
+
+    def delete(self, appointment_id: uuid.UUID) -> bool:
+        """Permanently remove an appointment and its whole shadow tree
+        (every sub-entity table has ondelete="CASCADE" on appointment_id).
+        Returns whether a row was actually found and removed — a missing
+        id is not an error, just a no-op (mirrors appointments4.py's
+        dismiss routes, which permanently remove the blob record and
+        must not fail just because no relational shadow ever existed)."""
+        appt = self._session.get(Appointment, appointment_id)
+        if appt is None:
+            return False
+        self._session.delete(appt)
+        self._session.flush()
+        return True

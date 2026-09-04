@@ -49,16 +49,29 @@ _log = logging.getLogger(__name__)
 
 
 @router.get("/api/appointments")
-async def get_patient_appointments(user: dict = Depends(get_current_user)):
-    """Return all booked appointments for the authenticated patient."""
-    from web.api import _load_appointments
+async def get_patient_appointments(user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
+    """Return all booked appointments for the authenticated patient.
 
+    Phase C of the appointments cutover (first list-route flip, see
+    TASK15_APPOINTMENTS_FLIP_LIST_ROUTE.md): the blob remains the
+    authoritative source for *which* appointments exist (every booking
+    still writes one, dual-write or not), but each entry is composed from
+    the relational store when a row exists for it, falling back to the
+    raw blob record otherwise — same per-item fallback principle as
+    get_doctor_appointment_detail (Task 14), applied across a list.
+    """
+    from web.api import _compose_appointment_dict, _load_appointments
+
+    composed_by_id = {
+        str(dto.id): _compose_appointment_dict(db, dto)
+        for dto in AppointmentRepository(db).list_for_patient(uuid.UUID(user["id"]))
+    }
     appointments = _load_appointments()
     patient_appts = []
-    for a in appointments.values():
+    for appt_id, a in appointments.items():
         if a.get("patient_user_id") != user["id"]:
             continue
-        entry = dict(a)
+        entry = dict(composed_by_id.get(appt_id, a))
         # Strip doctor-only fields before sending to patient
         if "referral" in entry and "internal_note" in entry["referral"]:
             entry["referral"] = {k: v for k, v in entry["referral"].items() if k != "internal_note"}

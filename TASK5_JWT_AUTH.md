@@ -145,11 +145,26 @@ against an isolated test DB, and a live smoke test against a real booted
       server, the pre-restart access token still worked (`/api/auth/me`
       → 200).
 - [x] Expired access token + valid refresh → transparent renewal —
-      backend verified live (`/api/auth/refresh` with a valid token
-      returns a new working pair; `test_refresh_with_valid_token_issues_new_working_pair`
-      passes). The `auth.js` fetch-wrapper piece is still only
-      code-reviewed, not exercised in a browser — that requires manual
-      UI testing, out of scope for this pass.
+      verified in a real headless-Chromium session (Playwright), not
+      just the backend: registered a patient through the actual
+      `login.html` form, corrupted the stored access token in
+      `localStorage`, loaded a page whose real data-fetch code path uses
+      the global (auth.js-wrapped) `fetch` (`health-history.html`'s
+      `load()`) — confirmed the request transparently refreshed and
+      retried (no session-expired toast, access token replaced, refresh
+      token rotated, page rendered normally with the user's name in
+      nav), and that the new access token actually authenticates
+      (`/api/auth/me` → 200). One thing worth flagging, not a bug: the
+      badge-loader helpers inside `auth.js` itself
+      (`_loadTestNotifBadge`, `_loadDoctorRefillBadge`, `_loadMsgBadge`)
+      deliberately call `_origFetch` (the pre-wrap original), not the
+      wrapped `fetch` — so a 401 there fails silently rather than
+      refreshing. That's consistent with them already being
+      best-effort/catch-and-ignore nav badges, not user-facing actions,
+      so it doesn't trigger a spurious toast for a background badge
+      fetch — but it does mean those three badges specifically won't
+      auto-recover from an expired token until the next real
+      user-initiated fetch does the refresh.
 - [x] Revoked refresh token → 401, cannot be reused — verified live
       (reused a just-rotated refresh token → 401) and by
       `test_refresh_token_rotation_rejects_reuse`.
@@ -175,9 +190,6 @@ against an isolated test DB, and a live smoke test against a real booted
 
 ## 4. Real remaining work this pass didn't do
 
-- The `auth.js` fetch-wrapper (transparent 401 → refresh → retry) is
-  written and code-reviewed but not exercised in an actual browser —
-  needs manual UI testing.
 - Same `services/`/`main.py`/blob-store-cutover backlog from
   `TASK4_SPLIT_ROUTERS.md` §2 is unchanged by this task.
 - `.python-version` was pinned to an exact `3.11.0`, which no longer has

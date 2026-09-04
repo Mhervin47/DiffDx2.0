@@ -31,8 +31,11 @@ class WaitlistRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def join(self, patient_id: uuid.UUID, doctor_id: uuid.UUID, *, note: str | None = None) -> WaitlistDTO:
-        row = Waitlist(id=uuid.uuid4(), patient_id=patient_id, doctor_id=doctor_id, note=note)
+    def join(
+        self, patient_id: uuid.UUID, doctor_id: uuid.UUID, *,
+        note: str | None = None, id: uuid.UUID | None = None,
+    ) -> WaitlistDTO:
+        row = Waitlist(id=id or uuid.uuid4(), patient_id=patient_id, doctor_id=doctor_id, note=note)
         self._session.add(row)
         self._session.flush()
         return _to_waitlist_dto(row)

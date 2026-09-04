@@ -19,12 +19,17 @@ Task 4 promises zero behavior change, dead code included.
 """
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 
+from diffdx.db.engine import get_session
+from diffdx.repositories.scheduling import BlockedDateRepository, WaitlistRepository
+from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
     BlockDateRequest,
     TagsRequest,
@@ -32,6 +37,7 @@ from diffdx.schemas.appointments import (
 )
 
 router = APIRouter(tags=["appointments"])
+_log = logging.getLogger(__name__)
 
 
 def _parse_duration_days(duration_str: str) -> int | None:
@@ -117,7 +123,7 @@ async def get_symptom_history(request: Request):
 # ---------------------------------------------------------------------------
 
 @router.post("/api/patient/waitlist")
-async def join_waitlist(req: WaitlistRequest, request: Request):
+async def join_waitlist(req: WaitlistRequest, request: Request, db: Session = Depends(get_session)):
     from web.api import _get_user_from_request, _load_waitlist, _save_waitlist
 
     user = _get_user_from_request(request)
@@ -133,8 +139,9 @@ async def join_waitlist(req: WaitlistRequest, request: Request):
     )
     if existing:
         raise HTTPException(status_code=409, detail="Already on the waitlist for this doctor.")
+    entry_id = str(uuid.uuid4())
     entry = {
-        "id": str(uuid.uuid4()),
+        "id": entry_id,
         "patient_user_id": user["id"],
         "patient_name": user.get("name", ""),
         "doctor_id": req.doctor_id,
@@ -146,6 +153,16 @@ async def join_waitlist(req: WaitlistRequest, request: Request):
     }
     waitlist.append(entry)
     _save_waitlist(waitlist)
+
+    try:
+        doctor_dto = UserRepository(db).get_by_doctor_id(req.doctor_id)
+        if doctor_dto is not None:
+            WaitlistRepository(db).join(uuid.UUID(user["id"]), doctor_dto.id, note=req.note or None, id=uuid.UUID(entry_id))
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of waitlist join failed for entry %s", entry_id, exc_info=True)
+
     return {"joined": True, "entry": entry}
 
 
@@ -162,7 +179,7 @@ async def get_patient_waitlist(request: Request):
 
 
 @router.delete("/api/patient/waitlist/{entry_id}")
-async def leave_waitlist(entry_id: str, request: Request):
+async def leave_waitlist(entry_id: str, request: Request, db: Session = Depends(get_session)):
     from web.api import _get_user_from_request, _load_waitlist, _save_waitlist
 
     user = _get_user_from_request(request)
@@ -173,6 +190,15 @@ async def leave_waitlist(entry_id: str, request: Request):
     if len(new_list) == len(waitlist):
         raise HTTPException(status_code=404, detail="Waitlist entry not found.")
     _save_waitlist(new_list)
+
+    try:
+        entry_uuid = uuid.UUID(entry_id)
+        WaitlistRepository(db).leave(entry_uuid)
+        db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of waitlist leave failed for entry %s", entry_id, exc_info=True)
+
     return {"removed": True}
 
 
@@ -193,7 +219,7 @@ async def get_doctor_waitlist(request: Request):
 # ---------------------------------------------------------------------------
 
 @router.post("/api/doctor/blocked-dates")
-async def block_date(req: BlockDateRequest, request: Request):
+async def block_date(req: BlockDateRequest, request: Request, db: Session = Depends(get_session)):
     from web.api import _load_blocked_dates, _require_doctor, _save_blocked_dates
 
     doctor = _require_doctor(request)
@@ -205,6 +231,21 @@ async def block_date(req: BlockDateRequest, request: Request):
     data[doctor_id].append({"date": req.date, "reason": req.reason})
     data[doctor_id].sort(key=lambda d: d["date"])
     _save_blocked_dates(data)
+
+    try:
+        doctor_dto = UserRepository(db).get_by_doctor_id(doctor_id)
+        if doctor_dto is not None:
+            # Blob logic removes any existing entry for this date then
+            # appends the new one (re-blocking updates the reason) — mirror
+            # that exactly, since block() alone would violate the unique
+            # (doctor_id, date) constraint on a date already blocked.
+            BlockedDateRepository(db).unblock(doctor_dto.id, req.date)
+            BlockedDateRepository(db).block(doctor_dto.id, req.date, reason=req.reason or None)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of blocked date failed for doctor %s date %s", doctor_id, req.date, exc_info=True)
+
     return {"blocked": True}
 
 
@@ -219,7 +260,7 @@ async def get_blocked_dates(request: Request):
 
 
 @router.delete("/api/doctor/blocked-dates/{date}")
-async def unblock_date(date: str, request: Request):
+async def unblock_date(date: str, request: Request, db: Session = Depends(get_session)):
     from web.api import _load_blocked_dates, _require_doctor, _save_blocked_dates
 
     doctor = _require_doctor(request)
@@ -232,6 +273,16 @@ async def unblock_date(date: str, request: Request):
         raise HTTPException(status_code=404, detail="Date not found in blocked list.")
     data[doctor_id] = new_list
     _save_blocked_dates(data)
+
+    try:
+        doctor_dto = UserRepository(db).get_by_doctor_id(doctor_id)
+        if doctor_dto is not None:
+            BlockedDateRepository(db).unblock(doctor_dto.id, date)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of unblock date failed for doctor %s date %s", doctor_id, date, exc_info=True)
+
     return {"unblocked": True}
 
 

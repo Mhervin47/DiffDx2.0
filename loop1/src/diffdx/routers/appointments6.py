@@ -9,17 +9,23 @@ lazy-imported) — verified these are the only three routes that call them.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 
+from diffdx.db.engine import get_session
+from diffdx.repositories.clinical import SecondOpinionRepository
+from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
     SecondOpinionRequest,
     SecondOpinionResponseRequest,
 )
 
 router = APIRouter(tags=["appointments"])
+_log = logging.getLogger(__name__)
 
 
 def _load_second_opinions() -> list:
@@ -35,8 +41,9 @@ def _save_second_opinions(opinions: list) -> None:
 
 
 @router.post("/api/doctor/appointments/{appt_id}/second-opinion")
-async def request_second_opinion(appt_id: str, req: SecondOpinionRequest, request: Request):
+async def request_second_opinion(appt_id: str, req: SecondOpinionRequest, request: Request, db: Session = Depends(get_session)):
     from web.api import (
+        _ensure_relational_appointment,
         _load_appointments,
         _load_users,
         _require_doctor,
@@ -85,6 +92,21 @@ async def request_second_opinion(appt_id: str, req: SecondOpinionRequest, reques
     }
     _save_appointments(appointments)
 
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        from_doctor_dto = UserRepository(db).get_by_doctor_id(doctor.get("doctor_id"))
+        to_doctor_dto = UserRepository(db).get_by_doctor_id(req.to_doctor_id)
+        if appt_uuid is not None and from_doctor_dto is not None and to_doctor_dto is not None:
+            SecondOpinionRepository(db).create(
+                appt_uuid, from_doctor_dto.id, to_doctor_dto.id,
+                patient_summary=patient_summary, note=req.note or None,
+                id=uuid.UUID(opinion_id),
+            )
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of second opinion request failed for appointment %s", appt_id, exc_info=True)
+
     users = _load_users()
     to_doctor_user = next(
         (u for u in users.values() if u.get("doctor_id") == req.to_doctor_id),
@@ -121,7 +143,7 @@ async def get_second_opinion_inbox(request: Request):
 
 
 @router.patch("/api/doctor/second-opinions/{opinion_id}/respond")
-async def respond_to_second_opinion(opinion_id: str, req: SecondOpinionResponseRequest, request: Request):
+async def respond_to_second_opinion(opinion_id: str, req: SecondOpinionResponseRequest, request: Request, db: Session = Depends(get_session)):
     from web.api import (
         _load_appointments,
         _load_users,
@@ -137,10 +159,19 @@ async def respond_to_second_opinion(opinion_id: str, req: SecondOpinionResponseR
         raise HTTPException(status_code=404, detail="Second opinion request not found.")
     if opinion.get("to_doctor_id") != doctor.get("doctor_id"):
         raise HTTPException(status_code=403, detail="This request is not addressed to you.")
+    responded_at = datetime.now(timezone.utc)
     opinion["response"] = req.response
     opinion["status"] = "responded"
-    opinion["responded_at"] = datetime.now(timezone.utc).isoformat()
+    opinion["responded_at"] = responded_at.isoformat()
     _save_second_opinions(opinions)
+
+    try:
+        opinion_uuid = uuid.UUID(opinion_id)
+        SecondOpinionRepository(db).respond(opinion_uuid, response=req.response, responded_at=responded_at)
+        db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of second opinion response failed for opinion %s", opinion_id, exc_info=True)
 
     appointments = _load_appointments()
     appt = appointments.get(opinion.get("appointment_id", ""))

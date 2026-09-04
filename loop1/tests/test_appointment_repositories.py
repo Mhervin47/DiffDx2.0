@@ -319,6 +319,23 @@ def test_second_opinion_respond_missing_raises_not_found(session_maker):
 # WaitlistRepository
 # ---------------------------------------------------------------------------
 
+def test_waitlist_join_with_explicit_id(session_maker):
+    """appointments5.py::join_waitlist reuses its own blob-generated entry
+    id for the relational row too, so leave_waitlist can look it up by the
+    same id later — confirm join() honors an explicit id."""
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    explicit_id = uuid.uuid4()
+
+    with session_maker() as session:
+        entry = WaitlistRepository(session).join(patient_id, doctor_id, id=explicit_id)
+        session.commit()
+        assert entry.id == explicit_id
+
+    with session_maker() as session:
+        assert WaitlistRepository(session).leave(explicit_id) is True
+
+
 def test_waitlist_join_list_leave(session_maker):
     patient_id = _make_patient(session_maker)
     doctor_id = _make_doctor(session_maker)

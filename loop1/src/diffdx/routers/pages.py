@@ -13,12 +13,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
+from diffdx.legacy_store import (
+    _static_dir,
+)
 
 router = APIRouter(tags=["pages"])
 
 
 def _html(name: str) -> FileResponse:
-    from web.api import _static_dir
 
     return FileResponse(
         _static_dir / name,

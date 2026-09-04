@@ -49,6 +49,22 @@ from diffdx.schemas.appointments import (
     StatusRequest,
     TestOrdersRequest,
 )
+from diffdx.legacy_store import (
+    _MAX_FILE_BYTES,
+    _compose_appointment_dict,
+    _ensure_relational_appointment,
+    _get_user_from_request,
+    _load_appointments,
+    _load_blocked_dates,
+    _load_doctors,
+    _load_users,
+    _load_waitlist,
+    _save_appointments,
+    _save_doctors,
+    _save_file_data,
+    _save_waitlist,
+    _send_email_notification,
+)
 
 router = APIRouter(tags=["appointments"])
 _log = logging.getLogger(__name__)
@@ -66,7 +82,6 @@ async def get_patient_appointments(user: dict = Depends(get_current_user), db: S
     raw blob record otherwise — same per-item fallback principle as
     get_doctor_appointment_detail (Task 14), applied across a list.
     """
-    from web.api import _compose_appointment_dict, _load_appointments
 
     composed_by_id = {
         str(dto.id): _compose_appointment_dict(db, dto)
@@ -100,7 +115,6 @@ async def get_test_notifications(request: Request, db: Session = Depends(get_ses
     "appointment_id", never "id") — not fixed, a composed dict doesn't
     have an "id" key either, so this stays exactly as broken as before.
     """
-    from web.api import _compose_appointment_dict, _get_user_from_request, _load_appointments
 
     user = _get_user_from_request(request)
     if not user:
@@ -132,7 +146,6 @@ async def get_doctor_appointments(doctor: dict = Depends(require_role("doctor"))
     for this doctor_id, composed data is substituted in per-item where a
     relational row exists.
     """
-    from web.api import _compose_appointment_dict, _load_appointments
 
     doctor_id = doctor.get("doctor_id")
     composed_by_id = {}
@@ -158,7 +171,6 @@ async def update_test_orders(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Save the doctor's test orders for an appointment."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -191,7 +203,6 @@ async def doctor_upload_file(
     db: Session = Depends(get_session),
 ):
     """Doctor uploads a result file for an appointment (e.g. lab report PDF)."""
-    from web.api import _MAX_FILE_BYTES, _ensure_relational_appointment, _load_appointments, _save_appointments, _save_file_data
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -255,7 +266,6 @@ async def save_referral(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Save a referral issued by the doctor for this appointment."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -295,7 +305,6 @@ async def update_doctor_notes(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Save doctor's free-text notes on an appointment."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -326,15 +335,6 @@ async def update_appointment_status(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Update appointment status: upcoming | seen | no_show."""
-    from web.api import (
-        _ensure_relational_appointment,
-        _load_appointments,
-        _load_users,
-        _load_waitlist,
-        _save_appointments,
-        _save_waitlist,
-        _send_email_notification,
-    )
 
     valid = {"upcoming", "seen", "no_show"}
     if req.status not in valid:
@@ -393,14 +393,6 @@ async def reschedule_appointment(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Reschedule an appointment to a new slot."""
-    from web.api import (
-        _ensure_relational_appointment,
-        _load_appointments,
-        _load_blocked_dates,
-        _load_doctors,
-        _save_appointments,
-        _save_doctors,
-    )
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -451,14 +443,6 @@ async def propose_reschedule(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Doctor proposes a new slot to the patient; patient must accept or decline."""
-    from web.api import (
-        _ensure_relational_appointment,
-        _load_appointments,
-        _load_blocked_dates,
-        _load_users,
-        _save_appointments,
-        _send_email_notification,
-    )
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -514,15 +498,6 @@ async def patient_reschedule_response(
     user: dict = Depends(get_current_user), db: Session = Depends(get_session),
 ):
     """Patient accepts or declines a doctor's reschedule proposal."""
-    from web.api import (
-        _ensure_relational_appointment,
-        _load_appointments,
-        _load_doctors,
-        _load_users,
-        _save_appointments,
-        _save_doctors,
-        _send_email_notification,
-    )
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)

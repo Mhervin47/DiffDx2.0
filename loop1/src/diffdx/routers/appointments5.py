@@ -36,6 +36,20 @@ from diffdx.schemas.appointments import (
     TagsRequest,
     WaitlistRequest,
 )
+from diffdx.legacy_store import (
+    _compose_appointment_dict,
+    _ensure_relational_appointment,
+    _get_user_from_request,
+    _load_appointments,
+    _load_blocked_dates,
+    _load_report_from_disk,
+    _load_waitlist,
+    _repo_root,
+    _require_doctor,
+    _save_appointments,
+    _save_blocked_dates,
+    _save_waitlist,
+)
 
 router = APIRouter(tags=["appointments"])
 _log = logging.getLogger(__name__)
@@ -71,13 +85,6 @@ async def get_symptom_history(request: Request, db: Session = Depends(get_sessio
     pattern as every prior flip — status/session_id/primary_diagnosis/
     doctor_name/slot become relationally sourced where a row exists.
     """
-    from web.api import (
-        _compose_appointment_dict,
-        _get_user_from_request,
-        _load_appointments,
-        _load_report_from_disk,
-        _repo_root,
-    )
     import json
 
     user = _get_user_from_request(request)
@@ -137,7 +144,6 @@ async def get_symptom_history(request: Request, db: Session = Depends(get_sessio
 
 @router.post("/api/patient/waitlist")
 async def join_waitlist(req: WaitlistRequest, request: Request, db: Session = Depends(get_session)):
-    from web.api import _get_user_from_request, _load_waitlist, _save_waitlist
 
     user = _get_user_from_request(request)
     if not user:
@@ -181,7 +187,6 @@ async def join_waitlist(req: WaitlistRequest, request: Request, db: Session = De
 
 @router.get("/api/patient/waitlist")
 async def get_patient_waitlist(request: Request):
-    from web.api import _get_user_from_request, _load_waitlist
 
     user = _get_user_from_request(request)
     if not user:
@@ -193,7 +198,6 @@ async def get_patient_waitlist(request: Request):
 
 @router.delete("/api/patient/waitlist/{entry_id}")
 async def leave_waitlist(entry_id: str, request: Request, db: Session = Depends(get_session)):
-    from web.api import _get_user_from_request, _load_waitlist, _save_waitlist
 
     user = _get_user_from_request(request)
     if not user:
@@ -217,7 +221,6 @@ async def leave_waitlist(entry_id: str, request: Request, db: Session = Depends(
 
 @router.get("/api/doctor/waitlist")
 async def get_doctor_waitlist(request: Request):
-    from web.api import _load_waitlist, _require_doctor
 
     doctor = _require_doctor(request)
     doctor_id = doctor.get("doctor_id")
@@ -233,7 +236,6 @@ async def get_doctor_waitlist(request: Request):
 
 @router.post("/api/doctor/blocked-dates")
 async def block_date(req: BlockDateRequest, request: Request, db: Session = Depends(get_session)):
-    from web.api import _load_blocked_dates, _require_doctor, _save_blocked_dates
 
     doctor = _require_doctor(request)
     doctor_id = doctor.get("doctor_id")
@@ -264,7 +266,6 @@ async def block_date(req: BlockDateRequest, request: Request, db: Session = Depe
 
 @router.get("/api/doctor/blocked-dates")
 async def get_blocked_dates(request: Request):
-    from web.api import _load_blocked_dates, _require_doctor
 
     doctor = _require_doctor(request)
     doctor_id = doctor.get("doctor_id")
@@ -274,7 +275,6 @@ async def get_blocked_dates(request: Request):
 
 @router.delete("/api/doctor/blocked-dates/{date}")
 async def unblock_date(date: str, request: Request, db: Session = Depends(get_session)):
-    from web.api import _load_blocked_dates, _require_doctor, _save_blocked_dates
 
     doctor = _require_doctor(request)
     doctor_id = doctor.get("doctor_id")
@@ -305,7 +305,6 @@ async def unblock_date(date: str, request: Request, db: Session = Depends(get_se
 
 @router.patch("/api/doctor/appointments/{appt_id}/tags")
 async def update_patient_tags(appt_id: str, req: TagsRequest, request: Request, db: Session = Depends(get_session)):
-    from web.api import _ensure_relational_appointment, _load_appointments, _require_doctor, _save_appointments
 
     doctor = _require_doctor(request)
     appointments = _load_appointments()
@@ -338,7 +337,6 @@ async def update_patient_tags(appt_id: str, req: TagsRequest, request: Request, 
 @router.get("/api/doctor/renewal-reminders")
 async def get_renewal_reminders(request: Request):
     """Return appointments where the patient has submitted a pending refill request."""
-    from web.api import _load_appointments, _require_doctor
 
     doctor = _require_doctor(request)
     doctor_id = doctor.get("doctor_id")

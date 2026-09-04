@@ -41,6 +41,18 @@ from diffdx.schemas.auth import (
     RefreshRequest,
     RegisterRequest,
 )
+from diffdx.legacy_store import (
+    _add_session_to_user,
+    _compose_user_dict,
+    _hash_password,
+    _load_appointments,
+    _load_session_report_from_db,
+    _load_user_sessions,
+    _repo_root,
+    _save_user_sessions,
+    _sessions,
+    _verify_password,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -71,7 +83,6 @@ def _issue_token_pair(db: Session, user: dict) -> tuple[str, str]:
 @router.post("/register")
 @limiter.limit("5/minute")
 async def register(request: Request, req: RegisterRequest, db: Session = Depends(get_session)):
-    from web.api import _compose_user_dict, _hash_password
 
     if UserRepository(db).get_by_email(req.email) is not None:
         raise HTTPException(status_code=409, detail="Email already registered.")
@@ -97,7 +108,6 @@ async def register(request: Request, req: RegisterRequest, db: Session = Depends
 @router.post("/login")
 @limiter.limit("5/minute")
 async def login(request: Request, req: LoginRequest, db: Session = Depends(get_session)):
-    from web.api import _compose_user_dict, _verify_password
 
     dto = UserRepository(db).get_by_email(req.email)
     if dto is None or not _verify_password(req.password, dto.password_hash):
@@ -132,7 +142,6 @@ async def refresh(req: RefreshRequest, db: Session = Depends(get_session)):
     attempt with the now-revoked token fails, which is a signal worth
     alerting on operationally (not implemented here — logged to the audit
     trail as `refresh_reuse_rejected`, which is enough to alert on later)."""
-    from web.api import _compose_user_dict
 
     token_hash = hash_refresh_token(req.refresh_token)
     repo = RefreshTokenRepository(db)
@@ -184,12 +193,6 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 @router.get("/sessions")
 async def get_user_sessions(user: dict = Depends(get_current_user)):
-    from web.api import (
-        _add_session_to_user,
-        _load_appointments,
-        _load_session_report_from_db,
-        _load_user_sessions,
-    )
 
     # Backfill: pick up sessions that were started anonymously but later linked
     # to the user via appointment booking.
@@ -231,7 +234,6 @@ async def get_user_sessions(user: dict = Depends(get_current_user)):
 @router.delete("/sessions/{session_id}")
 async def delete_user_session(session_id: str, user: dict = Depends(get_current_user)):
     """Remove a session from the user's history and delete its log files."""
-    from web.api import _repo_root, _load_user_sessions, _save_user_sessions, _sessions
 
     uid = user["id"]
     original = _load_user_sessions(uid)

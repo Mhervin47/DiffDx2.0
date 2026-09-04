@@ -40,6 +40,26 @@ from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.users import UserRepository
 from diffdx.routers.sessions import _suggested_tests_cache
 from diffdx.schemas.sessions import BookRequest
+from diffdx.legacy_store import (
+    _add_session_to_user,
+    _get_final_differential,
+    _get_user_from_request,
+    _load_appointments,
+    _load_doctors,
+    _load_file_data,
+    _load_report_from_disk,
+    _load_session_report_from_db,
+    _load_session_uploads,
+    _load_users,
+    _log,
+    _repo_root,
+    _save_appointments,
+    _save_doctors,
+    _save_file_data,
+    _save_session_uploads,
+    _session_test_uploads,
+    _sessions,
+)
 
 router = APIRouter(tags=["sessions"])
 
@@ -51,7 +71,6 @@ async def get_suggested_tests(session_id: str, refresh: bool = False):
     final differential. Results are cached per session so repeated calls are free.
     Pass ?refresh=1 to bust the cache.
     """
-    from web.api import _get_final_differential, _log, _repo_root
 
     if not refresh and session_id in _suggested_tests_cache:
         return _suggested_tests_cache[session_id]
@@ -193,24 +212,6 @@ If no tests needed: set necessary=false and tests=[].
 @router.post("/api/session/{session_id}/book")
 async def book_appointment(session_id: str, req: BookRequest, request: Request, db: Session = Depends(get_session)):
     """Book a slot with a doctor for a completed session."""
-    from web.api import (
-        _add_session_to_user,
-        _get_final_differential,
-        _get_user_from_request,
-        _load_appointments,
-        _load_doctors,
-        _load_file_data,
-        _load_report_from_disk,
-        _load_session_report_from_db,
-        _load_session_uploads,
-        _load_users,
-        _save_appointments,
-        _save_doctors,
-        _save_file_data,
-        _save_session_uploads,
-        _session_test_uploads,
-        _sessions,
-    )
     from loop3.routing.router import route as compute_routing
 
     user = _get_user_from_request(request)

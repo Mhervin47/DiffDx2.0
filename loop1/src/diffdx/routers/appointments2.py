@@ -35,6 +35,19 @@ from diffdx.schemas.appointments import (
     SlotsRequest,
     TestResultsRequest,
 )
+from diffdx.legacy_store import (
+    _compose_appointment_dict,
+    _ensure_relational_appointment,
+    _get_final_differential,
+    _load_appointments,
+    _load_doctors,
+    _load_file_data,
+    _load_report_from_disk,
+    _repo_root,
+    _save_appointments,
+    _save_doctors,
+    _sessions,
+)
 
 router = APIRouter(tags=["appointments"])
 _log = logging.getLogger(__name__)
@@ -46,7 +59,6 @@ async def update_approved_plan(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Save the doctor's approved / modified AI plan for an appointment."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -76,7 +88,6 @@ async def update_test_results(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Save lab results against test orders for an appointment."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -122,7 +133,6 @@ async def doctor_download_patient_file(appt_id: str, filename: str = "", doctor:
     """Serve a patient-uploaded file to the doctor assigned to that appointment.
     Filename is passed as a query param (?filename=...) to avoid Starlette path-decode
     issues with non-ASCII characters (e.g. macOS screenshot narrow no-break space U+202F)."""
-    from web.api import _load_appointments, _load_file_data
 
     if not filename:
         raise HTTPException(status_code=400, detail="filename query param required.")
@@ -175,7 +185,6 @@ async def get_patient_history(
     set; composed data is substituted per-item where a relational row
     exists.
     """
-    from web.api import _compose_appointment_dict, _load_appointments
 
     doctor_id = doctor.get("doctor_id")
     composed_by_id = {}
@@ -203,7 +212,6 @@ async def update_prescriptions(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Save prescription pad for an appointment."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -261,7 +269,6 @@ async def create_followup(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Create a follow-up appointment linked to an existing appointment."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _load_doctors, _save_appointments, _save_doctors
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -335,7 +342,6 @@ async def update_doctor_summary(
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
     """Save a doctor's plain-language summary for the patient."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -383,15 +389,6 @@ async def get_doctor_appointment_detail(
     must degrade gracefully rather than assuming one always exists.
     """
     from loop3.routing.router import route as compute_routing
-    from web.api import (
-        _compose_appointment_dict,
-        _get_final_differential,
-        _load_appointments,
-        _load_doctors,
-        _load_report_from_disk,
-        _repo_root,
-        _sessions,
-    )
 
     try:
         appt_uuid = uuid.UUID(appt_id)
@@ -465,7 +462,6 @@ async def get_doctor_appointment_detail(
 @router.get("/api/doctor/profile")
 async def get_doctor_profile(doctor_user: dict = Depends(require_role("doctor"))):
     """Return the authenticated doctor's profile including available_slots."""
-    from web.api import _load_doctors
 
     doctor_id = doctor_user.get("doctor_id")
     doctors = _load_doctors()
@@ -482,7 +478,6 @@ async def update_doctor_profile_details(
     db: Session = Depends(get_session),
 ):
     """Save professional, education, and bio details for the authenticated doctor."""
-    from web.api import _load_doctors, _save_doctors
 
     doctor_id = doctor_user.get("doctor_id")
     body = await request.json()
@@ -523,7 +518,6 @@ async def update_doctor_profile_details(
 @router.patch("/api/doctor/slots")
 async def update_doctor_slots(req: SlotsRequest, doctor_user: dict = Depends(require_role("doctor"))):
     """Replace the authenticated doctor's available_slots list."""
-    from web.api import _load_doctors, _save_doctors
 
     doctor_id = doctor_user.get("doctor_id")
     doctors = _load_doctors()

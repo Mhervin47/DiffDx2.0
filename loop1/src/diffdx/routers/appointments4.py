@@ -44,6 +44,19 @@ from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.files import FileRepository
 from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import PatientRescheduleRequest, RatingRequest
+from diffdx.legacy_store import (
+    _MAX_FILE_BYTES,
+    _ensure_relational_appointment,
+    _get_user_from_request,
+    _load_appointments,
+    _load_doctors,
+    _load_file_data,
+    _save_appointments,
+    _save_doctors,
+    _save_file_data,
+    _send_email_notification,
+    _user_from_access_token,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -53,7 +66,6 @@ _log = logging.getLogger(__name__)
 
 def _patient_appt_or_403(appt_id: str, request: Request) -> tuple[dict, dict]:
     """Return (appointments_dict, appt) verifying the appointment belongs to the caller."""
-    from web.api import _get_user_from_request, _load_appointments
 
     user = _get_user_from_request(request)
     if not user:
@@ -76,7 +88,6 @@ async def upload_patient_file(
     suggested_test_name: str | None = None, # human label for the suggested test
     db: Session = Depends(get_session),
 ):
-    from web.api import _MAX_FILE_BYTES, _ensure_relational_appointment, _save_appointments, _save_file_data
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
     _ALLOWED_UPLOAD_TYPES = {
@@ -166,7 +177,6 @@ async def list_patient_files(appt_id: str, request: Request):
 
 @router.delete("/api/patient/appointments/{appt_id}/files/{filename}")
 async def delete_patient_file(appt_id: str, filename: str, request: Request):
-    from web.api import _save_appointments
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
     files = appt.get("patient_files", [])
@@ -181,7 +191,6 @@ async def delete_patient_file(appt_id: str, filename: str, request: Request):
 @router.get("/api/patient/appointments/{appt_id}/files/{filename}")
 async def download_patient_file(appt_id: str, filename: str, request: Request):
     """Download a patient file. Auth accepted via Bearer header or ?token= query for direct links."""
-    from web.api import _get_user_from_request, _load_appointments, _load_file_data, _user_from_access_token
 
     user = _get_user_from_request(request)
     if not user:
@@ -222,7 +231,6 @@ async def download_patient_file(appt_id: str, filename: str, request: Request):
 @router.delete("/api/patient/appointments/{appt_id}")
 async def cancel_patient_appointment(appt_id: str, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     """Patient cancels their own upcoming appointment."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _load_doctors, _save_appointments, _save_doctors, _send_email_notification
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -275,7 +283,6 @@ async def patient_dismiss_appointment(appt_id: str, request: Request, db: Sessio
     entry, so a surviving relational row after dismiss made a
     "permanently removed" appointment still fully fetchable by id.
     """
-    from web.api import _get_user_from_request, _load_appointments, _save_appointments
 
     user = _get_user_from_request(request)
     appointments = _load_appointments()
@@ -313,7 +320,6 @@ async def doctor_dismiss_appointment(
     Real bug fixed here (see TASK18_APPOINTMENTS_DISMISS_DELETE_FIX.md) —
     same reasoning as patient_dismiss_appointment above.
     """
-    from web.api import _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -340,7 +346,6 @@ async def doctor_dismiss_appointment(
 @router.get("/api/patient/doctors/{doctor_id}/slots")
 async def patient_get_doctor_slots(doctor_id: str, request: Request):
     """Return available slots for a doctor — patient-facing, no doctor auth."""
-    from web.api import _get_user_from_request, _load_doctors
 
     _get_user_from_request(request)
     doctors = _load_doctors()
@@ -355,7 +360,6 @@ async def patient_get_doctor_slots(doctor_id: str, request: Request):
 @router.post("/api/patient/appointments/{appt_id}/reschedule")
 async def patient_reschedule_appointment(appt_id: str, req: PatientRescheduleRequest, request: Request, db: Session = Depends(get_session)):
     """Cancel old appointment and book same doctor at new_slot."""
-    from web.api import _ensure_relational_appointment, _get_user_from_request, _load_appointments, _load_doctors, _save_appointments, _save_doctors
 
     user = _get_user_from_request(request)
     appointments = _load_appointments()
@@ -449,7 +453,6 @@ async def patient_reschedule_appointment(appt_id: str, req: PatientRescheduleReq
 @router.post("/api/patient/appointments/{appt_id}/rating")
 async def submit_rating(appt_id: str, req: RatingRequest, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     """Patient submits a 1-5 star rating after a visit."""
-    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     if not (1 <= req.rating <= 5):
         raise HTTPException(status_code=400, detail="Rating must be 1-5.")

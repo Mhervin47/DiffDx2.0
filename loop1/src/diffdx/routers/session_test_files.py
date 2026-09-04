@@ -16,6 +16,15 @@ import base64
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from diffdx.legacy_store import (
+    _MAX_FILE_BYTES,
+    _get_user_from_request,
+    _load_appointments,
+    _save_appointments,
+    _save_file_data,
+    _save_session_uploads,
+    _session_test_uploads,
+)
 
 router = APIRouter(tags=["sessions"])
 
@@ -28,15 +37,6 @@ async def upload_suggested_test_file(
     suggested_test_name: str | None = None,
 ):
     """Upload a result file for an AI-suggested test. Works with or without a booked appointment."""
-    from web.api import (
-        _MAX_FILE_BYTES,
-        _get_user_from_request,
-        _load_appointments,
-        _save_appointments,
-        _save_file_data,
-        _save_session_uploads,
-        _session_test_uploads,
-    )
 
     user = _get_user_from_request(request)
     if not user:
@@ -94,7 +94,6 @@ async def upload_suggested_test_file(
 @router.get("/api/session/{session_id}/suggested-test-files")
 async def list_suggested_test_files(session_id: str, request: Request):
     """Return already-uploaded suggested test files for this session."""
-    from web.api import _get_user_from_request, _session_test_uploads
 
     user = _get_user_from_request(request)
     if not user:

@@ -16,6 +16,10 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 
 from diffdx.dependencies import require_role
+from diffdx.legacy_store import (
+    _load_blocked_dates,
+    _load_doctors,
+)
 
 router = APIRouter(prefix="/api/doctors", tags=["doctors"])
 
@@ -23,7 +27,6 @@ router = APIRouter(prefix="/api/doctors", tags=["doctors"])
 @router.get("")
 async def list_all_doctors():
     """Return all doctors (name, specialty, hospital, rating, avatar_initials, available_slots) for patient search."""
-    from web.api import _load_blocked_dates, _load_doctors
 
     doctors = _load_doctors()
     blocked_data = _load_blocked_dates()
@@ -57,7 +60,6 @@ async def list_all_doctors():
 @router.get("/{doctor_id}/slots")
 async def get_doctor_slots(doctor_id: str, doctor: dict = Depends(require_role("doctor"))):
     """Return available slots for a doctor (for rescheduling)."""
-    from web.api import _load_doctors
 
     doctors = _load_doctors()
     doc = next((d for d in doctors if d["id"] == doctor_id), None)

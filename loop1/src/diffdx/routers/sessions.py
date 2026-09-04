@@ -35,6 +35,22 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 
 from diffdx.schemas.sessions import StartCustomRequest, StartRequest, TurnRequest
+from diffdx.legacy_store import (
+    _CASES_DIR,
+    _add_session_to_user,
+    _get_final_differential,
+    _get_user_from_request,
+    _load_blocked_dates,
+    _load_doctors,
+    _load_report_from_disk,
+    _log,
+    _sarvam_translate,
+    _sarvam_tts_b64,
+    _save_session_report,
+    _sessions,
+    _update_session_in_user,
+)
+from web.api_session import APISession
 
 router = APIRouter(tags=["sessions"])
 
@@ -52,7 +68,6 @@ _suggested_tests_cache: dict[str, dict] = {}
 
 def _load_profile(case_id: str):
     from loop1.schemas import PatientProfile
-    from web.api import _CASES_DIR
 
     path = _CASES_DIR / f"{case_id}.json"
     if not path.exists():
@@ -74,7 +89,6 @@ def _profile_summary(profile) -> dict:
 @router.get("/api/cases")
 async def list_cases():
     """Return metadata for all available test cases."""
-    from web.api import _CASES_DIR
 
     cases = []
     for case_id in sorted(_CASES_DIR.glob("case_0*.json"), key=lambda p: p.name):
@@ -104,7 +118,6 @@ async def get_case(case_id: str):
 @router.post("/api/tts")
 async def tts_proxy(request: Request):
     """Translate English text to target language, then synthesise via Sarvam TTS."""
-    from web.api import _sarvam_translate, _sarvam_tts_b64
 
     body = await request.json()
     text = body.get("text", "")
@@ -123,7 +136,6 @@ def start_session(req: StartRequest):
     Start a new session for a given case.
     Returns session_id, patient demographics, and the first doctor question.
     """
-    from web.api import APISession, _log, _sessions
 
     profile = _load_profile(req.case_id)
     profile.session_id = str(uuid.uuid4())
@@ -154,7 +166,6 @@ def start_custom_session(req: StartCustomRequest, request: Request):
     No pre-loaded case needed — works with any patient data.
     """
     from loop1.schemas import Demographics, History, PatientProfile, Symptom
-    from web.api import APISession, _add_session_to_user, _get_user_from_request, _log, _sessions
 
     session_id = str(uuid.uuid4())
     other: dict = {}
@@ -216,7 +227,6 @@ def submit_turn(session_id: str, req: TurnRequest):
     Submit the patient's answer to the current doctor question.
     Returns the next question, updated differential, and real-time critique.
     """
-    from web.api import _log, _sarvam_translate, _sessions
 
     session = _sessions.get(session_id)
     if session is None:
@@ -243,13 +253,6 @@ def submit_turn(session_id: str, req: TurnRequest):
 @router.get("/api/session/{session_id}/report")
 def get_report(session_id: str, request: Request):
     """Return the full critic report once the session is complete."""
-    from web.api import (
-        _get_user_from_request,
-        _load_report_from_disk,
-        _save_session_report,
-        _sessions,
-        _update_session_in_user,
-    )
 
     session = _sessions.get(session_id)
     if session is None:
@@ -282,7 +285,6 @@ def get_report(session_id: str, request: Request):
 def get_routing(session_id: str):
     """Return the RoutingDecision for a completed session plus matching doctors."""
     from loop3.routing.router import route as compute_routing
-    from web.api import _get_final_differential, _load_blocked_dates, _load_doctors, _log
 
     try:
         diff, confidence = _get_final_differential(session_id)

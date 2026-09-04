@@ -17,6 +17,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from diffdx.dependencies import get_current_user
+from diffdx.legacy_store import (
+    _db_load,
+    _db_save,
+    _load_appointments,
+)
 
 router = APIRouter(prefix="/api/messages", tags=["messaging"])
 
@@ -27,13 +32,11 @@ class MessageRequest(BaseModel):
 
 
 def _load_messages() -> list:
-    from web.api import _db_load
 
     return _db_load("messages", [])
 
 
 def _save_messages(msgs: list) -> None:
-    from web.api import _db_save
 
     _db_save("messages", msgs)
 
@@ -45,7 +48,6 @@ def _is_thread_id(s: str) -> bool:
 @router.get("")
 async def list_messages(user: dict = Depends(get_current_user)):
     """Return message threads grouped by patient+doctor pair (not per appointment)."""
-    from web.api import _load_appointments
 
     msgs = _load_messages()
     uid = user["id"]
@@ -101,7 +103,6 @@ async def list_messages(user: dict = Depends(get_current_user)):
 @router.post("")
 async def send_message(req: MessageRequest, user: dict = Depends(get_current_user)):
     """Send a message on an appointment thread."""
-    from web.api import _load_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(req.appointment_id)

@@ -32,6 +32,18 @@ from diffdx.schemas.appointments import (
     RefillRequest,
     ScheduleTemplateRequest,
 )
+from diffdx.legacy_store import (
+    _compose_appointment_dict,
+    _ensure_relational_appointment,
+    _get_user_from_request,
+    _load_appointments,
+    _load_blocked_dates,
+    _load_doctors,
+    _load_users,
+    _save_appointments,
+    _save_doctors,
+    _send_email_notification,
+)
 
 router = APIRouter(tags=["appointments"])
 _log = logging.getLogger(__name__)
@@ -59,7 +71,6 @@ def _slots_from_range(day_date, start: str, end: str) -> list[str]:
 @router.post("/api/doctor/schedule-template/apply")
 async def apply_schedule_template(req: ScheduleTemplateRequest, doctor_user: dict = Depends(require_role("doctor"))):
     """Generate ISO slots for the next N weeks from a weekly template and merge into available_slots."""
-    from web.api import _load_doctors, _save_doctors
 
     doctor_id = doctor_user.get("doctor_id")
     doctors = _load_doctors()
@@ -107,7 +118,6 @@ async def get_doctor_analytics(doctor_user: dict = Depends(require_role("doctor"
     exists. open_slots/capacity stay directory-blob-sourced, unrelated to
     appointments.
     """
-    from web.api import _compose_appointment_dict, _load_appointments, _load_doctors
 
     doctor_id = doctor_user.get("doctor_id")
     composed_by_id = {}
@@ -222,7 +232,6 @@ async def get_patient_history_timeline(user: dict = Depends(get_current_user), d
     primary_diagnosis/status become relationally sourced where a row
     exists; prescriptions stays blob-sourced regardless (Task 13).
     """
-    from web.api import _compose_appointment_dict, _load_appointments
 
     composed_by_id = {
         str(dto.id): _compose_appointment_dict(db, dto)
@@ -253,7 +262,6 @@ async def get_patient_history_timeline(user: dict = Depends(get_current_user), d
 # Feature 6 — Pre-visit Symptom Intake
 @router.post("/api/patient/appointments/{appt_id}/intake")
 async def save_intake(appt_id: str, req: IntakeRequest, request: Request, db: Session = Depends(get_session)):
-    from web.api import _ensure_relational_appointment, _save_appointments
     from diffdx.routers.appointments4 import _patient_appt_or_403
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
@@ -283,14 +291,6 @@ async def save_intake(appt_id: str, req: IntakeRequest, request: Request, db: Se
 # Feature 7 — Prescription Refill Request
 @router.post("/api/patient/appointments/{appt_id}/refill")
 async def request_refill(appt_id: str, req: RefillRequest, request: Request, db: Session = Depends(get_session)):
-    from web.api import (
-        _ensure_relational_appointment,
-        _get_user_from_request,
-        _load_doctors,
-        _load_users,
-        _save_appointments,
-        _send_email_notification,
-    )
     from diffdx.routers.appointments4 import _patient_appt_or_403
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
@@ -355,14 +355,6 @@ async def fulfill_refill(appt_id: str, request: Request, db: Session = Depends(g
     authorization bug and a misattribution one. Added the same ownership
     check every other appt-scoped doctor route in this domain already has.
     """
-    from web.api import (
-        _ensure_relational_appointment,
-        _get_user_from_request,
-        _load_appointments,
-        _load_users,
-        _save_appointments,
-        _send_email_notification,
-    )
 
     doctor_user = _get_user_from_request(request)
     if not doctor_user or doctor_user.get("role") != "doctor":
@@ -420,7 +412,6 @@ async def fulfill_refill(appt_id: str, request: Request, db: Session = Depends(g
 @router.get("/api/doctor/pending-refills")
 async def get_pending_refills(request: Request):
     """Return count of appointments with pending refill requests for the logged-in doctor."""
-    from web.api import _get_user_from_request, _load_appointments
 
     doctor_user = _get_user_from_request(request)
     if not doctor_user or doctor_user.get("role") != "doctor":
@@ -437,7 +428,6 @@ async def get_pending_refills(request: Request):
 # Feature 8 — Doctor Search + Direct Booking
 @router.post("/api/patient/book-direct")
 async def book_direct(req: DirectBookRequest, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
-    from web.api import _load_blocked_dates, _load_doctors, _save_appointments, _save_doctors, _send_email_notification, _load_appointments
 
     doctors = _load_doctors()
     doctor = next((d for d in doctors if d["id"] == req.doctor_id), None)

@@ -23,33 +23,33 @@ from diffdx.schemas.appointments import (
     SecondOpinionRequest,
     SecondOpinionResponseRequest,
 )
+from diffdx.legacy_store import (
+    _db_load,
+    _db_save,
+    _ensure_relational_appointment,
+    _load_appointments,
+    _load_users,
+    _require_doctor,
+    _save_appointments,
+    _send_email_notification,
+)
 
 router = APIRouter(tags=["appointments"])
 _log = logging.getLogger(__name__)
 
 
 def _load_second_opinions() -> list:
-    from web.api import _db_load
 
     return _db_load("second_opinions", [])
 
 
 def _save_second_opinions(opinions: list) -> None:
-    from web.api import _db_save
 
     _db_save("second_opinions", opinions)
 
 
 @router.post("/api/doctor/appointments/{appt_id}/second-opinion")
 async def request_second_opinion(appt_id: str, req: SecondOpinionRequest, request: Request, db: Session = Depends(get_session)):
-    from web.api import (
-        _ensure_relational_appointment,
-        _load_appointments,
-        _load_users,
-        _require_doctor,
-        _save_appointments,
-        _send_email_notification,
-    )
 
     doctor = _require_doctor(request)
     appointments = _load_appointments()
@@ -132,7 +132,6 @@ async def request_second_opinion(appt_id: str, req: SecondOpinionRequest, reques
 @router.get("/api/doctor/second-opinions/inbox")
 async def get_second_opinion_inbox(request: Request):
     """Return second opinion requests sent TO this doctor."""
-    from web.api import _require_doctor
 
     doctor = _require_doctor(request)
     doctor_id = doctor.get("doctor_id")
@@ -144,13 +143,6 @@ async def get_second_opinion_inbox(request: Request):
 
 @router.patch("/api/doctor/second-opinions/{opinion_id}/respond")
 async def respond_to_second_opinion(opinion_id: str, req: SecondOpinionResponseRequest, request: Request, db: Session = Depends(get_session)):
-    from web.api import (
-        _load_appointments,
-        _load_users,
-        _require_doctor,
-        _save_appointments,
-        _send_email_notification,
-    )
 
     doctor = _require_doctor(request)
     opinions = _load_second_opinions()

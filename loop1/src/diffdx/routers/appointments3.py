@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from diffdx.db.engine import get_session
 from diffdx.dependencies import get_current_user, require_role
 from diffdx.repositories.appointments import AppointmentRepository
+from diffdx.repositories.clinical import IntakeRepository, RefillRequestRepository
 from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
     DirectBookRequest,
@@ -251,23 +252,39 @@ async def get_patient_history_timeline(user: dict = Depends(get_current_user), d
 
 # Feature 6 — Pre-visit Symptom Intake
 @router.post("/api/patient/appointments/{appt_id}/intake")
-async def save_intake(appt_id: str, req: IntakeRequest, request: Request):
-    from web.api import _save_appointments
+async def save_intake(appt_id: str, req: IntakeRequest, request: Request, db: Session = Depends(get_session)):
+    from web.api import _ensure_relational_appointment, _save_appointments
     from diffdx.routers.appointments4 import _patient_appt_or_403
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
+    submitted_at = datetime.now(timezone.utc)
     appt["intake"] = {
         **req.model_dump(),
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "submitted_at": submitted_at.isoformat(),
     }
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            IntakeRepository(db).upsert(
+                appt_uuid, feeling=req.feeling, symptoms=req.symptoms, severity=req.severity,
+                changes=req.changes, medications=req.medications, allergies=req.allergies,
+                tests_done=req.tests_done,
+            )
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of intake failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True}
 
 
 # Feature 7 — Prescription Refill Request
 @router.post("/api/patient/appointments/{appt_id}/refill")
-async def request_refill(appt_id: str, req: RefillRequest, request: Request):
+async def request_refill(appt_id: str, req: RefillRequest, request: Request, db: Session = Depends(get_session)):
     from web.api import (
+        _ensure_relational_appointment,
         _get_user_from_request,
         _load_doctors,
         _load_users,
@@ -278,13 +295,23 @@ async def request_refill(appt_id: str, req: RefillRequest, request: Request):
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
     patient_user = _get_user_from_request(request)
+    requested_at = datetime.now(timezone.utc)
     appt["refill_request"] = {
         "medications": req.medications,
         "note": req.note,
-        "requested_at": datetime.now(timezone.utc).isoformat(),
+        "requested_at": requested_at.isoformat(),
         "status": "pending",
     }
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            RefillRequestRepository(db).upsert(appt_uuid, medications=req.medications, note=req.note)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of refill request failed for appointment %s", appt_id, exc_info=True)
 
     # Notify doctor by email
     doctor_id = appt.get("doctor_id", "")
@@ -317,7 +344,7 @@ async def request_refill(appt_id: str, req: RefillRequest, request: Request):
 
 
 @router.patch("/api/doctor/appointments/{appt_id}/refill")
-async def fulfill_refill(appt_id: str, request: Request):
+async def fulfill_refill(appt_id: str, request: Request, db: Session = Depends(get_session)):
     """Doctor marks a refill request as given/fulfilled.
 
     IDOR fix (Task 5 audit): the original had no ownership check at all —
@@ -328,7 +355,14 @@ async def fulfill_refill(appt_id: str, request: Request):
     authorization bug and a misattribution one. Added the same ownership
     check every other appt-scoped doctor route in this domain already has.
     """
-    from web.api import _get_user_from_request, _load_appointments, _load_users, _save_appointments, _send_email_notification
+    from web.api import (
+        _ensure_relational_appointment,
+        _get_user_from_request,
+        _load_appointments,
+        _load_users,
+        _save_appointments,
+        _send_email_notification,
+    )
 
     doctor_user = _get_user_from_request(request)
     if not doctor_user or doctor_user.get("role") != "doctor":
@@ -341,10 +375,21 @@ async def fulfill_refill(appt_id: str, request: Request):
         raise HTTPException(status_code=403, detail="Not your appointment.")
     if not appt.get("refill_request"):
         raise HTTPException(status_code=404, detail="No refill request on this appointment.")
+    fulfilled_at = datetime.now(timezone.utc)
+    fulfilled_by = doctor_user.get("name", "")
     appt["refill_request"]["status"] = "fulfilled"
-    appt["refill_request"]["fulfilled_at"] = datetime.now(timezone.utc).isoformat()
-    appt["refill_request"]["fulfilled_by"] = doctor_user.get("name", "")
+    appt["refill_request"]["fulfilled_at"] = fulfilled_at.isoformat()
+    appt["refill_request"]["fulfilled_by"] = fulfilled_by
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            RefillRequestRepository(db).mark_fulfilled(appt_uuid, fulfilled_at=fulfilled_at, fulfilled_by=fulfilled_by)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of refill fulfillment failed for appointment %s", appt_id, exc_info=True)
 
     # Notify patient by email
     patient_uid = appt.get("patient_user_id", "")

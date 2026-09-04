@@ -286,6 +286,14 @@ def _reminder_loop():
                     appt["reminder_sent"] = True
                     changed = True
                     _log.info("Reminder sent for appt %s to %s", appt_id, email)
+                    try:
+                        with get_sessionmaker()() as db:
+                            appt_uuid = _ensure_relational_appointment(db, appt)
+                            if appt_uuid is not None:
+                                AppointmentRepository(db).mark_reminder_sent(appt_uuid)
+                                db.commit()
+                    except Exception:
+                        _log.warning("Dual-write of reminder_sent failed for appt %s", appt_id, exc_info=True)
             if changed:
                 _save_appointments(appointments)
         except Exception as exc:

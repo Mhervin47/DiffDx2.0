@@ -304,8 +304,8 @@ async def unblock_date(date: str, request: Request, db: Session = Depends(get_se
 # ---------------------------------------------------------------------------
 
 @router.patch("/api/doctor/appointments/{appt_id}/tags")
-async def update_patient_tags(appt_id: str, req: TagsRequest, request: Request):
-    from web.api import _load_appointments, _require_doctor, _save_appointments
+async def update_patient_tags(appt_id: str, req: TagsRequest, request: Request, db: Session = Depends(get_session)):
+    from web.api import _ensure_relational_appointment, _load_appointments, _require_doctor, _save_appointments
 
     doctor = _require_doctor(request)
     appointments = _load_appointments()
@@ -314,9 +314,20 @@ async def update_patient_tags(appt_id: str, req: TagsRequest, request: Request):
         raise HTTPException(status_code=404, detail="Appointment not found.")
     if appt.get("doctor_id") != doctor.get("doctor_id"):
         raise HTTPException(status_code=403, detail="Not your appointment.")
+    updated_at = datetime.now(timezone.utc)
     appt["patient_tags"] = req.tags
-    appt["tags_updated_at"] = datetime.now(timezone.utc).isoformat()
+    appt["tags_updated_at"] = updated_at.isoformat()
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            AppointmentRepository(db).update_tags(appt_uuid, req.tags, updated_at=updated_at)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of patient tags failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True, "tags": req.tags}
 
 

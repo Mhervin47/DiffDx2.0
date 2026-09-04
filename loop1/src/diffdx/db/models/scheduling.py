@@ -14,11 +14,13 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from diffdx.db.base import Base
+from diffdx.db.models.clinical import _JSONB
 from diffdx.db.types import GUID
 
 AppointmentStatus = Enum(
@@ -26,6 +28,7 @@ AppointmentStatus = Enum(
 )
 UrgencyTier = Enum("emergency", "urgent", "routine", name="urgency_tier")
 WaitlistStatus = Enum("waiting", "notified", "cancelled", name="waitlist_status")
+RescheduleProposalStatus = Enum("pending", "accepted", "declined", name="reschedule_proposal_status")
 
 
 class DoctorSlot(Base):
@@ -124,6 +127,21 @@ class Appointment(Base):
     rating_comment: Mapped[str | None] = mapped_column(Text)
     rating_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Remaining blob-only fields cut over in Task 20 — plain scalar columns
+    # since each is already 1:1 with the appointment dict (whole-value
+    # overwrite, no sub-entity shape of its own).
+    doctor_summary: Mapped[str | None] = mapped_column(Text)
+    summary_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    doctor_notes: Mapped[str | None] = mapped_column(Text)
+    notes_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    patient_tags: Mapped[list | None] = mapped_column(_JSONB)
+    tags_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Plain "false" as a server_default string literal reads back truthy on
+    # SQLite (it inserts the text "false", which Boolean then coerces as
+    # non-empty -> True) — found live while testing this column.
+    # false()/true() render an actual dialect-correct boolean literal instead.
+    reminder_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False
@@ -146,6 +164,27 @@ class Appointment(Base):
         ),
         Index("ix_appointments_slot_datetime", "slot_datetime"),
     )
+
+
+class RescheduleProposal(Base):
+    """1:1 with an appointment — a doctor-proposed new slot awaiting the
+    patient's accept/decline. Blob always assigns a single dict, overwritten
+    on every propose, so this is upsert-shaped like Referral, not a list."""
+
+    __tablename__ = "reschedule_proposals"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    appointment_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    proposed_slot: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(RescheduleProposalStatus, nullable=False, server_default="pending")
+    proposed_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    proposed_by: Mapped[str | None] = mapped_column(String(200))
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    appointment: Mapped["Appointment"] = relationship()
 
 
 class Waitlist(Base):

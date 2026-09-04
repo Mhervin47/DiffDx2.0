@@ -7,9 +7,12 @@ somewhere. Import diffdx.db.models (this package) before touching either.
 
 from diffdx.db.models.audit import AuditLogEntry
 from diffdx.db.models.clinical import (
+    AppointmentIntake,
     DiagnosticSession,
     Prescription,
+    PrescriptionHistoryBatch,
     Referral,
+    RefillRequest,
     SecondOpinion,
     SessionTurn,
     SuggestedTest,
@@ -17,7 +20,13 @@ from diffdx.db.models.clinical import (
 )
 from diffdx.db.models.files import UploadedFile
 from diffdx.db.models.messaging import Message, MessageThread
-from diffdx.db.models.scheduling import Appointment, BlockedDate, DoctorSlot, Waitlist
+from diffdx.db.models.scheduling import (
+    Appointment,
+    BlockedDate,
+    DoctorSlot,
+    RescheduleProposal,
+    Waitlist,
+)
 from diffdx.db.models.user import Dependent, Doctor, Patient, RefreshToken, User
 
 __all__ = [
@@ -30,11 +39,15 @@ __all__ = [
     "DoctorSlot",
     "BlockedDate",
     "Waitlist",
+    "RescheduleProposal",
     "DiagnosticSession",
     "SessionTurn",
     "SuggestedTest",
     "Prescription",
+    "PrescriptionHistoryBatch",
     "Referral",
+    "RefillRequest",
+    "AppointmentIntake",
     "SecondOpinion",
     "TreatmentPlanItem",
     "MessageThread",

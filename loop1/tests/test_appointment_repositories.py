@@ -22,14 +22,21 @@ from diffdx.db.models.user import Doctor, Patient, User
 from diffdx.exceptions import ConflictError, NotFoundError
 from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.clinical import (
+    IntakeRepository,
+    PrescriptionHistoryRepository,
     PrescriptionRepository,
     ReferralRepository,
+    RefillRequestRepository,
     SecondOpinionRepository,
     SuggestedTestRepository,
     TreatmentPlanItemRepository,
 )
 from diffdx.repositories.files import FileRepository
-from diffdx.repositories.scheduling import BlockedDateRepository, WaitlistRepository
+from diffdx.repositories.scheduling import (
+    BlockedDateRepository,
+    RescheduleProposalRepository,
+    WaitlistRepository,
+)
 
 
 @pytest.fixture
@@ -722,3 +729,260 @@ def test_file_replace_for_appointment_with_suggested_test_id(session_maker):
         )
         session.commit()
         assert dto.suggested_test_id == suggested_test_id
+
+
+# ---------------------------------------------------------------------------
+# RescheduleProposalRepository
+# ---------------------------------------------------------------------------
+
+def test_reschedule_proposal_upsert_creates_then_overwrites(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+    slot_a = datetime.now(timezone.utc) + timedelta(days=3)
+    slot_b = datetime.now(timezone.utc) + timedelta(days=5)
+
+    with session_maker() as session:
+        dto = RescheduleProposalRepository(session).upsert(
+            appt_id, proposed_slot=slot_a, reason="Conflict", proposed_by="Dr. Test",
+        )
+        session.commit()
+        assert dto.status == "pending"
+
+    with session_maker() as session:
+        dto = RescheduleProposalRepository(session).upsert(
+            appt_id, proposed_slot=slot_b, reason="New conflict", proposed_by="Dr. Test",
+        )
+        session.commit()
+        assert dto.proposed_slot == slot_b
+        assert dto.reason == "New conflict"
+
+    with session_maker() as session:
+        got = RescheduleProposalRepository(session).get_for_appointment(appt_id)
+        # SQLite doesn't round-trip tzinfo on DateTime(timezone=True) the way
+        # Postgres does (see _dt_iso in web/api.py) — compare naive values.
+        assert got.proposed_slot.replace(tzinfo=None) == slot_b.replace(tzinfo=None)
+
+
+def test_reschedule_proposal_set_status(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+    slot = datetime.now(timezone.utc) + timedelta(days=3)
+
+    with session_maker() as session:
+        RescheduleProposalRepository(session).upsert(appt_id, proposed_slot=slot)
+        session.commit()
+
+    with session_maker() as session:
+        responded_at = datetime.now(timezone.utc)
+        dto = RescheduleProposalRepository(session).set_status(appt_id, "accepted", responded_at=responded_at)
+        session.commit()
+        assert dto.status == "accepted"
+        assert dto.responded_at is not None
+
+
+def test_reschedule_proposal_set_status_missing_returns_none(session_maker):
+    with session_maker() as session:
+        assert RescheduleProposalRepository(session).set_status(uuid.uuid4(), "accepted", responded_at=datetime.now(timezone.utc)) is None
+
+
+# ---------------------------------------------------------------------------
+# RefillRequestRepository
+# ---------------------------------------------------------------------------
+
+def test_refill_request_upsert_creates_then_overwrites(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        dto = RefillRequestRepository(session).upsert(appt_id, medications=[{"drug": "Metformin"}], note="ran out")
+        session.commit()
+        assert dto.status == "pending"
+
+    with session_maker() as session:
+        dto = RefillRequestRepository(session).upsert(appt_id, medications=[{"drug": "Lisinopril"}], note="new request")
+        session.commit()
+        assert dto.medications == [{"drug": "Lisinopril"}]
+
+    with session_maker() as session:
+        got = RefillRequestRepository(session).get_for_appointment(appt_id)
+        assert got.medications == [{"drug": "Lisinopril"}]
+
+
+def test_refill_request_mark_fulfilled(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        RefillRequestRepository(session).upsert(appt_id, medications=[{"drug": "Metformin"}])
+        session.commit()
+
+    with session_maker() as session:
+        fulfilled_at = datetime.now(timezone.utc)
+        dto = RefillRequestRepository(session).mark_fulfilled(appt_id, fulfilled_at=fulfilled_at, fulfilled_by="Dr. Test")
+        session.commit()
+        assert dto.status == "fulfilled"
+        assert dto.fulfilled_by == "Dr. Test"
+
+
+# ---------------------------------------------------------------------------
+# IntakeRepository
+# ---------------------------------------------------------------------------
+
+def test_intake_upsert_creates_then_overwrites(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        dto = IntakeRepository(session).upsert(
+            appt_id, feeling="tired", symptoms=["cough"], severity=3,
+            changes="worse at night", medications=["Tylenol"], allergies="none", tests_done=[],
+        )
+        session.commit()
+        assert dto.severity == 3
+
+    with session_maker() as session:
+        dto = IntakeRepository(session).upsert(
+            appt_id, feeling="better", symptoms=["fatigue"], severity=1,
+            changes=None, medications=[], allergies="peanuts", tests_done=["CBC"],
+        )
+        session.commit()
+        assert dto.severity == 1
+        assert dto.allergies == "peanuts"
+
+    with session_maker() as session:
+        got = IntakeRepository(session).get_for_appointment(appt_id)
+        assert got.feeling == "better"
+
+
+# ---------------------------------------------------------------------------
+# PrescriptionHistoryRepository
+# ---------------------------------------------------------------------------
+
+def test_prescription_history_record_batch_appends_new_batch(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        repo = PrescriptionHistoryRepository(session)
+        repo.record_batch(appt_id, [{"id": "rx1", "drug": "Amoxicillin"}], saved_at=datetime.now(timezone.utc))
+        session.commit()
+        repo.record_batch(
+            appt_id, [{"id": "rx2", "drug": "Ibuprofen"}],
+            saved_at=datetime.now(timezone.utc), force_new_batch=True,
+        )
+        session.commit()
+
+    with session_maker() as session:
+        batches = PrescriptionHistoryRepository(session).list_for_appointment(appt_id)
+        assert len(batches) == 2
+        assert batches[0].prescriptions == [{"id": "rx1", "drug": "Amoxicillin"}]
+        assert batches[1].prescriptions == [{"id": "rx2", "drug": "Ibuprofen"}]
+
+
+def test_prescription_history_record_batch_updates_in_place_when_recent_and_same_ids(session_maker):
+    """Same dedup rule as appointments2.py::update_prescriptions: resaving
+    the same prescription ids within 10 minutes updates the last batch
+    in-place instead of appending a new one."""
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+    t0 = datetime.now(timezone.utc)
+
+    with session_maker() as session:
+        repo = PrescriptionHistoryRepository(session)
+        repo.record_batch(appt_id, [{"id": "rx1", "drug": "Amoxicillin", "dose": "250mg"}], saved_at=t0)
+        session.commit()
+        repo.record_batch(
+            appt_id, [{"id": "rx1", "drug": "Amoxicillin", "dose": "500mg"}],
+            saved_at=t0 + timedelta(minutes=2),
+        )
+        session.commit()
+
+    with session_maker() as session:
+        batches = PrescriptionHistoryRepository(session).list_for_appointment(appt_id)
+        assert len(batches) == 1
+        assert batches[0].prescriptions == [{"id": "rx1", "drug": "Amoxicillin", "dose": "500mg"}]
+
+
+def test_prescription_history_record_batch_appends_when_ids_differ_even_if_recent(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+    t0 = datetime.now(timezone.utc)
+
+    with session_maker() as session:
+        repo = PrescriptionHistoryRepository(session)
+        repo.record_batch(appt_id, [{"id": "rx1", "drug": "Amoxicillin"}], saved_at=t0)
+        session.commit()
+        repo.record_batch(appt_id, [{"id": "rx2", "drug": "Ibuprofen"}], saved_at=t0 + timedelta(minutes=1))
+        session.commit()
+
+    with session_maker() as session:
+        batches = PrescriptionHistoryRepository(session).list_for_appointment(appt_id)
+        assert len(batches) == 2
+
+
+def test_prescription_history_record_batch_appends_when_stale(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+    t0 = datetime.now(timezone.utc)
+
+    with session_maker() as session:
+        repo = PrescriptionHistoryRepository(session)
+        repo.record_batch(appt_id, [{"id": "rx1", "drug": "Amoxicillin"}], saved_at=t0)
+        session.commit()
+        repo.record_batch(appt_id, [{"id": "rx1", "drug": "Amoxicillin"}], saved_at=t0 + timedelta(minutes=15))
+        session.commit()
+
+    with session_maker() as session:
+        batches = PrescriptionHistoryRepository(session).list_for_appointment(appt_id)
+        assert len(batches) == 2
+
+
+# ---------------------------------------------------------------------------
+# AppointmentRepository — remaining blob-only field setters
+# ---------------------------------------------------------------------------
+
+def test_appointment_update_summary_and_notes_and_tags(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+    now = datetime.now(timezone.utc)
+
+    with session_maker() as session:
+        repo = AppointmentRepository(session)
+        repo.update_summary(appt_id, "Patient recovering well.", updated_at=now)
+        repo.update_notes(appt_id, "Follow up in 2 weeks.", updated_at=now)
+        repo.update_tags(appt_id, ["diabetes", "follow-up"], updated_at=now)
+        session.commit()
+
+    with session_maker() as session:
+        dto = AppointmentRepository(session).get_by_id(appt_id)
+        assert dto.doctor_summary == "Patient recovering well."
+        assert dto.doctor_notes == "Follow up in 2 weeks."
+        assert dto.patient_tags == ["diabetes", "follow-up"]
+
+
+def test_appointment_mark_reminder_sent(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        dto = AppointmentRepository(session).get_by_id(appt_id)
+        assert dto.reminder_sent is False
+
+    with session_maker() as session:
+        AppointmentRepository(session).mark_reminder_sent(appt_id)
+        session.commit()
+
+    with session_maker() as session:
+        dto = AppointmentRepository(session).get_by_id(appt_id)
+        assert dto.reminder_sent is True

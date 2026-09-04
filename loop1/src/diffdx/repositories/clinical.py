@@ -8,8 +8,11 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from diffdx.db.models.clinical import (
+    AppointmentIntake,
     Prescription,
+    PrescriptionHistoryBatch,
     Referral,
+    RefillRequest,
     SecondOpinion,
     SuggestedTest,
     TreatmentPlanItem,
@@ -348,3 +351,187 @@ class SecondOpinionRepository:
         row.status = "responded"
         self._session.flush()
         return _to_second_opinion_dto(row)
+
+
+@dataclass(frozen=True, slots=True)
+class RefillRequestDTO:
+    id: uuid.UUID
+    appointment_id: uuid.UUID
+    status: str
+    requested_at: datetime
+    medications: list | None = None
+    note: str | None = None
+    fulfilled_at: datetime | None = None
+    fulfilled_by: str | None = None
+
+
+def _to_refill_request_dto(r: RefillRequest) -> RefillRequestDTO:
+    return RefillRequestDTO(
+        id=r.id, appointment_id=r.appointment_id, status=r.status, requested_at=r.requested_at,
+        medications=r.medications, note=r.note, fulfilled_at=r.fulfilled_at, fulfilled_by=r.fulfilled_by,
+    )
+
+
+class RefillRequestRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def upsert(
+        self, appointment_id: uuid.UUID, *, medications: list | None = None, note: str | None = None,
+    ) -> RefillRequestDTO:
+        """appointment_id is unique (1:1) and the blob route always overwrites
+        the whole refill_request dict — a real upsert, not create-then-update.
+        Resets status to "pending" and clears fulfilled_at/by, same as a
+        fresh blob dict would."""
+        stmt = select(RefillRequest).where(RefillRequest.appointment_id == appointment_id)
+        row = self._session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            row = RefillRequest(id=uuid.uuid4(), appointment_id=appointment_id)
+            self._session.add(row)
+        row.medications = medications
+        row.note = note
+        row.status = "pending"
+        row.fulfilled_at = None
+        row.fulfilled_by = None
+        self._session.flush()
+        return _to_refill_request_dto(row)
+
+    def mark_fulfilled(self, appointment_id: uuid.UUID, *, fulfilled_at: datetime, fulfilled_by: str | None) -> RefillRequestDTO | None:
+        stmt = select(RefillRequest).where(RefillRequest.appointment_id == appointment_id)
+        row = self._session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            return None
+        row.status = "fulfilled"
+        row.fulfilled_at = fulfilled_at
+        row.fulfilled_by = fulfilled_by
+        self._session.flush()
+        return _to_refill_request_dto(row)
+
+    def get_for_appointment(self, appointment_id: uuid.UUID) -> RefillRequestDTO | None:
+        stmt = select(RefillRequest).where(RefillRequest.appointment_id == appointment_id)
+        row = self._session.execute(stmt).scalar_one_or_none()
+        return _to_refill_request_dto(row) if row else None
+
+
+@dataclass(frozen=True, slots=True)
+class IntakeDTO:
+    id: uuid.UUID
+    appointment_id: uuid.UUID
+    submitted_at: datetime
+    feeling: str | None = None
+    symptoms: list | None = None
+    severity: int | None = None
+    changes: str | None = None
+    medications: list | None = None
+    allergies: str | None = None
+    tests_done: list | None = None
+
+
+def _to_intake_dto(i: AppointmentIntake) -> IntakeDTO:
+    return IntakeDTO(
+        id=i.id, appointment_id=i.appointment_id, submitted_at=i.submitted_at, feeling=i.feeling,
+        symptoms=i.symptoms, severity=i.severity, changes=i.changes, medications=i.medications,
+        allergies=i.allergies, tests_done=i.tests_done,
+    )
+
+
+class IntakeRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def upsert(
+        self, appointment_id: uuid.UUID, *, feeling: str | None = None, symptoms: list | None = None,
+        severity: int | None = None, changes: str | None = None, medications: list | None = None,
+        allergies: str | None = None, tests_done: list | None = None,
+    ) -> IntakeDTO:
+        """appointment_id is unique (1:1) and the blob route always overwrites
+        the whole intake dict on resubmit — a real upsert, not create-then-update."""
+        stmt = select(AppointmentIntake).where(AppointmentIntake.appointment_id == appointment_id)
+        row = self._session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            row = AppointmentIntake(id=uuid.uuid4(), appointment_id=appointment_id)
+            self._session.add(row)
+        row.feeling = feeling
+        row.symptoms = symptoms
+        row.severity = severity
+        row.changes = changes
+        row.medications = medications
+        row.allergies = allergies
+        row.tests_done = tests_done
+        self._session.flush()
+        return _to_intake_dto(row)
+
+    def get_for_appointment(self, appointment_id: uuid.UUID) -> IntakeDTO | None:
+        stmt = select(AppointmentIntake).where(AppointmentIntake.appointment_id == appointment_id)
+        row = self._session.execute(stmt).scalar_one_or_none()
+        return _to_intake_dto(row) if row else None
+
+
+@dataclass(frozen=True, slots=True)
+class PrescriptionHistoryBatchDTO:
+    id: uuid.UUID
+    appointment_id: uuid.UUID
+    saved_at: datetime
+    prescriptions: list
+
+
+def _to_prescription_history_batch_dto(b: PrescriptionHistoryBatch) -> PrescriptionHistoryBatchDTO:
+    return PrescriptionHistoryBatchDTO(
+        id=b.id, appointment_id=b.appointment_id, saved_at=b.saved_at, prescriptions=b.prescriptions,
+    )
+
+
+class PrescriptionHistoryRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def record_batch(
+        self, appointment_id: uuid.UUID, prescriptions: list, *,
+        saved_at: datetime, force_new_batch: bool = False,
+    ) -> PrescriptionHistoryBatchDTO:
+        """Mirrors appointments2.py::update_prescriptions' exact dedup rule:
+        update the most recent batch in-place if it was saved under 10
+        minutes ago AND has the same set of prescription ids, otherwise
+        append a new batch — never blindly append (that would drift from
+        the blob's own history shape)."""
+        stmt = (
+            select(PrescriptionHistoryBatch)
+            .where(PrescriptionHistoryBatch.appointment_id == appointment_id)
+            .order_by(PrescriptionHistoryBatch.saved_at.desc())
+            .limit(1)
+        )
+        last = self._session.execute(stmt).scalar_one_or_none()
+        new_ids = {p.get("id") for p in prescriptions}
+
+        if not force_new_batch and last is not None:
+            # SQLite doesn't round-trip tzinfo the way Postgres does (see
+            # _dt_iso in web/api.py) — last.saved_at may come back naive
+            # even though we always write it timezone-aware. Same
+            # try/except-degrades-to-"treat as old" fallback the blob route
+            # itself uses (appointments2.py:221-224).
+            try:
+                last_saved = last.saved_at if last.saved_at.tzinfo else last.saved_at.replace(tzinfo=timezone.utc)
+                age_s = (saved_at - last_saved).total_seconds()
+            except Exception:
+                age_s = 999
+            last_ids = {p.get("id") for p in (last.prescriptions or [])}
+            if age_s < 600 and last_ids == new_ids:
+                last.prescriptions = prescriptions
+                last.saved_at = saved_at
+                self._session.flush()
+                return _to_prescription_history_batch_dto(last)
+
+        row = PrescriptionHistoryBatch(
+            id=uuid.uuid4(), appointment_id=appointment_id, saved_at=saved_at, prescriptions=prescriptions,
+        )
+        self._session.add(row)
+        self._session.flush()
+        return _to_prescription_history_batch_dto(row)
+
+    def list_for_appointment(self, appointment_id: uuid.UUID) -> list[PrescriptionHistoryBatchDTO]:
+        stmt = (
+            select(PrescriptionHistoryBatch)
+            .where(PrescriptionHistoryBatch.appointment_id == appointment_id)
+            .order_by(PrescriptionHistoryBatch.saved_at.asc())
+        )
+        return [_to_prescription_history_batch_dto(b) for b in self._session.execute(stmt).scalars()]

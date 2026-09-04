@@ -21,6 +21,7 @@ from diffdx.db.engine import get_session
 from diffdx.dependencies import require_role
 from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.clinical import (
+    PrescriptionHistoryRepository,
     PrescriptionRepository,
     SuggestedTestRepository,
     TreatmentPlanItemRepository,
@@ -238,10 +239,14 @@ async def update_prescriptions(
     try:
         appt_uuid = _ensure_relational_appointment(db, appt)
         if appt_uuid is not None:
-            # prescription_history (the batch-history list) has no relational
-            # table (see Task 8) — only the current `prescriptions` list, the
-            # one thing every other read actually uses, gets shadowed.
             PrescriptionRepository(db).replace_for_appointment(appt_uuid, new_rx)
+            # prescription_history (the batch-history list) now has a
+            # relational table too (Task 20) — same append-vs-update-last-
+            # batch-in-place dedup rule as the blob route above, replicated
+            # exactly in PrescriptionHistoryRepository.record_batch.
+            PrescriptionHistoryRepository(db).record_batch(
+                appt_uuid, new_rx, saved_at=datetime.fromisoformat(now_iso), force_new_batch=req.force_new_batch,
+            )
             db.commit()
     except Exception:
         db.rollback()
@@ -325,9 +330,12 @@ async def create_followup(
 
 
 @router.patch("/api/doctor/appointments/{appt_id}/summary")
-async def update_doctor_summary(appt_id: str, req: DoctorSummaryRequest, doctor: dict = Depends(require_role("doctor"))):
+async def update_doctor_summary(
+    appt_id: str, req: DoctorSummaryRequest,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Save a doctor's plain-language summary for the patient."""
-    from web.api import _load_appointments, _save_appointments
+    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -335,9 +343,20 @@ async def update_doctor_summary(appt_id: str, req: DoctorSummaryRequest, doctor:
         raise HTTPException(status_code=404, detail="Appointment not found.")
     if appt.get("doctor_id") != doctor.get("doctor_id"):
         raise HTTPException(status_code=403, detail="Not your appointment.")
+    updated_at = datetime.now(timezone.utc)
     appt["doctor_summary"] = req.summary
-    appt["summary_updated_at"] = datetime.now(timezone.utc).isoformat()
+    appt["summary_updated_at"] = updated_at.isoformat()
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            AppointmentRepository(db).update_summary(appt_uuid, req.summary, updated_at=updated_at)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of doctor summary failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True}
 
 

@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from diffdx.db.models.scheduling import BlockedDate, Waitlist
+from diffdx.db.models.scheduling import BlockedDate, RescheduleProposal, Waitlist
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,3 +115,64 @@ class BlockedDateRepository:
     def is_blocked(self, doctor_id: uuid.UUID, date: str) -> bool:
         stmt = select(BlockedDate).where(BlockedDate.doctor_id == doctor_id, BlockedDate.date == date)
         return self._session.execute(stmt).scalar_one_or_none() is not None
+
+
+@dataclass(frozen=True, slots=True)
+class RescheduleProposalDTO:
+    id: uuid.UUID
+    appointment_id: uuid.UUID
+    proposed_slot: datetime
+    status: str
+    proposed_at: datetime
+    reason: str | None = None
+    proposed_by: str | None = None
+    responded_at: datetime | None = None
+
+
+def _to_reschedule_proposal_dto(p: RescheduleProposal) -> RescheduleProposalDTO:
+    return RescheduleProposalDTO(
+        id=p.id, appointment_id=p.appointment_id, proposed_slot=p.proposed_slot,
+        status=p.status, proposed_at=p.proposed_at, reason=p.reason,
+        proposed_by=p.proposed_by, responded_at=p.responded_at,
+    )
+
+
+class RescheduleProposalRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def upsert(
+        self, appointment_id: uuid.UUID, *, proposed_slot: datetime,
+        reason: str | None = None, proposed_by: str | None = None,
+    ) -> RescheduleProposalDTO:
+        """appointment_id is unique (1:1) and the blob route always overwrites
+        the whole proposal dict — a real upsert, not create-then-update.
+        Resets status to "pending" and clears responded_at, same as a fresh
+        blob dict would."""
+        stmt = select(RescheduleProposal).where(RescheduleProposal.appointment_id == appointment_id)
+        row = self._session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            row = RescheduleProposal(id=uuid.uuid4(), appointment_id=appointment_id, proposed_slot=proposed_slot)
+            self._session.add(row)
+        row.proposed_slot = proposed_slot
+        row.reason = reason
+        row.proposed_by = proposed_by
+        row.status = "pending"
+        row.responded_at = None
+        self._session.flush()
+        return _to_reschedule_proposal_dto(row)
+
+    def set_status(self, appointment_id: uuid.UUID, status: str, *, responded_at: datetime) -> RescheduleProposalDTO | None:
+        stmt = select(RescheduleProposal).where(RescheduleProposal.appointment_id == appointment_id)
+        row = self._session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            return None
+        row.status = status
+        row.responded_at = responded_at
+        self._session.flush()
+        return _to_reschedule_proposal_dto(row)
+
+    def get_for_appointment(self, appointment_id: uuid.UUID) -> RescheduleProposalDTO | None:
+        stmt = select(RescheduleProposal).where(RescheduleProposal.appointment_id == appointment_id)
+        row = self._session.execute(stmt).scalar_one_or_none()
+        return _to_reschedule_proposal_dto(row) if row else None

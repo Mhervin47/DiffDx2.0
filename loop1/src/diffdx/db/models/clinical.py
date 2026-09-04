@@ -28,6 +28,7 @@ TestPriority = Enum("routine", "urgent", "stat", name="test_priority")
 TestResultStatus = Enum("pending", "normal", "abnormal", "critical", name="test_result_status")
 PlanItemSource = Enum("ai", "doctor", name="plan_item_source")
 SecondOpinionStatus = Enum("pending", "responded", name="second_opinion_status")
+RefillRequestStatus = Enum("pending", "fulfilled", name="refill_request_status")
 
 
 class _JSONB(TypeDecorator):
@@ -188,6 +189,67 @@ class SecondOpinion(Base):
     response: Mapped[str | None] = mapped_column(Text)
     requested_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    appointment: Mapped["Appointment"] = relationship()
+
+
+class RefillRequest(Base):
+    """1:1 with an appointment — blob always assigns a single dict,
+    overwritten on every request, same upsert shape as Referral."""
+
+    __tablename__ = "refill_requests"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    appointment_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    medications: Mapped[list | None] = mapped_column(_JSONB)
+    note: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(RefillRequestStatus, nullable=False, server_default="pending")
+    requested_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fulfilled_by: Mapped[str | None] = mapped_column(String(200))
+
+    appointment: Mapped["Appointment"] = relationship()
+
+
+class AppointmentIntake(Base):
+    """1:1 with an appointment — patient pre-visit intake form, overwritten
+    on resubmit (same upsert shape as Referral/RefillRequest)."""
+
+    __tablename__ = "appointment_intakes"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    appointment_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    feeling: Mapped[str | None] = mapped_column(Text)
+    symptoms: Mapped[list | None] = mapped_column(_JSONB)
+    severity: Mapped[int | None] = mapped_column(Integer)
+    changes: Mapped[str | None] = mapped_column(Text)
+    medications: Mapped[list | None] = mapped_column(_JSONB)
+    allergies: Mapped[str | None] = mapped_column(Text)
+    tests_done: Mapped[list | None] = mapped_column(_JSONB)
+    submitted_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    appointment: Mapped["Appointment"] = relationship()
+
+
+class PrescriptionHistoryBatch(Base):
+    """Many-per-appointment — a saved snapshot of the prescription pad.
+    Mirrors the blob's `prescription_history` list exactly, including its
+    in-place-update-if-resaved-within-10-minutes-with-same-ids dedup rule
+    (see PrescriptionHistoryRepository.record_batch), unlike `Prescription`
+    itself which is delete+recreated on every save and keeps no history."""
+
+    __tablename__ = "prescription_history_batches"
+
+    id: Mapped[uuid.UUID] = mapped_column(GUID, primary_key=True, default=uuid.uuid4)
+    appointment_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    saved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    prescriptions: Mapped[list] = mapped_column(_JSONB, nullable=False)
 
     appointment: Mapped["Appointment"] = relationship()
 

@@ -36,6 +36,7 @@ from diffdx.dependencies import get_current_user, require_role
 from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.clinical import ReferralRepository, SuggestedTestRepository
 from diffdx.repositories.files import FileRepository
+from diffdx.repositories.scheduling import RescheduleProposalRepository
 from diffdx.repositories.users import UserRepository
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -289,9 +290,12 @@ async def save_referral(
 
 
 @router.patch("/api/doctor/appointments/{appt_id}/notes")
-async def update_doctor_notes(appt_id: str, req: NotesRequest, doctor: dict = Depends(require_role("doctor"))):
+async def update_doctor_notes(
+    appt_id: str, req: NotesRequest,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Save doctor's free-text notes on an appointment."""
-    from web.api import _load_appointments, _save_appointments
+    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -299,9 +303,20 @@ async def update_doctor_notes(appt_id: str, req: NotesRequest, doctor: dict = De
         raise HTTPException(status_code=404, detail="Appointment not found.")
     if appt.get("doctor_id") != doctor.get("doctor_id"):
         raise HTTPException(status_code=403, detail="Not your appointment.")
+    updated_at = datetime.now(timezone.utc)
     appt["doctor_notes"] = req.notes
-    appt["notes_updated_at"] = datetime.now(timezone.utc).isoformat()
+    appt["notes_updated_at"] = updated_at.isoformat()
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            AppointmentRepository(db).update_notes(appt_uuid, req.notes, updated_at=updated_at)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of doctor notes failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True}
 
 
@@ -431,9 +446,13 @@ async def reschedule_appointment(
 
 
 @router.post("/api/doctor/appointments/{appt_id}/propose-reschedule")
-async def propose_reschedule(appt_id: str, req: ProposeRescheduleRequest, doctor: dict = Depends(require_role("doctor"))):
+async def propose_reschedule(
+    appt_id: str, req: ProposeRescheduleRequest,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Doctor proposes a new slot to the patient; patient must accept or decline."""
     from web.api import (
+        _ensure_relational_appointment,
         _load_appointments,
         _load_blocked_dates,
         _load_users,
@@ -451,14 +470,30 @@ async def propose_reschedule(appt_id: str, req: ProposeRescheduleRequest, doctor
     blocked_dates = {d["date"] for d in blocked_data.get(doctor.get("doctor_id", ""), [])}
     if req.proposed_slot[:10] in blocked_dates:
         raise HTTPException(status_code=400, detail="That date is blocked on your calendar.")
+    proposed_at = datetime.now(timezone.utc)
     appt["reschedule_proposal"] = {
         "proposed_slot": req.proposed_slot,
         "reason": req.reason,
         "status": "pending",
-        "proposed_at": datetime.now(timezone.utc).isoformat(),
+        "proposed_at": proposed_at.isoformat(),
         "proposed_by": doctor.get("name", "Your doctor"),
     }
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            slot_dt = datetime.fromisoformat(req.proposed_slot)
+            if slot_dt.tzinfo is None:
+                slot_dt = slot_dt.replace(tzinfo=timezone.utc)
+            RescheduleProposalRepository(db).upsert(
+                appt_uuid, proposed_slot=slot_dt, reason=req.reason, proposed_by=doctor.get("name", "Your doctor"),
+            )
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of reschedule proposal failed for appointment %s", appt_id, exc_info=True)
+
     # Notify patient by email
     users = _load_users()
     patient = next((u for u in users.values() if u.get("id") == appt.get("patient_user_id")), None)
@@ -499,11 +534,12 @@ async def patient_reschedule_response(
     if not proposal or proposal.get("status") != "pending":
         raise HTTPException(status_code=400, detail="No pending reschedule proposal.")
     accepted = req.action == "accept"
+    responded_at = datetime.now(timezone.utc)
     if accepted:
         old_slot = appt.get("slot")
         new_slot = proposal["proposed_slot"]
         appt["slot"] = new_slot
-        appt["rescheduled_at"] = datetime.now(timezone.utc).isoformat()
+        appt["rescheduled_at"] = responded_at.isoformat()
         appt["reschedule_proposal"]["status"] = "accepted"
         # Swap slots on doctor record
         doctors = _load_doctors()
@@ -521,18 +557,21 @@ async def patient_reschedule_response(
         raise HTTPException(status_code=400, detail="action must be accept or decline.")
     _save_appointments(appointments)
 
-    if accepted:
-        try:
-            appt_uuid = _ensure_relational_appointment(db, appt)
-            if appt_uuid is not None:
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            RescheduleProposalRepository(db).set_status(
+                appt_uuid, "accepted" if accepted else "declined", responded_at=responded_at,
+            )
+            if accepted:
                 slot_dt = datetime.fromisoformat(appt["slot"])
                 if slot_dt.tzinfo is None:
                     slot_dt = slot_dt.replace(tzinfo=timezone.utc)
                 AppointmentRepository(db).reschedule(appt_uuid, slot_dt)
-                db.commit()
-        except Exception:
-            db.rollback()
-            _log.warning("Dual-write of reschedule-response failed for appointment %s", appt_id, exc_info=True)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of reschedule-response failed for appointment %s", appt_id, exc_info=True)
     # Notify doctor
     users = _load_users()
     doctor_user = next((u for u in users.values() if u.get("doctor_id") == appt.get("doctor_id")), None)

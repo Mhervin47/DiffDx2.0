@@ -36,6 +36,13 @@ class AppointmentDTO:
     rating_stars: int | None = None
     rating_comment: str | None = None
     rating_submitted_at: datetime | None = None
+    doctor_summary: str | None = None
+    summary_updated_at: datetime | None = None
+    doctor_notes: str | None = None
+    notes_updated_at: datetime | None = None
+    patient_tags: list | None = None
+    tags_updated_at: datetime | None = None
+    reminder_sent: bool = False
 
 
 def _to_dto(appt: Appointment) -> AppointmentDTO:
@@ -62,6 +69,13 @@ def _to_dto(appt: Appointment) -> AppointmentDTO:
         rating_stars=appt.rating_stars,
         rating_comment=appt.rating_comment,
         rating_submitted_at=appt.rating_submitted_at,
+        doctor_summary=appt.doctor_summary,
+        summary_updated_at=appt.summary_updated_at,
+        doctor_notes=appt.doctor_notes,
+        notes_updated_at=appt.notes_updated_at,
+        patient_tags=appt.patient_tags,
+        tags_updated_at=appt.tags_updated_at,
+        reminder_sent=appt.reminder_sent,
     )
 
 
@@ -164,6 +178,41 @@ class AppointmentRepository:
         if appt is None:
             raise NotFoundError(f"Appointment {appointment_id} not found")
         appt.status = status
+        self._session.flush()
+        return _to_dto(appt)
+
+    def update_summary(self, appointment_id: uuid.UUID, summary: str, *, updated_at: datetime) -> AppointmentDTO:
+        appt = self._session.get(Appointment, appointment_id)
+        if appt is None:
+            raise NotFoundError(f"Appointment {appointment_id} not found")
+        appt.doctor_summary = summary
+        appt.summary_updated_at = updated_at
+        self._session.flush()
+        return _to_dto(appt)
+
+    def update_notes(self, appointment_id: uuid.UUID, notes: str, *, updated_at: datetime) -> AppointmentDTO:
+        appt = self._session.get(Appointment, appointment_id)
+        if appt is None:
+            raise NotFoundError(f"Appointment {appointment_id} not found")
+        appt.doctor_notes = notes
+        appt.notes_updated_at = updated_at
+        self._session.flush()
+        return _to_dto(appt)
+
+    def update_tags(self, appointment_id: uuid.UUID, tags: list, *, updated_at: datetime) -> AppointmentDTO:
+        appt = self._session.get(Appointment, appointment_id)
+        if appt is None:
+            raise NotFoundError(f"Appointment {appointment_id} not found")
+        appt.patient_tags = tags
+        appt.tags_updated_at = updated_at
+        self._session.flush()
+        return _to_dto(appt)
+
+    def mark_reminder_sent(self, appointment_id: uuid.UUID) -> AppointmentDTO:
+        appt = self._session.get(Appointment, appointment_id)
+        if appt is None:
+            raise NotFoundError(f"Appointment {appointment_id} not found")
+        appt.reminder_sent = True
         self._session.flush()
         return _to_dto(appt)
 

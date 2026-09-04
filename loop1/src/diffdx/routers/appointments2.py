@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -18,6 +19,12 @@ from sqlalchemy.orm import Session
 
 from diffdx.db.engine import get_session
 from diffdx.dependencies import require_role
+from diffdx.repositories.appointments import AppointmentRepository
+from diffdx.repositories.clinical import (
+    PrescriptionRepository,
+    SuggestedTestRepository,
+    TreatmentPlanItemRepository,
+)
 from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
     ApprovedPlanRequest,
@@ -29,12 +36,16 @@ from diffdx.schemas.appointments import (
 )
 
 router = APIRouter(tags=["appointments"])
+_log = logging.getLogger(__name__)
 
 
 @router.patch("/api/doctor/appointments/{appt_id}/plan")
-async def update_approved_plan(appt_id: str, req: ApprovedPlanRequest, doctor: dict = Depends(require_role("doctor"))):
+async def update_approved_plan(
+    appt_id: str, req: ApprovedPlanRequest,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Save the doctor's approved / modified AI plan for an appointment."""
-    from web.api import _load_appointments, _save_appointments
+    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -45,13 +56,26 @@ async def update_approved_plan(appt_id: str, req: ApprovedPlanRequest, doctor: d
     appt["approved_plan"] = [p.model_dump() for p in req.plan]
     appt["plan_updated_at"] = datetime.now(timezone.utc).isoformat()
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            TreatmentPlanItemRepository(db).replace_for_appointment(appt_uuid, appt["approved_plan"])
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of approved plan failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True, "count": len(req.plan)}
 
 
 @router.patch("/api/doctor/appointments/{appt_id}/test-results")
-async def update_test_results(appt_id: str, req: TestResultsRequest, doctor: dict = Depends(require_role("doctor"))):
+async def update_test_results(
+    appt_id: str, req: TestResultsRequest,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Save lab results against test orders for an appointment."""
-    from web.api import _load_appointments, _save_appointments
+    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -62,6 +86,33 @@ async def update_test_results(appt_id: str, req: TestResultsRequest, doctor: dic
     appt["test_results_data"] = [r.model_dump() for r in req.test_results]
     appt["results_updated_at"] = datetime.now(timezone.utc).isoformat()
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            # test_orders and test_results_data are two separate blob lists
+            # joined by a shared blob-native id — the relational SuggestedTest
+            # row has no queryable link back to that id (Task 9's _parse_uuid
+            # fix means a non-UUID blob id is never reused as the PK), so the
+            # only way to attach a result to "the right" row is to rebuild the
+            # whole merged list, same join scripts/migrate_blob_to_relational.py
+            # already does at migration time.
+            results_by_test_id = {r.get("test_id"): r for r in appt["test_results_data"]}
+            merged = [
+                {
+                    **t,
+                    "result": results_by_test_id.get(t.get("id"), {}).get("result"),
+                    "result_status": results_by_test_id.get(t.get("id"), {}).get("status"),
+                    "result_recorded_at": results_by_test_id.get(t.get("id"), {}).get("recorded_at"),
+                }
+                for t in appt.get("test_orders", [])
+            ]
+            SuggestedTestRepository(db).replace_for_appointment(appt_uuid, merged)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of test results failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True, "count": len(req.test_results)}
 
 
@@ -127,9 +178,12 @@ async def get_patient_history(patient_name: str, exclude: str = "", doctor: dict
 
 
 @router.patch("/api/doctor/appointments/{appt_id}/prescriptions")
-async def update_prescriptions(appt_id: str, req: PrescriptionsRequest, doctor: dict = Depends(require_role("doctor"))):
+async def update_prescriptions(
+    appt_id: str, req: PrescriptionsRequest,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Save prescription pad for an appointment."""
-    from web.api import _load_appointments, _save_appointments
+    from web.api import _ensure_relational_appointment, _load_appointments, _save_appointments
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -161,13 +215,29 @@ async def update_prescriptions(appt_id: str, req: PrescriptionsRequest, doctor: 
     appt["prescriptions"] = new_rx  # keep for backward compat
     appt["prescriptions_updated_at"] = now_iso
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            # prescription_history (the batch-history list) has no relational
+            # table (see Task 8) — only the current `prescriptions` list, the
+            # one thing every other read actually uses, gets shadowed.
+            PrescriptionRepository(db).replace_for_appointment(appt_uuid, new_rx)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of prescriptions failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True, "count": len(new_rx)}
 
 
 @router.post("/api/doctor/appointments/{appt_id}/followup")
-async def create_followup(appt_id: str, req: FollowUpRequest, doctor: dict = Depends(require_role("doctor"))):
+async def create_followup(
+    appt_id: str, req: FollowUpRequest,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Create a follow-up appointment linked to an existing appointment."""
-    from web.api import _load_appointments, _load_doctors, _save_appointments, _save_doctors
+    from web.api import _ensure_relational_appointment, _load_appointments, _load_doctors, _save_appointments, _save_doctors
 
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
@@ -204,6 +274,34 @@ async def create_followup(appt_id: str, req: FollowUpRequest, doctor: dict = Dep
     }
     appointments[followup_id] = followup
     _save_appointments(appointments)
+
+    try:
+        # The follow-up's parent_appointment_id is a real self-referencing FK
+        # relationally — the parent must have a row before the follow-up can
+        # reference it, so self-heal it first (same as every other route).
+        parent_uuid = _ensure_relational_appointment(db, appt)
+        doctor_dto = UserRepository(db).get_by_doctor_id(followup["doctor_id"]) if followup.get("doctor_id") else None
+        patient_dto = UserRepository(db).get_by_id(uuid.UUID(followup["patient_user_id"])) if followup.get("patient_user_id") else None
+        if parent_uuid is not None and doctor_dto is not None and patient_dto is not None:
+            slot_dt = datetime.fromisoformat(req.slot)
+            if slot_dt.tzinfo is None:
+                slot_dt = slot_dt.replace(tzinfo=timezone.utc)
+            AppointmentRepository(db).book(
+                id=uuid.UUID(followup_id),
+                patient_id=patient_dto.id,
+                doctor_id=doctor_dto.id,
+                slot_datetime=slot_dt,
+                urgency=followup.get("urgency", "routine"),
+                primary_diagnosis=followup.get("primary_diagnosis") or None,
+                is_followup=True,
+                parent_appointment_id=parent_uuid,
+                booked_at=datetime.now(timezone.utc),
+            )
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of follow-up appointment failed for parent %s", appt_id, exc_info=True)
+
     return {"followup_appointment_id": followup_id, "slot": req.slot}
 
 

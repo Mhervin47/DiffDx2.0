@@ -136,6 +136,31 @@ def test_suggested_test_replace_for_appointment_handles_non_uuid_blob_ids(sessio
         assert isinstance(created[0].id, uuid.UUID)  # a fresh UUID, not "t1"
 
 
+def test_suggested_test_replace_for_appointment_with_merged_results(session_maker):
+    """appointments2.py::update_test_results merges test_orders +
+    test_results_data (joined by blob-native id) before calling
+    replace_for_appointment — confirm result fields round-trip when present,
+    and default to None when absent (doesn't change update_test_orders's
+    existing orders-only behavior)."""
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+    recorded_at = datetime.now(timezone.utc).isoformat()
+
+    with session_maker() as session:
+        created = SuggestedTestRepository(session).replace_for_appointment(appt_id, [
+            {"id": "t1", "test": "CBC", "category": "blood", "result": "Normal", "result_status": "normal", "result_recorded_at": recorded_at},
+            {"id": "t2", "test": "Chest X-ray", "category": "imaging"},  # no result yet
+        ])
+        session.commit()
+        by_test = {t.test: t for t in created}
+        assert by_test["CBC"].result == "Normal"
+        assert by_test["CBC"].result_status == "normal"
+        assert by_test["CBC"].result_recorded_at is not None
+        assert by_test["Chest X-ray"].result is None
+        assert by_test["Chest X-ray"].result_status is None
+
+
 def test_suggested_test_record_result(session_maker):
     patient_id = _make_patient(session_maker)
     doctor_id = _make_doctor(session_maker)

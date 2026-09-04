@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -28,6 +28,18 @@ def _parse_uuid(value) -> uuid.UUID | None:
     try:
         return uuid.UUID(str(value))
     except (ValueError, AttributeError):
+        return None
+
+
+def _parse_dt(value) -> datetime | None:
+    """Same ISO-parse-or-None semantics as migrate_blob_to_relational.py's
+    _parse_dt — naive strings are treated as UTC."""
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except ValueError:
         return None
 
 
@@ -60,10 +72,13 @@ class SuggestedTestRepository:
     def create(
         self, appointment_id: uuid.UUID, *, test: str, category: str,
         priority: str = "routine", notes: str | None = None, id: uuid.UUID | None = None,
+        result: str | None = None, result_status: str | None = None,
+        result_recorded_at: datetime | None = None,
     ) -> SuggestedTestDTO:
         row = SuggestedTest(
             id=id or uuid.uuid4(), appointment_id=appointment_id,
             test=test, category=category, priority=priority, notes=notes,
+            result=result, result_status=result_status, result_recorded_at=result_recorded_at,
         )
         self._session.add(row)
         self._session.flush()
@@ -80,7 +95,13 @@ class SuggestedTestRepository:
     def replace_for_appointment(self, appointment_id: uuid.UUID, tests: list[dict]) -> list[SuggestedTestDTO]:
         """Delete every existing test order for this appointment and insert
         the given list — matches the blob's "PATCH replaces the whole
-        test_orders list" semantics (appointments.py::update_test_orders)."""
+        test_orders list" semantics (appointments.py::update_test_orders).
+        Each dict may optionally carry result/result_status/result_recorded_at
+        (appointments2.py::update_test_results merges these in from the blob's
+        separate test_results_data list before calling this, same join the
+        migration script does — the relational SuggestedTest row's id is
+        freshly generated per Task 9, so there's no other way to attach a
+        result to "the right" row than replacing the whole list together)."""
         self._session.execute(delete(SuggestedTest).where(SuggestedTest.appointment_id == appointment_id))
         self._session.flush()
         created = [
@@ -89,6 +110,8 @@ class SuggestedTestRepository:
                 test=t.get("test", ""), category=t.get("category", "other"),
                 priority=t.get("priority", "routine"), notes=t.get("notes"),
                 id=_parse_uuid(t.get("id")),
+                result=t.get("result"), result_status=t.get("result_status"),
+                result_recorded_at=_parse_dt(t.get("result_recorded_at")),
             )
             for t in tests
         ]

@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from diffdx.db.models.scheduling import Appointment
-from diffdx.exceptions import ConflictError
+from diffdx.exceptions import ConflictError, NotFoundError
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,7 +138,7 @@ class AppointmentRepository:
     def cancel(self, appointment_id: uuid.UUID, *, cancelled_by: str, cancelled_at: datetime) -> AppointmentDTO:
         appt = self._session.get(Appointment, appointment_id)
         if appt is None:
-            raise ValueError(f"Appointment {appointment_id} not found")
+            raise NotFoundError(f"Appointment {appointment_id} not found")
         appt.status = "cancelled"
         appt.cancelled_at = cancelled_at
         appt.cancelled_by = cancelled_by
@@ -150,7 +150,7 @@ class AppointmentRepository:
     ) -> AppointmentDTO:
         appt = self._session.get(Appointment, appointment_id)
         if appt is None:
-            raise ValueError(f"Appointment {appointment_id} not found")
+            raise NotFoundError(f"Appointment {appointment_id} not found")
         appt.rating_stars = stars
         appt.rating_comment = comment
         appt.rating_submitted_at = submitted_at

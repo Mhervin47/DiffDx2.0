@@ -21,3 +21,16 @@ class ConflictError(RepositoryError):
     def __init__(self, message: str, *, detail: str | None = None) -> None:
         super().__init__(message)
         self.detail = detail or message
+
+
+class NotFoundError(RepositoryError):
+    """An operation targeted a row that doesn't exist — maps to 404.
+
+    Repository methods that mutate a specific row by id (not create/list)
+    raise this instead of a bare ValueError, so api_exceptions.py can map
+    it to a real HTTP status instead of it surfacing as an unhandled 500.
+    """
+
+    def __init__(self, message: str, *, detail: str | None = None) -> None:
+        super().__init__(message)
+        self.detail = detail or message

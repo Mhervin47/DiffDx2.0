@@ -27,10 +27,12 @@ dependencies = [
     "rich>=13.7.0",
     "pyjwt>=2.9.0",
     "slowapi>=0.1.9",
+    "redis>=8.1.0",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "fakeredis>=2.37.1",
     "pytest>=8.0.0",
 ]
 

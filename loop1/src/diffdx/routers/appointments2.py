@@ -46,8 +46,8 @@ from diffdx.legacy_store import (
     _repo_root,
     _save_appointments,
     _save_doctors,
-    _sessions,
 )
+from diffdx.session_store import get_session as _get_live_session
 
 router = APIRouter(tags=["appointments"])
 _log = logging.getLogger(__name__)
@@ -407,7 +407,7 @@ async def get_doctor_appointment_detail(
     session_id = appt["session_id"]
 
     # Load session report
-    session = _sessions.get(session_id)
+    session = _get_live_session(session_id)
     if session and session.complete:
         report = session.get_report()
     else:

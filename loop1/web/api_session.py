@@ -12,6 +12,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 
 # Load .env before importing loop1 modules
 try:
@@ -76,6 +77,21 @@ class APISession:
         self.complete: bool = False
         self.termination_reason: str | None = None
         self._final_record: FinalRecord | None = None
+
+        # Set by the router right after start_session/start_custom_session
+        # construct this (see routers/sessions.py) — declared here so it's
+        # captured by to_dict()/from_dict() instead of silently dropped.
+        self.session_language: str = "en-IN"
+
+        # Optional callback the router attaches after every get_session()/
+        # construction (see src/diffdx/session_store.py). NOT serialized —
+        # from_dict() always leaves this None. _fire_critic's background
+        # thread calls it (if set) after appending to self._critiques, so
+        # that mutation reaches the session store even though it happens
+        # after the HTTP response for the turn that triggered it has
+        # already gone out — a live in-memory dict "just works" here via
+        # the shared reference, but Redis needs an explicit write-back.
+        self._on_change: Callable[[], None] | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -227,6 +243,74 @@ class APISession:
             ],
         }
 
+    def to_dict(self) -> dict:
+        """JSON-safe snapshot of every field a fresh session needs to
+        resume from — used by src/diffdx/session_store.py to persist to
+        Redis (or restore from the in-memory fallback in a uniform way).
+        Every field here is either a primitive or a pydantic BaseModel;
+        `_on_change` (a live callback, not data) is deliberately excluded —
+        the caller re-attaches it after from_dict()."""
+        return {
+            "profile": self.profile.model_dump(mode="json"),
+            "session_id": self.session_id,
+            "max_turns": self.max_turns,
+            "confidence_threshold": self.confidence_threshold,
+            "keep_recent": self.keep_recent,
+            "history": [t.model_dump(mode="json") for t in self.history],
+            "_live_events": self._live_events,
+            "_critiques": [c.model_dump(mode="json") for c in self._critiques],
+            "started_at": self.started_at,
+            "_pending_turn_index": self._pending_turn_index,
+            "_pending_doctor_output": (
+                self._pending_doctor_output.model_dump(mode="json")
+                if self._pending_doctor_output is not None else None
+            ),
+            "_pending_prompt_tokens": self._pending_prompt_tokens,
+            "_pending_exemplar_ids": self._pending_exemplar_ids,
+            "complete": self.complete,
+            "termination_reason": self.termination_reason,
+            "_final_record": (
+                self._final_record.model_dump(mode="json")
+                if self._final_record is not None else None
+            ),
+            "session_language": self.session_language,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "APISession":
+        """Reconstruct from to_dict()'s output via __new__, not __init__ —
+        __init__ takes a fresh PatientProfile and re-derives
+        confidence_threshold/keep_recent from global config, which would
+        silently diverge from what was actually serialized if config
+        changed between processes. Every field is restored directly
+        instead."""
+        obj = cls.__new__(cls)
+        obj.profile = PatientProfile.model_validate(data["profile"])
+        obj.session_id = data["session_id"]
+        obj.max_turns = data["max_turns"]
+        obj.confidence_threshold = data["confidence_threshold"]
+        obj.keep_recent = data["keep_recent"]
+        obj.history = [TurnRecord.model_validate(t) for t in data["history"]]
+        obj._live_events = data["_live_events"]
+        obj._critiques = [TurnCritique.model_validate(c) for c in data["_critiques"]]
+        obj.started_at = data["started_at"]
+        obj._pending_turn_index = data["_pending_turn_index"]
+        obj._pending_doctor_output = (
+            DoctorTurnOutput.model_validate(data["_pending_doctor_output"])
+            if data["_pending_doctor_output"] is not None else None
+        )
+        obj._pending_prompt_tokens = data["_pending_prompt_tokens"]
+        obj._pending_exemplar_ids = data["_pending_exemplar_ids"]
+        obj.complete = data["complete"]
+        obj.termination_reason = data["termination_reason"]
+        obj._final_record = (
+            FinalRecord.model_validate(data["_final_record"])
+            if data["_final_record"] is not None else None
+        )
+        obj.session_language = data.get("session_language", "en-IN")
+        obj._on_change = None
+        return obj
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -311,6 +395,8 @@ class APISession:
                 result = critique_turn(event, self._live_events, self.session_id)
                 if result:
                     self._critiques.append(result)
+                    if self._on_change is not None:
+                        self._on_change()
             except Exception as exc:
                 _log.warning("Critic failed for turn %d: %s", turn_index, exc)
 

@@ -2,12 +2,11 @@
 register/login/refresh/logout rewritten for Task 5 (real JWT auth).
 User identity (users/patients/doctors/dependents) is now real relational
 data (Phase 1 identity cutover) — `UserRepository` is the source of
-truth. `_hash_password`/`_verify_password`/`_sessions`/session-history
-helpers are still blob-adjacent module state in web/api.py that hasn't
-been extracted yet (diagnostic sessions, not identity — out of scope for
-the identity cutover); those are still imported lazily from web.api
-inside each function that needs them, to avoid a circular import since
-web.api is what includes this router.
+truth. `_hash_password`/`_verify_password`/session-history helpers live
+in `diffdx.legacy_store` (Task 21); live diagnostic-session state lives
+in `diffdx.session_store` (Redis-backed, week1.md Task 6) — both are
+normal top-level imports now, not the lazy `from web.api import ...`
+scaffolding this docstring used to describe.
 
 Task 5 notes:
 - Rate limiting (slowapi, 5/minute per IP) is on /register and /login
@@ -50,9 +49,9 @@ from diffdx.legacy_store import (
     _load_user_sessions,
     _repo_root,
     _save_user_sessions,
-    _sessions,
     _verify_password,
 )
+from diffdx.session_store import delete_session
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -242,7 +241,7 @@ async def delete_user_session(session_id: str, user: dict = Depends(get_current_
         raise HTTPException(status_code=404, detail="Session not found.")
     _save_user_sessions(uid, filtered)
     # Remove from live session store
-    _sessions.pop(session_id, None)
+    delete_session(session_id)
     # Delete log files (best-effort — ignore if missing)
     for pattern in [
         _repo_root / "logs" / "final_records" / f"final_{session_id}.json",

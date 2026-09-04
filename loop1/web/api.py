@@ -89,7 +89,6 @@ from diffdx.legacy_store import (
     _save_waitlist,
     _send_email_notification,
     _session_test_uploads,
-    _sessions,
     _static_dir,
     _update_session_in_user,
     _user_from_access_token,
@@ -230,6 +229,7 @@ app.include_router(session_booking_router)
 # Seed doctor accounts once at startup; start reminder scheduler
 @app.on_event("startup")
 def _on_startup():
+    _settings.log_disabled_integrations()
     _seed_doctor_accounts()
     _start_reminder_scheduler()
 

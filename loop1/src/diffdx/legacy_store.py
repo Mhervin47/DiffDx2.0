@@ -35,6 +35,7 @@ from diffdx.exceptions import ConflictError
 from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.clinical import ReferralRepository, SecondOpinionRepository
 from diffdx.repositories.users import UserRepository
+from diffdx.session_store import get_session
 
 _log = logging.getLogger(__name__)
 
@@ -47,10 +48,6 @@ _repo_root = Path(__file__).resolve().parents[2]
 _CASES_DIR = _repo_root / "test_cases"
 _MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 _static_dir = _repo_root / "web" / "static"
-
-# In-memory session store (sufficient for local demo) — shared, mutable,
-# imported (not copied) by every router that needs it.
-_sessions: dict = {}
 
 # ---------------------------------------------------------------------------
 # PostgreSQL data store — single table, one collection per row
@@ -746,7 +743,7 @@ def _load_report_from_disk(session_id: str) -> dict | None:
 # was caught, to prevent this class of bug going forward.
 def _get_final_differential(session_id: str):
     """Return (differential, confidence) from live session or disk."""
-    session = _sessions.get(session_id)
+    session = get_session(session_id)
     if session is not None and session.complete and session._final_record is not None:
         diff = [(d.dx, d.prob) for d in session._final_record.final_differential]
         confidence = diff[0][1] if diff else 0.0

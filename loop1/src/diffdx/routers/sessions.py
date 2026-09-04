@@ -34,6 +34,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
 
+from diffdx.db.engine import get_sessionmaker
+from diffdx.repositories.sessions import DiagnosticSessionRepository
 from diffdx.schemas.sessions import StartCustomRequest, StartRequest, TurnRequest
 from diffdx.legacy_store import (
     _CASES_DIR,
@@ -47,9 +49,9 @@ from diffdx.legacy_store import (
     _sarvam_translate,
     _sarvam_tts_b64,
     _save_session_report,
-    _sessions,
     _update_session_in_user,
 )
+from diffdx.session_store import get_session, save_session
 from web.api_session import APISession
 
 router = APIRouter(tags=["sessions"])
@@ -84,6 +86,52 @@ def _profile_summary(profile) -> dict:
         "history": profile.history.model_dump(),
         "free_notes": profile.free_notes,
     }
+
+
+def _persist_completed_session(session: APISession, patient_id: uuid.UUID | None) -> None:
+    """Write-through to Postgres once a session completes — week1.md Task 6:
+    "Completed sessions persist to Postgres (DiagnosticSession +
+    SessionTurn); Redis holds only in-flight state." Best-effort, same
+    pattern as every other dual-write in this codebase: a failure here must
+    never break the turn/init response that triggered it. The full report
+    (including critiques, which have no column here) stays sourced from the
+    existing blob/disk path — this is a write-through for durability, not a
+    read-path flip."""
+    final = session._final_record
+    if final is None:
+        return
+    try:
+        session_uuid = uuid.UUID(session.session_id)
+        with get_sessionmaker()() as db:
+            repo = DiagnosticSessionRepository(db)
+            repo.upsert(
+                session_uuid,
+                patient_id=patient_id,
+                chief_complaint=session.profile.chief_complaint,
+                primary_diagnosis=final.primary_diagnosis,
+                termination_reason=final.termination_reason,
+                started_at=datetime.fromisoformat(final.started_at),
+                ended_at=datetime.fromisoformat(final.ended_at),
+                total_turns=len(session.history),
+                final_differential=[{"dx": d.dx, "prob": d.prob} for d in final.final_differential],
+                closing_turn=final.closing_turn.model_dump(mode="json") if final.closing_turn else None,
+            )
+            for tr in session.history:
+                repo.add_turn(
+                    session_uuid, tr.turn_index,
+                    question=tr.doctor_output.chosen_question,
+                    rationale=tr.doctor_output.rationale,
+                    biggest_uncertainty=tr.doctor_output.biggest_uncertainty,
+                    patient_answer=tr.patient_answer,
+                    confidence=tr.doctor_output.confidence_to_stop,
+                    differential=[
+                        {"dx": d.dx, "prob": d.prob} for d in tr.doctor_output.current_differential
+                    ],
+                    doctor_output=tr.doctor_output.model_dump(mode="json"),
+                )
+            db.commit()
+    except Exception:
+        _log.warning("Postgres persistence failed for session %s", session.session_id, exc_info=True)
 
 
 @router.get("/api/cases")
@@ -131,7 +179,7 @@ async def tts_proxy(request: Request):
 
 
 @router.post("/api/session/start")
-def start_session(req: StartRequest):
+def start_session(req: StartRequest, request: Request):
     """
     Start a new session for a given case.
     Returns session_id, patient demographics, and the first doctor question.
@@ -142,13 +190,17 @@ def start_session(req: StartRequest):
 
     session = APISession(profile, max_turns=6)
     session.session_language = req.session_language
+    session._on_change = lambda: save_session(session.session_id, session)
     try:
         turn_result = session.initialize()
     except Exception as exc:
         _log.error("Session init failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
 
-    _sessions[session.session_id] = session
+    save_session(session.session_id, session)
+    if session.complete:
+        user = _get_user_from_request(request)
+        _persist_completed_session(session, uuid.UUID(user["id"]) if user else None)
 
     return {
         "session_id": session.session_id,
@@ -194,13 +246,14 @@ def start_custom_session(req: StartCustomRequest, request: Request):
 
     session = APISession(profile, max_turns=6)
     session.session_language = req.session_language
+    session._on_change = lambda: save_session(session.session_id, session)
     try:
         turn_result = session.initialize()
     except Exception as exc:
         _log.error("Custom session init failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=503, detail=str(exc))
 
-    _sessions[session.session_id] = session
+    save_session(session.session_id, session)
 
     user = _get_user_from_request(request)
     if user:
@@ -212,6 +265,8 @@ def start_custom_session(req: StartCustomRequest, request: Request):
             "primary_diagnosis": None,
             "ended_at": None,
         })
+    if session.complete:
+        _persist_completed_session(session, uuid.UUID(user["id"]) if user else None)
 
     return {
         "session_id": session.session_id,
@@ -222,17 +277,18 @@ def start_custom_session(req: StartCustomRequest, request: Request):
 
 
 @router.post("/api/session/{session_id}/turn")
-def submit_turn(session_id: str, req: TurnRequest):
+def submit_turn(session_id: str, req: TurnRequest, request: Request):
     """
     Submit the patient's answer to the current doctor question.
     Returns the next question, updated differential, and real-time critique.
     """
 
-    session = _sessions.get(session_id)
+    session = get_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     if session.complete:
         raise HTTPException(status_code=400, detail="Session already complete.")
+    session._on_change = lambda: save_session(session_id, session)
 
     lang = getattr(session, "session_language", "en-IN")
     patient_answer = req.patient_answer
@@ -246,6 +302,15 @@ def submit_turn(session_id: str, req: TurnRequest):
         _log.error("Turn failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
 
+    # submit_answer() mutates `session` in place — with an in-memory dict
+    # that "just worked" via the shared reference; Redis needs an explicit
+    # write-back (see APISession._on_change for the same hazard on the
+    # async critic path).
+    save_session(session_id, session)
+    if session.complete:
+        user = _get_user_from_request(request)
+        _persist_completed_session(session, uuid.UUID(user["id"]) if user else None)
+
     # Return English question — frontend fetches translation+TTS in parallel
     return result
 
@@ -254,7 +319,7 @@ def submit_turn(session_id: str, req: TurnRequest):
 def get_report(session_id: str, request: Request):
     """Return the full critic report once the session is complete."""
 
-    session = _sessions.get(session_id)
+    session = get_session(session_id)
     if session is None:
         # Fall back to on-disk final record (survives server restarts)
         report = _load_report_from_disk(session_id)

@@ -58,8 +58,8 @@ from diffdx.legacy_store import (
     _save_file_data,
     _save_session_uploads,
     _session_test_uploads,
-    _sessions,
 )
+from diffdx.session_store import get_session as _get_live_session
 
 router = APIRouter(tags=["sessions"])
 
@@ -286,7 +286,7 @@ async def book_appointment(session_id: str, req: BookRequest, request: Request, 
         pat_age = disk_rec.get("patient", {}).get("age")
         pat_sex = disk_rec.get("patient", {}).get("sex")
     else:
-        live = _sessions.get(session_id)
+        live = _get_live_session(session_id)
         if live and live._final_record:
             primary_diagnosis = live._final_record.primary_diagnosis or ""
             demo = live._final_record.final_profile.demographics if live._final_record.final_profile else None

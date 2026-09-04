@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # Optional — database. Falls back to local SQLite if unset.
     database_url: str | None = Field(default=None, alias="DATABASE_URL")
 
+    # Optional — live diagnostic-session state. Falls back to an in-memory
+    # dict if unset (single-process only; no restart survival, no sharing
+    # across replicas — see src/diffdx/session_store.py).
+    redis_url: str | None = Field(default=None, alias="REDIS_URL")
+
     # Optional — transactional email via Resend.
     resend_api_key: str | None = Field(default=None, alias="RESEND_API_KEY")
     resend_from: str = Field(default="reminders@diffdx.app", alias="RESEND_FROM")
@@ -73,7 +78,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "openrouter_api_key", "cerebras_api_key", "gemini_api_key", "database_url",
-        "resend_api_key", "smtp_host", "smtp_user", "smtp_pass", "smtp_from",
+        "redis_url", "resend_api_key", "smtp_host", "smtp_user", "smtp_pass", "smtp_from",
         "elevenlabs_api_key", "sarvam_api_key", "secret_key",
         mode="before",
     )
@@ -173,6 +178,8 @@ class Settings(BaseSettings):
             _log.warning("OPENROUTER_API_KEY not set — critic scoring disabled.")
         if not self.database_url:
             _log.warning("DATABASE_URL not set — using local SQLite fallback.")
+        if not self.redis_url:
+            _log.warning("REDIS_URL not set — diagnostic sessions held in-memory (no restart survival, no multi-replica sharing).")
         if not self.resend_api_key and not self.smtp_host:
             _log.warning("Neither RESEND_API_KEY nor SMTP_HOST set — email notifications disabled.")
         if not self.elevenlabs_api_key:

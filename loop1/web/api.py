@@ -50,6 +50,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 
+from diffdx.api_exceptions import register_exception_handlers
 from diffdx.audit import log_audit_event
 from diffdx.config import settings as _settings
 from diffdx.db.engine import get_sessionmaker
@@ -99,6 +100,13 @@ app.add_middleware(
 app.state.limiter = _limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# Task 2 wrote this to map the repository layer's typed errors to HTTP
+# responses (ConflictError -> 409, OperationalError -> 503) but never wired
+# it up — nothing routed through the repositories yet at the time. Now that
+# routers (identity cutover, and this task's booking-race fix) actually
+# call into diffdx.repositories.*, wire it up for real.
+register_exception_handlers(app)
 
 class AuditLogMiddleware(BaseHTTPMiddleware):
     """Task 5: write an AuditLogEntry for every PHI read and appointment

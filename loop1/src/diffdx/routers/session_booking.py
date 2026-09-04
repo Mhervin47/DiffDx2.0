@@ -4,13 +4,24 @@ Same domain (Task 4's third router), same rules: logic unchanged from the
 original web/api.py, shared helpers imported lazily. See
 routers/sessions.py's module docstring for the full domain context.
 
-book_appointment in particular is the exact code Task 3's concurrency
+book_appointment in particular was the exact code Task 3's concurrency
 demo (scripts/concurrency_demo.py, docs/evidence/concurrency.txt) proved
-loses bookings under concurrent load — that's expected and unchanged here;
-fixing it is Task 4's router-split concern only insofar as *where the code
-lives*, not *what it does*. The actual fix is wiring this route through
-diffdx.repositories.appointments (Task 2) once enough of the surrounding
-domain has moved to make that safe — not yet.
+loses bookings under concurrent load. Fixed (dual-write, not a full
+appointments cutover — that's still future work, see
+TASK6_IDENTITY_CUTOVER.md's "explicitly out of scope" for why appointments
+specifically is a much bigger lift than the identity domain was): this
+route now also inserts a real Appointment row via
+diffdx.repositories.appointments.AppointmentRepository.book() before
+doing anything else, and that insert is what actually enforces "no two
+bookings for the same doctor+slot" (Task 1's partial-unique index) —
+concurrent requests racing past the blob's `slot not in
+available_slots` check (still there, still racy, unchanged) now can't
+both succeed, because only one of them can win the real DB insert. The
+existing full blob-dict write is completely unchanged, so every other
+appointment read call site elsewhere in the app keeps working exactly as
+before — the blob stays authoritative for everything appointments
+read/display; the relational row exists solely to make double-booking
+impossible.
 """
 from __future__ import annotations
 
@@ -21,8 +32,12 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 
+from diffdx.db.engine import get_session
+from diffdx.repositories.appointments import AppointmentRepository
+from diffdx.repositories.users import UserRepository
 from diffdx.routers.sessions import _suggested_tests_cache
 from diffdx.schemas.sessions import BookRequest
 
@@ -176,7 +191,7 @@ If no tests needed: set necessary=false and tests=[].
 
 
 @router.post("/api/session/{session_id}/book")
-async def book_appointment(session_id: str, req: BookRequest, request: Request):
+async def book_appointment(session_id: str, req: BookRequest, request: Request, db: Session = Depends(get_session)):
     """Book a slot with a doctor for a completed session."""
     from web.api import (
         _add_session_to_user,
@@ -229,6 +244,38 @@ async def book_appointment(session_id: str, req: BookRequest, request: Request):
     if req.slot not in doctor["available_slots"]:
         raise HTTPException(status_code=400, detail="Slot not available.")
 
+    # Insert the real Appointment row *before* anything else — this is what
+    # actually closes Task 3's proven concurrency race. The blob check above
+    # is still racy (two concurrent requests can both pass it), but only one
+    # of them can win this insert: Task 1's partial-unique index on
+    # (doctor_id, slot_datetime) excluding cancelled rows makes a concurrent
+    # second insert raise IntegrityError, which AppointmentRepository.book()
+    # translates to ConflictError -> (via api_exceptions' global handler,
+    # wired in web/api.py) a 409, propagated here with no local try/except.
+    appt_id = str(uuid.uuid4())
+    doctor_dto = UserRepository(db).get_by_doctor_id(req.doctor_id)
+    if doctor_dto is None:
+        # The blob directory has this doctor_id but no matching relational
+        # Doctor row exists — a real data-integrity problem between the two
+        # stores, not a normal "doctor not found" 404.
+        raise HTTPException(status_code=500, detail="Doctor record is not fully set up.")
+    try:
+        slot_dt = datetime.fromisoformat(req.slot)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Slot not available.")
+    if slot_dt.tzinfo is None:
+        slot_dt = slot_dt.replace(tzinfo=timezone.utc)
+    AppointmentRepository(db).book(
+        id=uuid.UUID(appt_id),
+        patient_id=uuid.UUID(user["id"]),
+        doctor_id=doctor_dto.id,
+        slot_datetime=slot_dt,
+        session_id=session_id,
+        urgency=urgency,
+        booked_at=datetime.now(timezone.utc),
+    )
+    db.commit()
+
     # Resolve primary diagnosis + demographics: disk → in-memory → user session list
     primary_diagnosis = ""
     pat_age, pat_sex, pat_bmi = None, None, None
@@ -262,7 +309,6 @@ async def book_appointment(session_id: str, req: BookRequest, request: Request):
     if pat_bmi is None:
         pat_bmi = user.get("bmi")
 
-    appt_id = str(uuid.uuid4())
     appt = {
         "appointment_id": appt_id,
         "session_id": session_id,

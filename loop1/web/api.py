@@ -57,6 +57,7 @@ from diffdx.db.engine import get_sessionmaker
 from diffdx.exceptions import ConflictError
 from diffdx.rate_limit import limiter as _limiter
 from diffdx.repositories.appointments import AppointmentRepository
+from diffdx.repositories.clinical import ReferralRepository, SecondOpinionRepository
 from diffdx.repositories.users import UserRepository
 from loop1.schemas import Demographics, History, PatientProfile, Symptom
 from loop3.routing.router import route as compute_routing
@@ -762,6 +763,137 @@ def _ensure_relational_appointment(db, appt: dict) -> uuid.UUID | None:
         _log.warning("Could not self-heal relational Appointment %s: slot conflict against existing data.", appt_id_str)
         return None
     return appt_uuid
+
+
+def _dt_iso(dt) -> str | None:
+    """isoformat(), treating a naive datetime as UTC first. SQLite (local
+    dev) doesn't round-trip tzinfo on DateTime(timezone=True) columns the
+    way Postgres (production) does — without this, the composer's output
+    shape would differ by backend for every timestamp field."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
+
+
+def _compose_appointment_dict(db, appt_dto) -> dict:
+    """Phase C of the appointments cutover (read composer, see
+    TASK13_APPOINTMENTS_COMPOSER.md): builds the legacy blob-shaped
+    appointment dict from relational rows where that's safe, falling back
+    to the appointment's own blob record for everything else. NOT wired
+    into any route yet — this function exists and is tested in isolation
+    only; flipping actual reads over is separate future work.
+
+    Deliberately blob-sourced, not relational, even though this function
+    is called "the composer":
+    - test_orders/test_results_data/prescriptions/approved_plan: Task
+      9/10's replace_for_appointment deletes+recreates these rows on
+      every write, so their relational ids are NOT stable across saves
+      and don't match what the blob (still the actual write target) has
+      — serving a relational id here that a later write can't find would
+      silently break "edit this item" flows. The blob remains the only
+      stable identity source for these three lists.
+    - patient_files: file-storage dual-write doesn't exist (Task 9/11
+      deliberately excluded it) — there's no relational data to compose.
+    - Every field with no relational column at all (reschedule_proposal,
+      refill_request, intake, doctor_summary, doctor_notes, patient_tags,
+      prescription_history, reminder_sent, suggested_test_uploads).
+    """
+    appt_id_str = str(appt_dto.id)
+    blob_appt = _load_appointments().get(appt_id_str, {})
+
+    patient_dto = UserRepository(db).get_by_id(appt_dto.patient_id)
+    doctor_dto = UserRepository(db).get_by_id(appt_dto.doctor_id)
+
+    referral_dto = ReferralRepository(db).get_for_appointment(appt_dto.id)
+    referral = None
+    if referral_dto is not None:
+        # Merge onto the blob's own nested referral dict too — it carries
+        # at least one field with no relational column at all
+        # (referring_doctor, the doctor's display name at referral time),
+        # same "never silently drop a blob-only field" reasoning as the
+        # top-level composed dict.
+        referral = dict(blob_appt.get("referral") or {})
+        referral.update({
+            "specialty": referral_dto.specialty,
+            "to_doctor": referral_dto.to_doctor,
+            "urgency": referral_dto.urgency,
+            "notes": referral_dto.notes,
+            "internal_note": referral_dto.internal_note,
+            "referred_at": _dt_iso(referral_dto.referred_at),
+        })
+
+    second_opinion_dto = SecondOpinionRepository(db).get_for_appointment(appt_dto.id)
+    second_opinion = None
+    if second_opinion_dto is not None:
+        to_doctor_dto = UserRepository(db).get_by_id(second_opinion_dto.to_doctor_id)
+        second_opinion = dict(blob_appt.get("second_opinion") or {})
+        second_opinion.update({
+            "to_doctor_id": to_doctor_dto.doctor_id if to_doctor_dto else None,
+            "to_doctor_name": to_doctor_dto.name if to_doctor_dto else None,
+            "requested_at": _dt_iso(second_opinion_dto.requested_at),
+            "status": second_opinion_dto.status,
+            "opinion_id": str(second_opinion_dto.id),
+        })
+
+    rating = None
+    if appt_dto.rating_stars is not None:
+        rating = {
+            "stars": appt_dto.rating_stars,
+            "comment": appt_dto.rating_comment,
+            "submitted_at": _dt_iso(appt_dto.rating_submitted_at),
+        }
+
+    # Start from the full blob record — this is what guarantees nothing is
+    # ever silently dropped: bookkeeping/audit fields with no relational
+    # column (is_direct_booking, patient_note, dependent_id,
+    # booked_by_user_id, the *_updated_at timestamps, referring_doctor
+    # nested in the blob's own "referral", etc.) ride along unchanged,
+    # present or future, without needing to be individually enumerated
+    # here. Only the fields this composer can source more reliably from
+    # relational data are overridden below.
+    composed = dict(blob_appt)
+    # Guard against KeyError on the list-shaped fields for an appointment
+    # that only exists relationally (no blob record at all yet, or one
+    # that never happened to set these) — every existing read call site
+    # already treats an absent list as empty via `.get(..., [])`, so this
+    # just makes that the guaranteed shape instead of leaving the key out.
+    for _list_field in ("test_orders", "test_results_data", "prescriptions",
+                         "prescription_history", "approved_plan", "patient_files"):
+        composed.setdefault(_list_field, [])
+    composed.update({
+        "appointment_id": appt_id_str,
+        "session_id": appt_dto.session_id,
+        "patient_user_id": str(appt_dto.patient_id),
+        "patient_name": patient_dto.name if patient_dto else blob_appt.get("patient_name"),
+        "doctor_id": doctor_dto.doctor_id if doctor_dto else blob_appt.get("doctor_id"),
+        "doctor_name": doctor_dto.name if doctor_dto else blob_appt.get("doctor_name"),
+        "specialty": doctor_dto.specialty if doctor_dto else blob_appt.get("specialty"),
+        "slot": appt_dto.slot_datetime.strftime("%Y-%m-%dT%H:%M"),
+        "status": appt_dto.status,
+        "urgency": appt_dto.urgency,
+        "note": appt_dto.note,
+        "booked_at": _dt_iso(appt_dto.booked_at),
+        "cancelled_at": _dt_iso(appt_dto.cancelled_at),
+        "cancelled_by": appt_dto.cancelled_by,
+        "is_followup": appt_dto.is_followup,
+        "parent_appointment_id": str(appt_dto.parent_appointment_id) if appt_dto.parent_appointment_id else None,
+        "rescheduled_from_id": str(appt_dto.rescheduled_from_id) if appt_dto.rescheduled_from_id else None,
+        "chief_complaint": appt_dto.chief_complaint,
+        "primary_diagnosis": appt_dto.primary_diagnosis,
+        "age": appt_dto.patient_age,
+        "sex": appt_dto.patient_sex,
+        "bmi": appt_dto.patient_bmi,
+        "rating": rating,
+        "referral": referral,
+        "second_opinion": second_opinion,
+    })
+    # test_orders/test_results_data/prescriptions/prescription_history/
+    # approved_plan/patient_files are deliberately NOT overridden — see the
+    # docstring above — they stay whatever the blob already had via the
+    # dict(blob_appt) base, not touched here.
+    return composed
 
 
 def _load_session_uploads() -> dict:

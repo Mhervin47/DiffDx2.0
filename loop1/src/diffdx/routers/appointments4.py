@@ -14,7 +14,11 @@ appointments3.py:
 - download_patient_file accepts EITHER a Bearer header OR a ?token= query
   param (for direct-link downloads that can't attach headers) — a
   meaningfully different, more permissive auth path than
-  Depends(get_current_user). Kept as the original inline _TOKENS lookup.
+  Depends(get_current_user). Updated for Task 5's JWT switch to decode
+  the query-param token the same way as a Bearer one
+  (web.api._user_from_access_token), replacing the old opaque
+  _TOKENS-dict lookup; the "accept a token via either place" behavior
+  itself is preserved.
 - patient_dismiss_appointment and patient_reschedule_appointment never
   check `if not user` before using it — a latent crash-on-None risk in
   the original. Not "fixed" here; Task 4 promises zero behavior change,
@@ -139,22 +143,13 @@ async def delete_patient_file(appt_id: str, filename: str, request: Request):
 @router.get("/api/patient/appointments/{appt_id}/files/{filename}")
 async def download_patient_file(appt_id: str, filename: str, request: Request):
     """Download a patient file. Auth accepted via Bearer header or ?token= query for direct links."""
-    from web.api import _TOKENS, _get_user_from_request, _load_appointments, _load_file_data, _load_users
+    from web.api import _get_user_from_request, _load_appointments, _load_file_data, _user_from_access_token
 
     user = _get_user_from_request(request)
     if not user:
         token = request.query_params.get("token", "")
         if token:
-            user_id = _TOKENS.get(token)
-            if not user_id:
-                users = _load_users()
-                for uid, u in users.items():
-                    if token in u.get("tokens", []):
-                        _TOKENS[token] = uid
-                        user_id = uid
-                        break
-            if user_id:
-                user = _load_users().get(user_id)
+            user = _user_from_access_token(token)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated.")
 

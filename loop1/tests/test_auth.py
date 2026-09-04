@@ -1,0 +1,346 @@
+"""Task 5: JWT auth, refresh token rotation, RBAC, rate limiting.
+
+Isolation strategy (this is the first test file in the suite that boots
+the real FastAPI app — worth explaining):
+
+- The relational DB (refresh_tokens, audit_log_entries, users) is
+  redirected to a private temp SQLite file for the whole module, via
+  monkeypatching diffdx.db.engine.get_engine/get_sessionmaker rather than
+  relying on DATABASE_URL + import order (fragile — other test modules
+  may or may not have already triggered the engine singleton). Every
+  place that needs a session (routers/auth.py's Depends(get_session),
+  diffdx.audit.log_audit_event) resolves get_sessionmaker() by name from
+  diffdx.db.engine's module namespace at call time, so this monkeypatch
+  is picked up transparently everywhere, not just by code that imports
+  it after the patch.
+- The legacy blob store (web.api._load_users/_save_users) has no
+  equivalent DATABASE_URL-style override — it's a hardcoded path at
+  web/data/diffdx.db, the same file the live dev server uses. Tests that
+  need blob-store users avoid colliding with real data by using
+  uuid4-suffixed emails (same pattern as test_concurrency.py) and clean
+  up what they create. This is a known, pre-existing limitation of the
+  blob store, not something this task set out to fix — see
+  TASK4_SPLIT_ROUTERS.md's remaining-work list.
+"""
+from __future__ import annotations
+
+import time
+import uuid
+from datetime import datetime, timedelta, timezone
+
+import jwt
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from diffdx.db import models  # noqa: F401 — registers all models on Base
+from diffdx.db.base import Base
+import diffdx.db.engine as db_engine
+
+
+@pytest.fixture(scope="module")
+def test_engine(tmp_path_factory):
+    db_path = tmp_path_factory.mktemp("auth_test") / "test.db"
+    engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(engine)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(scope="module")
+def test_sessionmaker(test_engine):
+    return sessionmaker(bind=test_engine, expire_on_commit=False)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _redirect_db(test_engine, test_sessionmaker):
+    """Monkeypatch the relational DB layer to the isolated test DB for
+    every test in this module. Module-scoped (not the function-scoped
+    `monkeypatch` fixture, which can't be used at module scope) — applied
+    once, reverted once, since every test in this file wants the same
+    isolated DB."""
+    orig_get_engine = db_engine.get_engine
+    orig_get_sessionmaker = db_engine.get_sessionmaker
+    db_engine.get_sessionmaker = lambda: test_sessionmaker
+    db_engine.get_engine = lambda: test_engine
+    yield
+    db_engine.get_engine = orig_get_engine
+    db_engine.get_sessionmaker = orig_get_sessionmaker
+
+
+@pytest.fixture(scope="module")
+def client():
+    from web.api import app
+    with TestClient(app) as c:
+        yield c
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Every test in this module shares one client/IP, so the 5/minute
+    limit on /api/auth/register and /api/auth/login (shared across all
+    tests, not just the dedicated rate-limit test below) would otherwise
+    trip partway through the module from accumulated calls."""
+    from diffdx.rate_limit import limiter
+    limiter.reset()
+    yield
+
+
+def _unique_email() -> str:
+    return f"auth.test.{uuid.uuid4()}@example.com"
+
+
+# ---------------------------------------------------------------------------
+# Register / login issue a JWT access + refresh pair
+# ---------------------------------------------------------------------------
+
+def test_register_issues_access_and_refresh_tokens(client):
+    email = _unique_email()
+    res = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["access_token"] and data["refresh_token"]
+    assert data["access_token"] != data["refresh_token"]
+    assert data["user"]["email"] == email.lower()
+
+    # The access token is a real JWT carrying sub/role/exp/iat/jti — not an
+    # opaque lookup key. Decoding it here (with no server-side state at
+    # all) is exactly what proves a restart doesn't invalidate sessions:
+    # verification only needs the signing key, never an in-memory table.
+    from diffdx.config import settings
+    claims = jwt.decode(data["access_token"], settings.resolved_secret_key, algorithms=["HS256"])
+    assert claims["sub"] == data["user"]["id"]
+    assert claims["role"] == "patient"
+    assert {"exp", "iat", "jti"} <= claims.keys()
+
+
+def test_login_issues_fresh_token_pair(client):
+    email = _unique_email()
+    client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    res = client.post("/api/auth/login", json={"email": email, "password": "testpass123"})
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["access_token"] and data["refresh_token"]
+
+
+def test_login_wrong_password_rejected(client):
+    email = _unique_email()
+    client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    res = client.post("/api/auth/login", json={"email": email, "password": "wrongpassword"})
+    assert res.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Restarting the server does not log users out (statelessness)
+# ---------------------------------------------------------------------------
+
+def test_access_token_verifies_with_no_server_state(client):
+    """Simulates "restart" by decoding the token in total isolation from
+    anything the request that issued it left behind — the in-memory
+    _TOKENS dict this replaced is gone; there is no per-process state left
+    to lose on restart."""
+    email = _unique_email()
+    res = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    access_token = res.json()["access_token"]
+
+    from diffdx.auth_tokens import decode_access_token
+    claims = decode_access_token(access_token)
+    assert claims["sub"] == res.json()["user"]["id"]
+
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {access_token}"})
+    assert me.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Expired access token + valid refresh → transparent renewal
+# ---------------------------------------------------------------------------
+
+def test_expired_access_token_is_rejected(client, monkeypatch):
+    from diffdx.config import settings
+    from diffdx.auth_tokens import ALGORITHM
+
+    # Craft a token that's already expired, signed with the real key —
+    # this is what an access token looks like 15+ minutes after issuance.
+    now = datetime.now(timezone.utc)
+    expired_claims = {
+        "sub": str(uuid.uuid4()), "role": "patient",
+        "iat": now - timedelta(minutes=30), "exp": now - timedelta(minutes=15),
+        "jti": str(uuid.uuid4()),
+    }
+    expired_token = jwt.encode(expired_claims, settings.resolved_secret_key, algorithm=ALGORITHM)
+
+    res = client.get("/api/auth/me", headers={"Authorization": f"Bearer {expired_token}"})
+    assert res.status_code == 401
+
+
+def test_refresh_with_valid_token_issues_new_working_pair(client):
+    email = _unique_email()
+    reg = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    old_refresh = reg.json()["refresh_token"]
+
+    res = client.post("/api/auth/refresh", json={"refresh_token": old_refresh})
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["access_token"] and data["refresh_token"]
+    assert data["refresh_token"] != old_refresh  # rotated, not reused
+
+    # The new access token actually works.
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {data['access_token']}"})
+    assert me.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Revoked refresh token → 401, and cannot be reused
+# ---------------------------------------------------------------------------
+
+def test_refresh_token_rotation_rejects_reuse(client):
+    """Using a refresh token revokes it (rotation) — using it again (e.g.
+    a stolen, already-used token replayed by an attacker) must 401, not
+    silently succeed a second time."""
+    email = _unique_email()
+    reg = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    refresh_token = reg.json()["refresh_token"]
+
+    first = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
+    assert first.status_code == 200
+
+    second = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
+    assert second.status_code == 401
+
+
+def test_logout_revokes_refresh_token(client):
+    email = _unique_email()
+    reg = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    refresh_token = reg.json()["refresh_token"]
+
+    logout = client.post("/api/auth/logout", json={"refresh_token": refresh_token})
+    assert logout.status_code == 200
+
+    res = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
+    assert res.status_code == 401
+
+
+def test_refresh_with_unknown_token_is_401(client):
+    res = client.post("/api/auth/refresh", json={"refresh_token": "not-a-real-token"})
+    assert res.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# RBAC: patient token on any /api/doctor/* route → 403
+# ---------------------------------------------------------------------------
+
+def test_patient_token_on_doctor_route_is_403(client):
+    email = _unique_email()
+    reg = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    access_token = reg.json()["access_token"]
+
+    res = client.get("/api/doctor/appointments", headers={"Authorization": f"Bearer {access_token}"})
+    assert res.status_code == 403
+
+
+def test_no_token_on_doctor_route_is_401(client):
+    res = client.get("/api/doctor/appointments")
+    assert res.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# IDOR fix: Doctor A cannot read Doctor B's appointment detail
+# ---------------------------------------------------------------------------
+
+def _make_blob_doctor(name: str, doctor_id: str) -> tuple[dict, str]:
+    """Blob-store doctors are normally only created via the fixed
+    _DOCTOR_SEED list at startup — registration only creates patients.
+    Inserted directly here (same approach test_concurrency.py uses for
+    the relational DB) rather than depending on which seeded doctor_ids
+    happen to exist."""
+    from web.api import _hash_password, _load_users, _save_users
+    from diffdx.routers.auth import _issue_token_pair
+    from diffdx.db.engine import get_sessionmaker
+
+    user_id = str(uuid.uuid4())
+    users = _load_users()
+    users[user_id] = {
+        "id": user_id, "name": name, "email": f"{doctor_id}.{uuid.uuid4()}@example.com",
+        "password_hash": _hash_password("Doctor123!"), "role": "doctor",
+        "doctor_id": doctor_id, "specialty": "General",
+        "created_at": datetime.now(timezone.utc).isoformat(), "sessions": [],
+    }
+    _save_users(users)
+    with get_sessionmaker()() as db:
+        access_token, _ = _issue_token_pair(db, users[user_id])
+    return users[user_id], access_token
+
+
+def test_doctor_a_cannot_read_doctor_b_appointment_detail(client):
+    from web.api import _load_appointments, _save_appointments
+
+    doctor_a, token_a = _make_blob_doctor("Dr. A", f"test_dr_a_{uuid.uuid4().hex[:8]}")
+    doctor_b, token_b = _make_blob_doctor("Dr. B", f"test_dr_b_{uuid.uuid4().hex[:8]}")
+
+    appt_id = str(uuid.uuid4())
+    appointments = _load_appointments()
+    appointments[appt_id] = {
+        "appointment_id": appt_id, "session_id": "",
+        "patient_user_id": str(uuid.uuid4()), "patient_name": "Test Patient",
+        "doctor_id": doctor_a["doctor_id"], "doctor_name": doctor_a["name"],
+        "specialty": "General", "slot": "2099-01-01T10:00",
+        "status": "upcoming",
+    }
+    _save_appointments(appointments)
+    try:
+        owner_res = client.get(f"/api/doctor/appointments/{appt_id}", headers={"Authorization": f"Bearer {token_a}"})
+        assert owner_res.status_code == 200, owner_res.text
+
+        other_res = client.get(f"/api/doctor/appointments/{appt_id}", headers={"Authorization": f"Bearer {token_b}"})
+        assert other_res.status_code == 403
+    finally:
+        appointments = _load_appointments()
+        appointments.pop(appt_id, None)
+        _save_appointments(appointments)
+
+
+def test_doctor_patient_history_scoped_to_own_appointments(client):
+    """IDOR fix: get_patient_history used to return ANY patient's history
+    to ANY doctor by name, with no ownership check at all."""
+    from web.api import _load_appointments, _save_appointments
+
+    doctor_a, token_a = _make_blob_doctor("Dr. A", f"test_dr_a_{uuid.uuid4().hex[:8]}")
+    doctor_b, token_b = _make_blob_doctor("Dr. B", f"test_dr_b_{uuid.uuid4().hex[:8]}")
+    patient_name = f"History Test Patient {uuid.uuid4().hex[:8]}"
+
+    appt_id = str(uuid.uuid4())
+    appointments = _load_appointments()
+    appointments[appt_id] = {
+        "appointment_id": appt_id, "patient_name": patient_name,
+        "doctor_id": doctor_a["doctor_id"], "slot": "2099-01-01T10:00", "status": "seen",
+    }
+    _save_appointments(appointments)
+    try:
+        from urllib.parse import quote
+        as_owner = client.get(f"/api/doctor/patient-history/{quote(patient_name)}", headers={"Authorization": f"Bearer {token_a}"})
+        assert as_owner.status_code == 200
+        assert len(as_owner.json()["history"]) == 1
+
+        as_other = client.get(f"/api/doctor/patient-history/{quote(patient_name)}", headers={"Authorization": f"Bearer {token_b}"})
+        assert as_other.status_code == 200
+        assert as_other.json()["history"] == []
+    finally:
+        appointments = _load_appointments()
+        appointments.pop(appt_id, None)
+        _save_appointments(appointments)
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting: 6th login attempt in a minute → 429
+# ---------------------------------------------------------------------------
+
+def test_sixth_login_attempt_in_a_minute_is_rate_limited(client):
+    email = _unique_email()
+    statuses = []
+    for _ in range(6):
+        res = client.post("/api/auth/login", json={"email": email, "password": "wrong"})
+        statuses.append(res.status_code)
+
+    assert statuses[:5] == [401] * 5, statuses
+    assert statuses[5] == 429, statuses

@@ -16,6 +16,14 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
+
+
 class ProfileUpdateRequest(BaseModel):
     name: str | None = None
     mobile: str | None = None

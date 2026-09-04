@@ -1747,7 +1747,7 @@ async function doAuthLogin() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Login failed.');
-    setAuth(data.token, data.user);
+    setAuth(data.access_token, data.refresh_token, data.user);
     closeAuthModal();
     updateNavAuth();
     _showSlotModal(_pendingDoctor);
@@ -1776,7 +1776,7 @@ async function doAuthRegister() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Registration failed.');
-    setAuth(data.token, data.user);
+    setAuth(data.access_token, data.refresh_token, data.user);
     closeAuthModal();
     updateNavAuth();
     _showSlotModal(_pendingDoctor);

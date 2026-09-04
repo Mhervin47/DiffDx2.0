@@ -44,9 +44,15 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 
+from diffdx.audit import log_audit_event
+from diffdx.config import settings as _settings
+from diffdx.rate_limit import limiter as _limiter
 from loop1.schemas import Demographics, History, PatientProfile, Symptom
 from loop3.routing.router import route as compute_routing
 from web.api_session import APISession
@@ -74,12 +80,70 @@ _log = logging.getLogger(__name__)
 
 app = FastAPI(title="DiffDx API", version="0.10.0")
 
+# Task 5: allow_origins=["*"] on an app handling patient data is
+# indefensible — now reads from CORS_ALLOWED_ORIGINS (comma-separated),
+# defaulting to "*" only because that's harmless for local dev; config.py
+# refuses to start in production with the wildcard still set.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_settings.cors_origins_list,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Task 5: rate limit /api/auth/login and /api/auth/register (5/minute per
+# IP, see routers/auth.py's @limiter.limit decorators) — everything else
+# is unlimited, this isn't a blanket API rate limiter.
+app.state.limiter = _limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+class AuditLogMiddleware(BaseHTTPMiddleware):
+    """Task 5: write an AuditLogEntry for every PHI read and appointment
+    mutation. login/login_failed are logged directly in routers/auth.py
+    (they aren't URL patterns this middleware would recognize as
+    PHI-bearing); this covers the rest by URL pattern instead of
+    instrumenting every one of the ~90 route handlers individually —
+    same coverage, far less surface to get wrong or miss one on.
+
+    Deliberately coarse: action is `{method} {path}` (with the numbered
+    id path segment kept, e.g. "PATCH /api/doctor/appointments/{id}/tags"
+    would be nice but Starlette doesn't expose the *matched route
+    template* from inside BaseHTTPMiddleware, only the resolved path with
+    real values — using the real appt_id as resource_id instead covers
+    the same need: "which appointment did doctor X touch, and when").
+    Only fires on a successful (< 400) response — a 401/403/404 didn't
+    actually read or mutate anything.
+    """
+
+    _PHI_PATH_PREFIXES = (
+        "/api/doctor/appointments",
+        "/api/patient/appointments",
+        "/api/doctor/patient-history",
+        "/api/doctor/pending-refills",
+        "/api/doctor/renewal-reminders",
+        "/api/doctor/second-opinions",
+        "/api/session/",  # report/routing/suggested-tests/book all carry PHI
+    )
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if response.status_code < 400 and any(path.startswith(p) for p in self._PHI_PATH_PREFIXES):
+            try:
+                user = _get_user_from_request(request)
+                resource_id = next(iter(request.path_params.values()), None)
+                log_audit_event(
+                    actor=user,
+                    action=f"{request.method} {path}",
+                    resource_type="appointment" if "appointment" in path or "patient-history" in path else "session",
+                    resource_id=str(resource_id) if resource_id else None,
+                    ip_address=request.client.host if request.client else None,
+                )
+            except Exception:
+                _log.warning("Audit log middleware failed for %s %s", request.method, path, exc_info=True)
+        return response
+
 
 class NoCacheStaticMiddleware(BaseHTTPMiddleware):
     """Add no-cache headers to all .html and .js responses so browsers always fetch fresh files."""
@@ -92,6 +156,7 @@ class NoCacheStaticMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(NoCacheStaticMiddleware)
+app.add_middleware(AuditLogMiddleware)
 
 # Task 4 (split the monolith): routers peeled off one domain at a time.
 # See TASK4_SPLIT_ROUTERS.md for what's moved and what's still here.
@@ -383,7 +448,6 @@ def _db_save(collection: str, data) -> None:
             (collection, payload),
         )
         db.commit()
-_TOKENS: dict[str, str] = {}       # token → user_id, in-memory; repopulated on startup
 _USER_CACHE: dict[str, dict] = {}  # user_id → user data, invalidated on every _save_users
 
 # ── Sarvam AI helpers ──────────────────────────────────────────────────────────
@@ -487,41 +551,38 @@ def _verify_password(password: str, stored: str) -> bool:
         return False
 
 
-def _issue_token(user_id: str) -> str:
-    token = secrets.token_urlsafe(32)
-    _TOKENS[token] = user_id
-    # Persist token in user record so it survives server restarts
-    users = _load_users()
-    if user_id in users:
-        users[user_id].setdefault("tokens", []).append(token)
-        _save_users(users)
-    return token
+def _user_from_access_token(token: str) -> dict | None:
+    """Decode a JWT access token (Task 5) and return the blob-store user
+    dict it names, or None if the token is missing/expired/invalid, or
+    names a user that no longer exists. No server-side token table lookup
+    needed — the JWT's signature is the credential, its `sub` claim is the
+    user id. Exposed (not just used internally) because
+    routers/appointments4.py's download_patient_file accepts a token via
+    `?token=` query param as well as a Bearer header, for direct-link
+    downloads that can't set an Authorization header."""
+    import jwt as _pyjwt
+    from diffdx.auth_tokens import decode_access_token
 
-
-def _get_user_from_request(request: Request) -> dict | None:
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+    try:
+        claims = decode_access_token(token)
+    except _pyjwt.PyJWTError:
         return None
-    token = auth[7:]
-    user_id = _TOKENS.get(token)
+    user_id = claims.get("sub")
     if not user_id:
-        # Try loading from disk (after server restart)
-        users = _load_users()
-        for uid, u in users.items():
-            if token in u.get("tokens", []):
-                _TOKENS[token] = uid
-                _USER_CACHE[uid] = u
-                user_id = uid
-                break
-        if not user_id:
-            return None
-        return users.get(user_id)
+        return None
     if user_id in _USER_CACHE:
         return _USER_CACHE[user_id]
     user = _load_users().get(user_id)
     if user:
         _USER_CACHE[user_id] = user
     return user
+
+
+def _get_user_from_request(request: Request) -> dict | None:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    return _user_from_access_token(auth[7:])
 
 
 def _add_session_to_user(user_id: str, session_meta: dict) -> None:

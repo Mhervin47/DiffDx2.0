@@ -1,49 +1,88 @@
 /**
  * Shared auth helpers — included by every page.
- * Reads/writes localStorage keys: authToken, authUser, authExpiry.
+ * Reads/writes localStorage keys: authAccessToken, authRefreshToken, authUser.
+ *
+ * Task 5: the backend switched from a single long-lived opaque token to a
+ * short-lived (15 min) JWT access token + a longer-lived (7 day) refresh
+ * token. This file now holds both, and window.fetch is wrapped to
+ * transparently refresh + retry once on a 401 instead of immediately
+ * logging the user out — see _refreshAccessToken and the fetch override
+ * below. The old client-side 8-hour "guess when to show a toast" timer is
+ * gone; the toast now only fires when a refresh genuinely fails (the
+ * refresh token itself expired, was revoked, or never existed), which is
+ * the actual signal, not a guess.
  */
 
-const _AUTH_TOKEN_KEY  = 'authToken';
-const _AUTH_USER_KEY   = 'authUser';
-const _AUTH_EXPIRY_KEY = 'authExpiry';
-const _SESSION_TTL_MS  = 8 * 60 * 60 * 1000; // 8 hours
+const _AUTH_ACCESS_KEY  = 'authAccessToken';
+const _AUTH_REFRESH_KEY = 'authRefreshToken';
+const _AUTH_USER_KEY    = 'authUser';
 
-function getAuthToken() { return localStorage.getItem(_AUTH_TOKEN_KEY); }
+function getAccessToken() { return localStorage.getItem(_AUTH_ACCESS_KEY); }
+function getRefreshToken() { return localStorage.getItem(_AUTH_REFRESH_KEY); }
+/** Kept as an alias — every other frontend file calls getAuthToken() for the
+ * bearer token to send, and that's still the (short-lived) access token. */
+function getAuthToken() { return getAccessToken(); }
 function getAuthUser() {
   const raw = localStorage.getItem(_AUTH_USER_KEY);
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
-function setAuth(token, user) {
-  localStorage.setItem(_AUTH_TOKEN_KEY, token);
+function setAuth(accessToken, refreshToken, user) {
+  localStorage.setItem(_AUTH_ACCESS_KEY, accessToken);
+  localStorage.setItem(_AUTH_REFRESH_KEY, refreshToken);
   localStorage.setItem(_AUTH_USER_KEY, JSON.stringify(user));
-  localStorage.setItem(_AUTH_EXPIRY_KEY, String(Date.now() + _SESSION_TTL_MS));
 }
 function clearAuth() {
-  localStorage.removeItem(_AUTH_TOKEN_KEY);
+  localStorage.removeItem(_AUTH_ACCESS_KEY);
+  localStorage.removeItem(_AUTH_REFRESH_KEY);
   localStorage.removeItem(_AUTH_USER_KEY);
-  localStorage.removeItem(_AUTH_EXPIRY_KEY);
 }
 function authHeaders() {
-  const t = getAuthToken();
+  const t = getAccessToken();
   return t ? { 'Authorization': `Bearer ${t}` } : {};
 }
 function logout() {
+  // Best-effort server-side revoke so the refresh token can't be reused —
+  // fire-and-forget, don't block the redirect on it.
+  const rt = getRefreshToken();
+  if (rt) {
+    _origFetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt }),
+    }).catch(() => {});
+  }
   clearAuth();
   window.location.href = '/';
 }
 
-/** Check expiry and show session-expired toast if needed. */
-function _checkSessionExpiry() {
-  const token = getAuthToken();
-  if (!token) return;
-  const expiry = parseInt(localStorage.getItem(_AUTH_EXPIRY_KEY) || '0', 10);
-  if (expiry && Date.now() > expiry) {
-    clearAuth();
-    _showSessionExpiredToast();
-    return;
-  }
-  // Re-check every 60 seconds
-  setTimeout(_checkSessionExpiry, 60_000);
+/** Dedupe concurrent refresh attempts (several requests can 401 at once
+ * right as the access token expires) into a single in-flight request, and
+ * rotate: the backend issues a new refresh token on every use and revokes
+ * the old one, so the rotated value must be persisted here too. */
+let _refreshInFlight = null;
+async function _refreshAccessToken() {
+  const rt = getRefreshToken();
+  if (!rt) return null;
+  if (_refreshInFlight) return _refreshInFlight;
+  _refreshInFlight = (async () => {
+    try {
+      const res = await _origFetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: rt }),
+      });
+      if (!res.ok) { clearAuth(); return null; }
+      const data = await res.json();
+      localStorage.setItem(_AUTH_ACCESS_KEY, data.access_token);
+      localStorage.setItem(_AUTH_REFRESH_KEY, data.refresh_token);
+      return data.access_token;
+    } catch {
+      return null;
+    } finally {
+      _refreshInFlight = null;
+    }
+  })();
+  return _refreshInFlight;
 }
 
 function _showSessionExpiredToast() {
@@ -73,18 +112,36 @@ function _showSessionExpiredToast() {
 }
 
 /**
- * Intercept fetch calls — if a 401 is returned after the user was logged in,
- * show the session-expired toast instead of silently failing.
+ * Intercept fetch calls — on a 401, try a transparent refresh + one retry
+ * before giving up. Only genuinely-expired-refresh-token (or no refresh
+ * token at all) cases fall through to the session-expired toast.
  */
 const _origFetch = window.fetch;
 window.fetch = async function(...args) {
+  const [url, init] = args;
   const res = await _origFetch(...args);
-  if (res.status === 401 && getAuthToken()) {
-    clearAuth();
+  if (res.status !== 401) return res;
+
+  const urlStr = typeof url === 'string' ? url : (url && url.url) || '';
+  const isAuthTokenEndpoint = /\/api\/auth\/(refresh|login|register)(\?|$)/.test(urlStr);
+  const alreadyRetried = !!(init && init._diffdxRetried);
+  if (isAuthTokenEndpoint || alreadyRetried || !getRefreshToken()) {
+    if (getAccessToken()) {
+      clearAuth();
+      _showSessionExpiredToast();
+    }
+    return res;
+  }
+
+  const newAccessToken = await _refreshAccessToken();
+  if (!newAccessToken) {
     _showSessionExpiredToast();
     return res;
   }
-  return res;
+  const headers = new Headers((init && init.headers) || {});
+  headers.set('Authorization', `Bearer ${newAccessToken}`);
+  const retryInit = { ...(init || {}), headers, _diffdxRetried: true };
+  return _origFetch(url, retryInit);
 };
 
 function _escHtml(s) {
@@ -93,7 +150,6 @@ function _escHtml(s) {
 
 /** Inject auth state into any element with id="nav-auth" */
 function initAuthNav() {
-  _checkSessionExpiry();
   const el = document.getElementById('nav-auth');
   if (!el) return;
   const user = getAuthUser();

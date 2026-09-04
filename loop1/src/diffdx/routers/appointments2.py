@@ -98,14 +98,26 @@ async def doctor_download_patient_file(appt_id: str, filename: str = "", doctor:
 
 @router.get("/api/doctor/patient-history/{patient_name}")
 async def get_patient_history(patient_name: str, exclude: str = "", doctor: dict = Depends(require_role("doctor"))):
-    """Return all appointments for a patient (case-insensitive), sorted newest first."""
+    """Return this doctor's own past appointments with a patient (case-insensitive
+    name match), sorted newest first.
+
+    IDOR fix (Task 5 audit): the original had no ownership check at all —
+    any authenticated doctor could pull any patient's full appointment
+    history (diagnoses, prescriptions, notes) just by knowing or guessing
+    their name, since there wasn't even an appt_id to scope against. Scoped
+    to `doctor_id == doctor.get("doctor_id")` to match the actual product
+    intent (the drawer is opened from a doctor's own appointment view to see
+    their own prior visits with this patient) and to close the PHI leak.
+    """
     from web.api import _load_appointments
 
     appointments = _load_appointments()
+    doctor_id = doctor.get("doctor_id")
     history = [
         a for a in appointments.values()
         if a.get("patient_name", "").lower() == patient_name.lower()
         and a.get("appointment_id") != exclude
+        and a.get("doctor_id") == doctor_id
     ]
     history.sort(key=lambda a: a.get("slot", ""), reverse=True)
     return {"history": history}
@@ -212,7 +224,16 @@ async def update_doctor_summary(appt_id: str, req: DoctorSummaryRequest, doctor:
 @router.get("/api/doctor/appointments/{appt_id}")
 async def get_doctor_appointment_detail(appt_id: str, doctor: dict = Depends(require_role("doctor"))):
     """Full appointment detail: patient info + AI session data.
-    Any authenticated doctor may view; only the owning doctor may edit."""
+
+    IDOR fix (Task 5 audit): the docstring used to say "any authenticated
+    doctor may view" as a deliberate design choice, but that means any
+    doctor account can pull any patient's full AI diagnostic conversation
+    and session data — a real PHI leak, not a feature. Now requires the
+    requesting doctor to either own the appointment, or be the recipient
+    of a pending/responded second-opinion request on it (the one
+    legitimate cross-doctor use case this domain has — see
+    appointments6.py's request_second_opinion).
+    """
     from loop3.routing.router import route as compute_routing
     from web.api import (
         _get_final_differential,
@@ -227,6 +248,11 @@ async def get_doctor_appointment_detail(appt_id: str, doctor: dict = Depends(req
     appt = appointments.get(appt_id)
     if appt is None:
         raise HTTPException(status_code=404, detail="Appointment not found.")
+    doctor_id = doctor.get("doctor_id")
+    is_owner = appt.get("doctor_id") == doctor_id
+    is_second_opinion_recipient = (appt.get("second_opinion") or {}).get("to_doctor_id") == doctor_id
+    if not is_owner and not is_second_opinion_recipient:
+        raise HTTPException(status_code=403, detail="Not your appointment.")
 
     session_id = appt["session_id"]
 

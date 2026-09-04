@@ -527,7 +527,7 @@ async function doSignIn() {
     const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}) });
     const data = await res.json();
     if (!res.ok) { showAlert('signin-error', data.detail || 'Sign in failed.'); return; }
-    if (typeof setAuth === 'function') setAuth(data.token, data.user);
+    if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
     window.location.replace(data.user?.role === 'doctor' ? '/doctor-portal.html' : _redirect);
   } catch (e) { showAlert('signin-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Sign In'; }
@@ -545,7 +545,7 @@ async function doDocSignIn() {
     const data = await res.json();
     if (!res.ok) { showAlert('doc-error', data.detail || 'Sign in failed.'); return; }
     if (data.user?.role !== 'doctor') { showAlert('doc-error', 'This account does not have doctor access.'); return; }
-    if (typeof setAuth === 'function') setAuth(data.token, data.user);
+    if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
     window.location.replace('/doctor-portal.html');
   } catch (e) { showAlert('doc-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Sign In to Portal'; }
@@ -564,7 +564,7 @@ async function doRegister() {
     const res = await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,email,password}) });
     const data = await res.json();
     if (!res.ok) { showAlert('reg-error', data.detail || 'Registration failed.'); return; }
-    if (typeof setAuth === 'function') setAuth(data.token, data.user);
+    if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
     window.location.href = _redirect;
   } catch (e) { showAlert('reg-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Create Account'; }

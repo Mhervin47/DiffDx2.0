@@ -278,7 +278,16 @@ async def request_refill(appt_id: str, req: RefillRequest, request: Request):
 
 @router.patch("/api/doctor/appointments/{appt_id}/refill")
 async def fulfill_refill(appt_id: str, request: Request):
-    """Doctor marks a refill request as given/fulfilled."""
+    """Doctor marks a refill request as given/fulfilled.
+
+    IDOR fix (Task 5 audit): the original had no ownership check at all —
+    any doctor account could fulfill any other doctor's patient's refill
+    request, and the confirmation email sent to the patient would name the
+    *requesting* doctor as having approved it (appt["refill_request"]
+    ["fulfilled_by"] / the email body's doctor_name), which is both an
+    authorization bug and a misattribution one. Added the same ownership
+    check every other appt-scoped doctor route in this domain already has.
+    """
     from web.api import _get_user_from_request, _load_appointments, _load_users, _save_appointments, _send_email_notification
 
     doctor_user = _get_user_from_request(request)
@@ -288,6 +297,8 @@ async def fulfill_refill(appt_id: str, request: Request):
     appt = appointments.get(appt_id)
     if appt is None:
         raise HTTPException(status_code=404, detail="Appointment not found.")
+    if appt.get("doctor_id") != doctor_user.get("doctor_id"):
+        raise HTTPException(status_code=403, detail="Not your appointment.")
     if not appt.get("refill_request"):
         raise HTTPException(status_code=404, detail="No refill request on this appointment.")
     appt["refill_request"]["status"] = "fulfilled"

@@ -1,12 +1,14 @@
-"""Shared FastAPI dependencies for the new router structure (Task 4).
+"""Shared FastAPI dependencies for the router structure (Task 4/5).
 
-get_current_user wraps web.api._get_user_from_request — the actual
-bearer-token lookup logic stays where it is for now (module-level _TOKENS/
-_USER_CACHE state that most of web/api.py still depends on) and gets
-imported lazily here to avoid a circular import at module load time
-(web.api imports the new routers; the routers depend on web.api's shared
-auth state until that state itself gets extracted in a later pass of this
-task). Real JWT auth is Task 5 — this preserves current behavior exactly.
+get_current_user wraps web.api._get_user_from_request, which as of Task 5
+decodes a JWT access token (diffdx.auth_tokens) rather than doing an
+opaque-token lookup — but the return shape (the blob-store user dict) and
+this dependency's own behavior (401 if unauthenticated) are unchanged, so
+every route that already used this dependency needed no changes for the
+JWT switch. Imported lazily to avoid a circular import at module load
+time (web.api imports the routers; the routers depend on web.api's shared
+auth state until that state itself gets extracted into its own module —
+see TASK4_SPLIT_ROUTERS.md §2's remaining-work list).
 """
 from __future__ import annotations
 

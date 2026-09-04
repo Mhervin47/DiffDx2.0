@@ -323,7 +323,9 @@ async def update_doctor_summary(appt_id: str, req: DoctorSummaryRequest, doctor:
 
 
 @router.get("/api/doctor/appointments/{appt_id}")
-async def get_doctor_appointment_detail(appt_id: str, doctor: dict = Depends(require_role("doctor"))):
+async def get_doctor_appointment_detail(
+    appt_id: str, doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Full appointment detail: patient info + AI session data.
 
     IDOR fix (Task 5 audit): the docstring used to say "any authenticated
@@ -334,9 +336,17 @@ async def get_doctor_appointment_detail(appt_id: str, doctor: dict = Depends(req
     of a pending/responded second-opinion request on it (the one
     legitimate cross-doctor use case this domain has — see
     appointments6.py's request_second_opinion).
+
+    Phase C of the appointments cutover (first read-route flip, see
+    TASK14_APPOINTMENTS_FLIP_FIRST_ROUTE.md): the appointment lookup below
+    tries the relational store first via _compose_appointment_dict, falling
+    back to the raw blob record if no relational row exists yet — not every
+    appointment has been touched by a Phase B dual-write route, so this
+    must degrade gracefully rather than assuming one always exists.
     """
     from loop3.routing.router import route as compute_routing
     from web.api import (
+        _compose_appointment_dict,
         _get_final_differential,
         _load_appointments,
         _load_doctors,
@@ -345,8 +355,12 @@ async def get_doctor_appointment_detail(appt_id: str, doctor: dict = Depends(req
         _sessions,
     )
 
-    appointments = _load_appointments()
-    appt = appointments.get(appt_id)
+    try:
+        appt_uuid = uuid.UUID(appt_id)
+    except ValueError:
+        appt_uuid = None
+    appt_dto = AppointmentRepository(db).get_by_id(appt_uuid) if appt_uuid else None
+    appt = _compose_appointment_dict(db, appt_dto) if appt_dto is not None else _load_appointments().get(appt_id)
     if appt is None:
         raise HTTPException(status_code=404, detail="Appointment not found.")
     doctor_id = doctor.get("doctor_id")

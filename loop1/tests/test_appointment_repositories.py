@@ -19,7 +19,7 @@ from diffdx.db import models  # noqa: F401 — registers all models on Base
 from diffdx.db.base import Base
 from diffdx.db.models.clinical import Referral
 from diffdx.db.models.user import Doctor, Patient, User
-from diffdx.exceptions import NotFoundError
+from diffdx.exceptions import ConflictError, NotFoundError
 from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.clinical import (
     PrescriptionRepository,
@@ -118,6 +118,22 @@ def test_suggested_test_replace_for_appointment_swaps_whole_list(session_maker):
     with session_maker() as session:
         tests = SuggestedTestRepository(session).list_for_appointment(appt_id)
         assert [t.test for t in tests] == ["ECG"]
+
+
+def test_suggested_test_replace_for_appointment_handles_non_uuid_blob_ids(session_maker):
+    """Blob test_orders ids are frequently short frontend-generated strings
+    like "t1", not UUIDs — must not raise, must generate a fresh id."""
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        created = SuggestedTestRepository(session).replace_for_appointment(appt_id, [
+            {"id": "t1", "test": "CBC", "category": "blood"},
+        ])
+        session.commit()
+        assert created[0].test == "CBC"
+        assert isinstance(created[0].id, uuid.UUID)  # a fresh UUID, not "t1"
 
 
 def test_suggested_test_record_result(session_maker):
@@ -393,3 +409,123 @@ def test_appointment_cancel_success(session_maker):
         session.commit()
         assert cancelled.status == "cancelled"
         assert cancelled.cancelled_by == "patient"
+
+
+# ---------------------------------------------------------------------------
+# AppointmentRepository.update_status / reschedule (Phase B, sub-slice 1)
+# ---------------------------------------------------------------------------
+
+def test_appointment_update_status_success(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        updated = AppointmentRepository(session).update_status(appt_id, "seen")
+        session.commit()
+        assert updated.status == "seen"
+
+
+def test_appointment_update_status_missing_raises_not_found(session_maker):
+    with session_maker() as session:
+        with pytest.raises(NotFoundError):
+            AppointmentRepository(session).update_status(uuid.uuid4(), "seen")
+
+
+def test_appointment_reschedule_success(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    original_slot = datetime.now(timezone.utc) + timedelta(days=1)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id, slot=original_slot)
+    new_slot = original_slot + timedelta(hours=1)
+
+    with session_maker() as session:
+        rescheduled = AppointmentRepository(session).reschedule(appt_id, new_slot)
+        session.commit()
+        assert rescheduled.slot_datetime == new_slot
+
+
+def test_appointment_reschedule_missing_raises_not_found(session_maker):
+    with session_maker() as session:
+        with pytest.raises(NotFoundError):
+            AppointmentRepository(session).reschedule(uuid.uuid4(), datetime.now(timezone.utc))
+
+
+def test_appointment_reschedule_into_taken_slot_raises_conflict(session_maker):
+    patient1 = _make_patient(session_maker)
+    patient2 = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    taken_slot = datetime.now(timezone.utc) + timedelta(days=2)
+    _make_appointment(session_maker, patient1, doctor_id, slot=taken_slot)
+    movable_appt_id = _make_appointment(session_maker, patient2, doctor_id, slot=taken_slot + timedelta(hours=1))
+
+    with session_maker() as session:
+        with pytest.raises(ConflictError):
+            AppointmentRepository(session).reschedule(movable_appt_id, taken_slot)
+
+
+# ---------------------------------------------------------------------------
+# _ensure_relational_appointment (web/api.py) — self-heals a missing
+# relational row from a blob-shaped appointment dict.
+# ---------------------------------------------------------------------------
+
+def test_ensure_relational_appointment_returns_existing_id_without_recreating(session_maker):
+    from web.api import _ensure_relational_appointment
+
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    blob_appt = {"appointment_id": str(appt_id), "patient_user_id": str(patient_id), "doctor_id": "irrelevant", "slot": "bad-data-should-not-be-parsed"}
+    with session_maker() as session:
+        result = _ensure_relational_appointment(session, blob_appt)
+        assert result == appt_id
+
+
+def test_ensure_relational_appointment_self_heals_missing_row(session_maker):
+    from web.api import _ensure_relational_appointment
+
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    # doctor_id in the repository lookup path is the SHORT legacy id, not the
+    # relational UUID — fetch the real Doctor row's short id to build a
+    # realistic blob dict.
+    with session_maker() as session:
+        doc = session.get(Doctor, doctor_id)
+        short_doctor_id = doc.doctor_id
+
+    new_appt_id = uuid.uuid4()
+    blob_appt = {
+        "appointment_id": str(new_appt_id),
+        "patient_user_id": str(patient_id),
+        "doctor_id": short_doctor_id,
+        "slot": "2099-06-15T10:00",
+        "status": "upcoming",
+        "urgency": "routine",
+    }
+    with session_maker() as session:
+        result = _ensure_relational_appointment(session, blob_appt)
+        session.commit()
+        assert result == new_appt_id
+
+    with session_maker() as session:
+        dto = AppointmentRepository(session).get_by_id(new_appt_id)
+        assert dto is not None
+        assert dto.patient_id == patient_id
+        assert dto.doctor_id == doctor_id
+        assert dto.status == "upcoming"
+
+
+def test_ensure_relational_appointment_returns_none_when_doctor_unresolvable(session_maker):
+    from web.api import _ensure_relational_appointment
+
+    patient_id = _make_patient(session_maker)
+    blob_appt = {
+        "appointment_id": str(uuid.uuid4()),
+        "patient_user_id": str(patient_id),
+        "doctor_id": "no_such_doctor",
+        "slot": "2099-06-15T10:00",
+    }
+    with session_maker() as session:
+        result = _ensure_relational_appointment(session, blob_appt)
+        assert result is None

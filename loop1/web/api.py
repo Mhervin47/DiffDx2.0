@@ -54,7 +54,9 @@ from diffdx.api_exceptions import register_exception_handlers
 from diffdx.audit import log_audit_event
 from diffdx.config import settings as _settings
 from diffdx.db.engine import get_sessionmaker
+from diffdx.exceptions import ConflictError
 from diffdx.rate_limit import limiter as _limiter
+from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.users import UserRepository
 from loop1.schemas import Demographics, History, PatientProfile, Symptom
 from loop3.routing.router import route as compute_routing
@@ -689,6 +691,77 @@ def _load_appointments() -> dict:
 
 def _save_appointments(appointments: dict) -> None:
     _db_save("appointments", appointments)
+
+
+def _ensure_relational_appointment(db, appt: dict) -> uuid.UUID | None:
+    """Phase B of the appointments cutover (dual-write, see
+    TASK9_APPOINTMENTS_DUAL_WRITE_CORE.md): every dual-writing route needs a
+    real Appointment row to attach its sub-entity write to (SuggestedTest/
+    Referral/etc. all have a NOT NULL FK to appointments.id). Only bookings
+    made after Task 7 (or backfilled by the migration script) have one —
+    this self-heals the gap by creating the missing row from the blob
+    record's own fields, so every appointment a dual-written route touches
+    ends up shadowed over time, not just ones booked after Task 7 shipped.
+
+    Best-effort by design: returns None (never raises) if the row can't be
+    resolved or created — callers must treat that as "skip the dual-write
+    for this request," since a shadow-write failure must never affect the
+    blob write it's alongside."""
+    appt_id_str = appt.get("appointment_id")
+    try:
+        appt_uuid = uuid.UUID(appt_id_str)
+    except (TypeError, ValueError):
+        return None
+
+    existing = AppointmentRepository(db).get_by_id(appt_uuid)
+    if existing is not None:
+        return appt_uuid
+
+    patient_dto = UserRepository(db).get_by_id(uuid.UUID(appt["patient_user_id"])) if appt.get("patient_user_id") else None
+    doctor_dto = UserRepository(db).get_by_doctor_id(appt["doctor_id"]) if appt.get("doctor_id") else None
+    if patient_dto is None or doctor_dto is None:
+        _log.warning("Could not self-heal relational Appointment %s: patient or doctor not resolvable.", appt_id_str)
+        return None
+
+    slot_str = appt.get("slot")
+    try:
+        slot_dt = datetime.fromisoformat(slot_str)
+    except (TypeError, ValueError):
+        _log.warning("Could not self-heal relational Appointment %s: unparseable slot %r.", appt_id_str, slot_str)
+        return None
+    if slot_dt.tzinfo is None:
+        slot_dt = slot_dt.replace(tzinfo=timezone.utc)
+
+    booked_at = None
+    try:
+        booked_at_str = appt.get("booked_at")
+        if booked_at_str:
+            booked_at = datetime.fromisoformat(booked_at_str)
+            if booked_at.tzinfo is None:
+                booked_at = booked_at.replace(tzinfo=timezone.utc)
+    except ValueError:
+        booked_at = None
+
+    try:
+        AppointmentRepository(db).book(
+            id=appt_uuid,
+            patient_id=patient_dto.id,
+            doctor_id=doctor_dto.id,
+            slot_datetime=slot_dt,
+            session_id=appt.get("session_id"),
+            status=appt.get("status", "upcoming"),
+            urgency=appt.get("urgency", "routine"),
+            booked_at=booked_at,
+            chief_complaint=appt.get("chief_complaint"),
+            primary_diagnosis=appt.get("primary_diagnosis"),
+            patient_age=appt.get("age"),
+            patient_sex=appt.get("sex"),
+            patient_bmi=appt.get("bmi"),
+        )
+    except ConflictError:
+        _log.warning("Could not self-heal relational Appointment %s: slot conflict against existing data.", appt_id_str)
+        return None
+    return appt_uuid
 
 
 def _load_session_uploads() -> dict:

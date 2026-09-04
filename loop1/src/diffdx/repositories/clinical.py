@@ -17,6 +17,20 @@ from diffdx.db.models.clinical import (
 from diffdx.exceptions import NotFoundError
 
 
+def _parse_uuid(value) -> uuid.UUID | None:
+    """Blob-store ids on list items (test_orders/prescriptions/approved_plan)
+    are frequently short frontend-generated strings like "t1", not UUIDs —
+    unlike a full appointment/user id. Never assume they parse; a fresh id
+    is generated instead when they don't (same approach
+    scripts/migrate_blob_to_relational.py's _parse_uuid uses)."""
+    if not value:
+        return None
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, AttributeError):
+        return None
+
+
 @dataclass(frozen=True, slots=True)
 class SuggestedTestDTO:
     id: uuid.UUID
@@ -74,7 +88,7 @@ class SuggestedTestRepository:
                 appointment_id,
                 test=t.get("test", ""), category=t.get("category", "other"),
                 priority=t.get("priority", "routine"), notes=t.get("notes"),
-                id=uuid.UUID(t["id"]) if t.get("id") else None,
+                id=_parse_uuid(t.get("id")),
             )
             for t in tests
         ]
@@ -147,7 +161,7 @@ class PrescriptionRepository:
                 drug=p.get("drug", ""), dose=p.get("dose", ""), route=p.get("route", "oral"),
                 frequency=p.get("frequency", ""), duration=p.get("duration", ""),
                 meal_timing=p.get("meal_timing"), notes=p.get("notes"),
-                id=uuid.UUID(p["id"]) if p.get("id") else None,
+                id=_parse_uuid(p.get("id")),
             )
             for p in prescriptions
         ]
@@ -247,7 +261,7 @@ class TreatmentPlanItemRepository:
                 appointment_id,
                 text=item.get("text", ""), approved=bool(item.get("approved", True)),
                 source=item.get("source", "ai"),
-                id=uuid.UUID(item["id"]) if item.get("id") else None,
+                id=_parse_uuid(item.get("id")),
             )
             for item in items
         ]

@@ -156,3 +156,30 @@ class AppointmentRepository:
         appt.rating_submitted_at = submitted_at
         self._session.flush()
         return _to_dto(appt)
+
+    def update_status(self, appointment_id: uuid.UUID, status: str) -> AppointmentDTO:
+        appt = self._session.get(Appointment, appointment_id)
+        if appt is None:
+            raise NotFoundError(f"Appointment {appointment_id} not found")
+        appt.status = status
+        self._session.flush()
+        return _to_dto(appt)
+
+    def reschedule(self, appointment_id: uuid.UUID, new_slot_datetime: datetime) -> AppointmentDTO:
+        """Same conflict semantics as book(): rescheduling into a slot the
+        doctor is already booked at (excluding cancelled rows) must be
+        rejected the same way booking one is, not silently succeed."""
+        appt = self._session.get(Appointment, appointment_id)
+        if appt is None:
+            raise NotFoundError(f"Appointment {appointment_id} not found")
+        doctor_id = appt.doctor_id  # captured before rollback can expire `appt`
+        appt.slot_datetime = new_slot_datetime
+        try:
+            self._session.flush()
+        except IntegrityError as exc:
+            self._session.rollback()
+            raise ConflictError(
+                "This slot was just booked by someone else.",
+                detail=f"Doctor {doctor_id} is already booked at {new_slot_datetime.isoformat()}.",
+            ) from exc
+        return _to_dto(appt)

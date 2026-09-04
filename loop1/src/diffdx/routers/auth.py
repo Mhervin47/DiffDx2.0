@@ -1,20 +1,15 @@
 """/api/auth/* — moved from web/api.py as Task 4's first split-out router;
 register/login/refresh/logout rewritten for Task 5 (real JWT auth).
-
-Every legacy blob-store helper this still calls (_load_users, _save_users,
-_hash_password, etc.) is imported lazily from web.api inside each
-function — that module-level state (the blob store helpers, _sessions,
-_USER_CACHE) hasn't been extracted yet; doing so is real remaining work
-for a later pass (see TASK4_SPLIT_ROUTERS.md). Importing here at call
-time rather than module top avoids a circular import, since web.api is
-what includes this router.
+User identity (users/patients/doctors/dependents) is now real relational
+data (Phase 1 identity cutover) — `UserRepository` is the source of
+truth. `_hash_password`/`_verify_password`/`_sessions`/session-history
+helpers are still blob-adjacent module state in web/api.py that hasn't
+been extracted yet (diagnostic sessions, not identity — out of scope for
+the identity cutover); those are still imported lazily from web.api
+inside each function that needs them, to avoid a circular import since
+web.api is what includes this router.
 
 Task 5 notes:
-- User identity itself is still the blob store (see
-  diffdx.repositories.users.UserRepository.shadow_user's docstring for
-  why a minimal relational shadow row gets upserted on every
-  register/login anyway — refresh_tokens and audit_log_entries both have
-  a real FK to users.id).
 - Rate limiting (slowapi, 5/minute per IP) is on /register and /login
   only, per the spec — not /refresh or the rest, which aren't the
   credential-guessing surface these two are.
@@ -55,18 +50,13 @@ def _client_ip(request: Request) -> str | None:
 
 
 def _issue_token_pair(db: Session, user: dict) -> tuple[str, str]:
-    """Issue a fresh access + refresh token pair for a (blob-store) user
-    dict, persisting the refresh token's hash in the relational
-    refresh_tokens table. Ensures the Task 5 shadow user row exists first
-    (see UserRepository.shadow_user) so the FK is satisfiable."""
+    """Issue a fresh access + refresh token pair for a user dict (as
+    returned by web.api._compose_user_dict), persisting the refresh
+    token's hash in the relational refresh_tokens table. The user row
+    itself is guaranteed to already exist relationally (created directly
+    by register, or already migrated) — no shadow-row upsert needed here
+    since Phase 1's identity cutover."""
     user_id = uuid.UUID(str(user["id"]))
-    UserRepository(db).shadow_user(
-        id=user_id,
-        name=user.get("name", ""),
-        email=user.get("email", ""),
-        password_hash=user.get("password_hash", ""),
-        role=user.get("role", "patient"),
-    )
     access_token = create_access_token(user["id"], user.get("role", "patient"))
     raw_refresh = generate_refresh_token()
     RefreshTokenRepository(db).create(
@@ -81,53 +71,42 @@ def _issue_token_pair(db: Session, user: dict) -> tuple[str, str]:
 @router.post("/register")
 @limiter.limit("5/minute")
 async def register(request: Request, req: RegisterRequest, db: Session = Depends(get_session)):
-    from web.api import _hash_password, _load_users, _save_users
+    from web.api import _compose_user_dict, _hash_password
 
-    users = _load_users()
-    for u in users.values():
-        if u["email"].lower() == req.email.lower():
-            raise HTTPException(status_code=409, detail="Email already registered.")
+    if UserRepository(db).get_by_email(req.email) is not None:
+        raise HTTPException(status_code=409, detail="Email already registered.")
     if len(req.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
     if not req.name.strip():
         raise HTTPException(status_code=400, detail="Name is required.")
-    user_id = str(uuid.uuid4())
-    user = {
-        "id": user_id,
-        "name": req.name.strip(),
-        "email": req.email.lower().strip(),
-        "password_hash": _hash_password(req.password),
-        "role": "patient",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "sessions": [],
-    }
-    users[user_id] = user
-    _save_users(users)
+    dto = UserRepository(db).create_patient(
+        name=req.name.strip(),
+        email=req.email.lower().strip(),
+        password_hash=_hash_password(req.password),
+    )
+    user = _compose_user_dict(db, dto)
     access_token, refresh_token = _issue_token_pair(db, user)
-    log_audit_event(actor=user, action="register", resource_type="user", resource_id=user_id, ip_address=_client_ip(request))
+    log_audit_event(actor=user, action="register", resource_type="user", resource_id=user["id"], ip_address=_client_ip(request))
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "user": {"id": user_id, "name": user["name"], "email": user["email"], "role": "patient"},
+        "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": "patient"},
     }
 
 
 @router.post("/login")
 @limiter.limit("5/minute")
 async def login(request: Request, req: LoginRequest, db: Session = Depends(get_session)):
-    from web.api import _load_users, _verify_password
+    from web.api import _compose_user_dict, _verify_password
 
-    users = _load_users()
-    matched = next(
-        (u for u in users.values() if u["email"].lower() == req.email.lower()),
-        None,
-    )
-    if not matched or not _verify_password(req.password, matched["password_hash"]):
+    dto = UserRepository(db).get_by_email(req.email)
+    if dto is None or not _verify_password(req.password, dto.password_hash):
         log_audit_event(
             actor=None, action="login_failed", resource_type="user",
             resource_id=req.email.lower().strip(), ip_address=_client_ip(request),
         )
         raise HTTPException(status_code=401, detail="Invalid email or password.")
+    matched = _compose_user_dict(db, dto)
     access_token, refresh_token = _issue_token_pair(db, matched)
     log_audit_event(actor=matched, action="login", resource_type="user", resource_id=matched["id"], ip_address=_client_ip(request))
     return {
@@ -153,7 +132,7 @@ async def refresh(req: RefreshRequest, db: Session = Depends(get_session)):
     attempt with the now-revoked token fails, which is a signal worth
     alerting on operationally (not implemented here — logged to the audit
     trail as `refresh_reuse_rejected`, which is enough to alert on later)."""
-    from web.api import _load_users
+    from web.api import _compose_user_dict
 
     token_hash = hash_refresh_token(req.refresh_token)
     repo = RefreshTokenRepository(db)
@@ -167,10 +146,10 @@ async def refresh(req: RefreshRequest, db: Session = Depends(get_session)):
     if record.expires_at.replace(tzinfo=timezone.utc) < now:
         raise HTTPException(status_code=401, detail="Refresh token has expired.")
 
-    users = _load_users()
-    user = users.get(str(record.user_id))
-    if user is None:
+    dto = UserRepository(db).get_by_id(record.user_id)
+    if dto is None:
         raise HTTPException(status_code=401, detail="User no longer exists.")
+    user = _compose_user_dict(db, dto)
 
     repo.revoke(record.id)
     access_token, new_refresh_token = _issue_token_pair(db, user)
@@ -209,16 +188,14 @@ async def get_user_sessions(user: dict = Depends(get_current_user)):
         _add_session_to_user,
         _load_appointments,
         _load_session_report_from_db,
-        _load_users,
+        _load_user_sessions,
     )
 
     # Backfill: pick up sessions that were started anonymously but later linked
     # to the user via appointment booking.
-    users = _load_users()
     uid = user["id"]
-    existing_ids = {s.get("session_id") for s in users[uid].get("sessions", [])}
+    existing_ids = {s.get("session_id") for s in _load_user_sessions(uid)}
     appointments = _load_appointments()
-    added = False
     for appt in appointments.values():
         sid = appt.get("session_id", "")
         if not sid or appt.get("patient_user_id") != uid or sid in existing_ids:
@@ -245,27 +222,23 @@ async def get_user_sessions(user: dict = Depends(get_current_user)):
             "ended_at": ended_at,
         })
         existing_ids.add(sid)
-        added = True
-    if added:
-        # Re-read the updated user record
-        users = _load_users()
-    sessions = list(reversed(users[uid].get("sessions", [])))
+    # Re-read: cheap (single blob-collection lookup, not a full user scan),
+    # so no need to track whether a backfill actually happened above.
+    sessions = list(reversed(_load_user_sessions(uid)))
     return {"sessions": sessions}
 
 
 @router.delete("/sessions/{session_id}")
 async def delete_user_session(session_id: str, user: dict = Depends(get_current_user)):
     """Remove a session from the user's history and delete its log files."""
-    from web.api import _repo_root, _save_users, _sessions, _load_users
+    from web.api import _repo_root, _load_user_sessions, _save_user_sessions, _sessions
 
-    users = _load_users()
     uid = user["id"]
-    original = users[uid].get("sessions", [])
+    original = _load_user_sessions(uid)
     filtered = [s for s in original if s.get("session_id") != session_id]
     if len(filtered) == len(original):
         raise HTTPException(status_code=404, detail="Session not found.")
-    users[uid]["sessions"] = filtered
-    _save_users(users)
+    _save_user_sessions(uid, filtered)
     # Remove from live session store
     _sessions.pop(session_id, None)
     # Delete log files (best-effort — ignore if missing)
@@ -301,61 +274,94 @@ async def get_profile(user: dict = Depends(get_current_user)):
 
 
 @router.patch("/profile")
-async def update_profile(req: ProfileUpdateRequest, user: dict = Depends(get_current_user)):
-    from web.api import _load_users, _save_users
-
-    users = _load_users()
-    uid = user["id"]
+async def update_profile(
+    req: ProfileUpdateRequest,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    uid = uuid.UUID(user["id"])
     fields = req.model_dump(exclude_none=True)
-    for k, v in fields.items():
-        users[uid][k] = v
-    _save_users(users)
+    name = fields.pop("name", None)
+    if user.get("role") == "doctor":
+        # Patient-only fields (mobile/age/etc.) are meaningless for a doctor
+        # account and silently dropped here — same no-op behavior the blob
+        # store had (extra dict keys nobody read), not a new restriction.
+        UserRepository(db).update_doctor(uid, name=name)
+    else:
+        UserRepository(db).update_patient(uid, name=name, **fields)
+    db.commit()
     return {"updated": True}
 
 
-@router.get("/dependents")
-async def get_dependents(user: dict = Depends(get_current_user)):
-    from web.api import _load_users
+def _dependent_dict(dep) -> dict:
+    return {
+        "id": str(dep.id),
+        "name": dep.name,
+        "relationship": dep.relationship,
+        "age": dep.age,
+        "gender": dep.gender,
+        "blood_type": dep.blood_type,
+        "allergies": dep.allergies,
+        "chronic_conditions": dep.chronic_conditions,
+    }
 
-    users = _load_users()
-    return {"dependents": users[user["id"]].get("dependents", [])}
+
+@router.get("/dependents")
+async def get_dependents(user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
+    deps = UserRepository(db).list_dependents(uuid.UUID(user["id"]))
+    return {"dependents": [_dependent_dict(d) for d in deps]}
 
 
 @router.post("/dependents")
-async def add_dependent(req: DependentRequest, user: dict = Depends(get_current_user)):
-    from web.api import _load_users, _save_users
-
-    users = _load_users()
-    dep = req.model_dump()
-    dep["id"] = str(uuid.uuid4())
-    users[user["id"]].setdefault("dependents", []).append(dep)
-    _save_users(users)
-    return {"saved": True, "dependent": dep}
+async def add_dependent(
+    req: DependentRequest,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    dto = UserRepository(db).add_dependent(uuid.UUID(user["id"]), **req.model_dump())
+    db.commit()
+    return {"saved": True, "dependent": _dependent_dict(dto)}
 
 
 @router.patch("/dependents/{dep_id}")
-async def update_dependent(dep_id: str, req: DependentRequest, user: dict = Depends(get_current_user)):
-    from web.api import _load_users, _save_users
-
-    users = _load_users()
-    deps = users[user["id"]].get("dependents", [])
-    for d in deps:
-        if d.get("id") == dep_id:
-            d.update({k: v for k, v in req.model_dump().items() if v is not None})
-            _save_users(users)
-            return {"updated": True}
-    raise HTTPException(status_code=404, detail="Dependent not found.")
+async def update_dependent(
+    dep_id: str,
+    req: DependentRequest,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    try:
+        dep_uuid = uuid.UUID(dep_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Dependent not found.")
+    repo = UserRepository(db)
+    # Ownership check: update_dependent takes a bare dependent_id with no
+    # inherent scoping, so this must be verified against the caller's own
+    # dependents here — same scoping the blob store had implicitly by only
+    # ever searching within users[uid]["dependents"].
+    owned = any(d.id == dep_uuid for d in repo.list_dependents(uuid.UUID(user["id"])))
+    if not owned:
+        raise HTTPException(status_code=404, detail="Dependent not found.")
+    fields = {k: v for k, v in req.model_dump().items() if v is not None}
+    repo.update_dependent(dep_uuid, **fields)
+    db.commit()
+    return {"updated": True}
 
 
 @router.delete("/dependents/{dep_id}")
-async def delete_dependent(dep_id: str, user: dict = Depends(get_current_user)):
-    from web.api import _load_users, _save_users
-
-    users = _load_users()
-    deps = users[user["id"]].get("dependents", [])
-    new_deps = [d for d in deps if d.get("id") != dep_id]
-    if len(new_deps) == len(deps):
+async def delete_dependent(
+    dep_id: str,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    try:
+        dep_uuid = uuid.UUID(dep_id)
+    except ValueError:
         raise HTTPException(status_code=404, detail="Dependent not found.")
-    users[user["id"]]["dependents"] = new_deps
-    _save_users(users)
+    repo = UserRepository(db)
+    owned = any(d.id == dep_uuid for d in repo.list_dependents(uuid.UUID(user["id"])))
+    if not owned:
+        raise HTTPException(status_code=404, detail="Dependent not found.")
+    repo.delete_dependent(dep_uuid)
+    db.commit()
     return {"deleted": True}

@@ -3,24 +3,25 @@
 Isolation strategy (this is the first test file in the suite that boots
 the real FastAPI app — worth explaining):
 
-- The relational DB (refresh_tokens, audit_log_entries, users) is
-  redirected to a private temp SQLite file for the whole module, via
-  monkeypatching diffdx.db.engine.get_engine/get_sessionmaker rather than
-  relying on DATABASE_URL + import order (fragile — other test modules
-  may or may not have already triggered the engine singleton). Every
-  place that needs a session (routers/auth.py's Depends(get_session),
-  diffdx.audit.log_audit_event) resolves get_sessionmaker() by name from
-  diffdx.db.engine's module namespace at call time, so this monkeypatch
-  is picked up transparently everywhere, not just by code that imports
-  it after the patch.
-- The legacy blob store (web.api._load_users/_save_users) has no
-  equivalent DATABASE_URL-style override — it's a hardcoded path at
-  web/data/diffdx.db, the same file the live dev server uses. Tests that
-  need blob-store users avoid colliding with real data by using
-  uuid4-suffixed emails (same pattern as test_concurrency.py) and clean
-  up what they create. This is a known, pre-existing limitation of the
-  blob store, not something this task set out to fix — see
-  TASK4_SPLIT_ROUTERS.md's remaining-work list.
+- The relational DB (refresh_tokens, audit_log_entries, and — since the
+  identity cutover — users/patients/doctors/dependents too) is redirected
+  to a private temp SQLite file for the whole module, via monkeypatching
+  diffdx.db.engine.get_engine/get_sessionmaker rather than relying on
+  DATABASE_URL + import order (fragile — other test modules may or may
+  not have already triggered the engine singleton). Every place that
+  needs a session (routers/auth.py's Depends(get_session),
+  diffdx.audit.log_audit_event, and now web.api's identity helpers —
+  _load_users/_user_from_access_token/_seed_doctor_accounts, which all
+  resolve get_sessionmaker() by name at call time) picks up this
+  monkeypatch transparently, so user creation in this module never
+  touches the live dev DB at web/data/diffdx.db — the collision-avoidance
+  workaround this docstring used to describe (uuid4-suffixed emails,
+  manual cleanup) is no longer needed for user data specifically. Blob
+  collections that stayed out of scope for the identity cutover
+  (appointments, the doctor directory, etc.) still use the real
+  web/data/diffdx.db, so tests touching those still need the
+  uuid4-suffixed/cleanup pattern (see _make_doctor's appointment
+  fixture usage below, and test_concurrency.py).
 """
 from __future__ import annotations
 
@@ -248,35 +249,38 @@ def test_no_token_on_doctor_route_is_401(client):
 # IDOR fix: Doctor A cannot read Doctor B's appointment detail
 # ---------------------------------------------------------------------------
 
-def _make_blob_doctor(name: str, doctor_id: str) -> tuple[dict, str]:
-    """Blob-store doctors are normally only created via the fixed
-    _DOCTOR_SEED list at startup — registration only creates patients.
-    Inserted directly here (same approach test_concurrency.py uses for
-    the relational DB) rather than depending on which seeded doctor_ids
-    happen to exist."""
-    from web.api import _hash_password, _load_users, _save_users
+def _make_doctor(name: str, doctor_id: str) -> tuple[dict, str]:
+    """Doctors are normally only created via the fixed _DOCTOR_SEED list
+    at startup — registration only creates patients. Created directly via
+    UserRepository here (same approach test_concurrency.py uses) rather
+    than depending on which seeded doctor_ids happen to exist. Since the
+    identity cutover, this goes through the module's monkeypatched
+    relational test_engine like everything else in this file — no more
+    blob-store/live-dev-DB collision risk for user data."""
+    from web.api import _compose_user_dict, _hash_password
     from diffdx.routers.auth import _issue_token_pair
     from diffdx.db.engine import get_sessionmaker
+    from diffdx.repositories.users import UserRepository
 
-    user_id = str(uuid.uuid4())
-    users = _load_users()
-    users[user_id] = {
-        "id": user_id, "name": name, "email": f"{doctor_id}.{uuid.uuid4()}@example.com",
-        "password_hash": _hash_password("Doctor123!"), "role": "doctor",
-        "doctor_id": doctor_id, "specialty": "General",
-        "created_at": datetime.now(timezone.utc).isoformat(), "sessions": [],
-    }
-    _save_users(users)
     with get_sessionmaker()() as db:
-        access_token, _ = _issue_token_pair(db, users[user_id])
-    return users[user_id], access_token
+        dto = UserRepository(db).create_doctor(
+            name=name,
+            email=f"{doctor_id}.{uuid.uuid4()}@example.com",
+            password_hash=_hash_password("Doctor123!"),
+            doctor_id=doctor_id,
+            specialty="General",
+        )
+        db.commit()
+        user = _compose_user_dict(db, dto)
+        access_token, _ = _issue_token_pair(db, user)
+    return user, access_token
 
 
 def test_doctor_a_cannot_read_doctor_b_appointment_detail(client):
     from web.api import _load_appointments, _save_appointments
 
-    doctor_a, token_a = _make_blob_doctor("Dr. A", f"test_dr_a_{uuid.uuid4().hex[:8]}")
-    doctor_b, token_b = _make_blob_doctor("Dr. B", f"test_dr_b_{uuid.uuid4().hex[:8]}")
+    doctor_a, token_a = _make_doctor("Dr. A", f"test_dr_a_{uuid.uuid4().hex[:8]}")
+    doctor_b, token_b = _make_doctor("Dr. B", f"test_dr_b_{uuid.uuid4().hex[:8]}")
 
     appt_id = str(uuid.uuid4())
     appointments = _load_appointments()
@@ -305,8 +309,8 @@ def test_doctor_patient_history_scoped_to_own_appointments(client):
     to ANY doctor by name, with no ownership check at all."""
     from web.api import _load_appointments, _save_appointments
 
-    doctor_a, token_a = _make_blob_doctor("Dr. A", f"test_dr_a_{uuid.uuid4().hex[:8]}")
-    doctor_b, token_b = _make_blob_doctor("Dr. B", f"test_dr_b_{uuid.uuid4().hex[:8]}")
+    doctor_a, token_a = _make_doctor("Dr. A", f"test_dr_a_{uuid.uuid4().hex[:8]}")
+    doctor_b, token_b = _make_doctor("Dr. B", f"test_dr_b_{uuid.uuid4().hex[:8]}")
     patient_name = f"History Test Patient {uuid.uuid4().hex[:8]}"
 
     appt_id = str(uuid.uuid4())

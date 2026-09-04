@@ -14,8 +14,11 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
+from sqlalchemy.orm import Session
 
+from diffdx.db.engine import get_session
 from diffdx.dependencies import require_role
+from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
     ApprovedPlanRequest,
     DoctorSummaryRequest,
@@ -323,9 +326,13 @@ async def get_doctor_profile(doctor_user: dict = Depends(require_role("doctor"))
 
 
 @router.patch("/api/doctor/profile-details")
-async def update_doctor_profile_details(request: Request, doctor_user: dict = Depends(require_role("doctor"))):
+async def update_doctor_profile_details(
+    request: Request,
+    doctor_user: dict = Depends(require_role("doctor")),
+    db: Session = Depends(get_session),
+):
     """Save professional, education, and bio details for the authenticated doctor."""
-    from web.api import _load_doctors, _load_users, _save_doctors, _save_users
+    from web.api import _load_doctors, _save_doctors
 
     doctor_id = doctor_user.get("doctor_id")
     body = await request.json()
@@ -351,14 +358,14 @@ async def update_doctor_profile_details(request: Request, doctor_user: dict = De
 
     _save_doctors(doctors)
 
-    # Also update the display name in users.json if it changed
-    if "name" in body and body["name"]:
-        users = _load_users()
-        for uid, u in users.items():
-            if u.get("doctor_id") == doctor_id:
-                u["name"] = body["name"]
-                break
-        _save_users(users)
+    # Mirror name/specialty/hospital into the relational Doctor row too —
+    # /api/auth/me and login responses read from there, not the directory
+    # blob above, so without this they'd drift stale relative to this edit.
+    doctor_fields = {k: body[k] for k in ("specialty", "hospital") if k in body}
+    name = body.get("name") or None
+    if doctor_fields or name:
+        UserRepository(db).update_doctor(uuid.UUID(doctor_user["id"]), name=name, **doctor_fields)
+        db.commit()
 
     return {"saved": True}
 

@@ -52,7 +52,9 @@ from pydantic import BaseModel
 
 from diffdx.audit import log_audit_event
 from diffdx.config import settings as _settings
+from diffdx.db.engine import get_sessionmaker
 from diffdx.rate_limit import limiter as _limiter
+from diffdx.repositories.users import UserRepository
 from loop1.schemas import Demographics, History, PatientProfile, Symptom
 from loop3.routing.router import route as compute_routing
 from web.api_session import APISession
@@ -448,8 +450,6 @@ def _db_save(collection: str, data) -> None:
             (collection, payload),
         )
         db.commit()
-_USER_CACHE: dict[str, dict] = {}  # user_id → user data, invalidated on every _save_users
-
 # ── Sarvam AI helpers ──────────────────────────────────────────────────────────
 _SARVAM_KEY = os.environ.get("SARVAM_API_KEY", "")
 _SARVAM_TRANSLATE_URL = "https://api.sarvam.ai/translate"
@@ -527,13 +527,66 @@ def _sarvam_tts_b64(text: str, lang: str) -> str | None:
     return None
 
 
+def _load_user_sessions(user_id: str) -> list:
+    """Diagnostic-session summaries for a user. Kept as its own blob
+    collection (not identity data) so it can keep working after `users`
+    moves to the relational store — see _compose_user_dict/
+    _add_session_to_user/_update_session_in_user."""
+    return _db_load("user_sessions", {}).get(user_id, [])
+
+
+def _save_user_sessions(user_id: str, sessions: list) -> None:
+    all_sessions = _db_load("user_sessions", {})
+    all_sessions[user_id] = sessions
+    _db_save("user_sessions", all_sessions)
+
+
+def _compose_user_dict(db, dto) -> dict:
+    """Build the legacy blob-shaped user dict from relational rows, so the
+    ~55 call sites that read `user["..."]`/`user.get("...")` off
+    `_load_users()`/`_get_user_from_request()` don't need to change —
+    same pattern Task 5 used to keep `_get_user_from_request`'s return
+    shape stable through the blob-token → JWT swap."""
+    user_id_str = str(dto.id)
+    dependents = UserRepository(db).list_dependents(dto.id)
+    return {
+        "id": user_id_str,
+        "name": dto.name,
+        "email": dto.email,
+        "password_hash": dto.password_hash,
+        "role": dto.role,
+        "created_at": dto.created_at.isoformat() if dto.created_at else None,
+        "doctor_id": dto.doctor_id,
+        "specialty": dto.specialty,
+        "mobile": dto.mobile,
+        "age": dto.age,
+        "blood_type": dto.blood_type,
+        "gender": dto.gender,
+        "address": dto.address,
+        "emergency_contact_name": dto.emergency_contact_name,
+        "emergency_contact_phone": dto.emergency_contact_phone,
+        "allergies": dto.allergies,
+        "chronic_conditions": dto.chronic_conditions,
+        "dependents": [
+            {
+                "id": str(dep.id),
+                "name": dep.name,
+                "relationship": dep.relationship,
+                "age": dep.age,
+                "gender": dep.gender,
+                "blood_type": dep.blood_type,
+                "allergies": dep.allergies,
+                "chronic_conditions": dep.chronic_conditions,
+            }
+            for dep in dependents
+        ],
+        "sessions": _load_user_sessions(user_id_str),
+    }
+
+
 def _load_users() -> dict:
-    return _db_load("users", {})
-
-
-def _save_users(users: dict) -> None:
-    _db_save("users", users)
-    _USER_CACHE.clear()  # invalidate on every write
+    with get_sessionmaker()() as db:
+        return {str(dto.id): _compose_user_dict(db, dto) for dto in UserRepository(db).list_all()}
 
 
 def _hash_password(password: str) -> str:
@@ -552,14 +605,16 @@ def _verify_password(password: str, stored: str) -> bool:
 
 
 def _user_from_access_token(token: str) -> dict | None:
-    """Decode a JWT access token (Task 5) and return the blob-store user
-    dict it names, or None if the token is missing/expired/invalid, or
-    names a user that no longer exists. No server-side token table lookup
-    needed — the JWT's signature is the credential, its `sub` claim is the
-    user id. Exposed (not just used internally) because
-    routers/appointments4.py's download_patient_file accepts a token via
-    `?token=` query param as well as a Bearer header, for direct-link
-    downloads that can't set an Authorization header."""
+    """Decode a JWT access token (Task 5) and return the (relationally
+    composed, blob-shaped) user dict it names, or None if the token is
+    missing/expired/invalid, or names a user that no longer exists. No
+    server-side token table lookup needed — the JWT's signature is the
+    credential, its `sub` claim is the user id. This is the hot path
+    (every authenticated request), so it does a single indexed row fetch,
+    not a full `_load_users()` scan. Exposed (not just used internally)
+    because routers/appointments4.py's download_patient_file accepts a
+    token via `?token=` query param as well as a Bearer header, for
+    direct-link downloads that can't set an Authorization header."""
     import jwt as _pyjwt
     from diffdx.auth_tokens import decode_access_token
 
@@ -570,12 +625,15 @@ def _user_from_access_token(token: str) -> dict | None:
     user_id = claims.get("sub")
     if not user_id:
         return None
-    if user_id in _USER_CACHE:
-        return _USER_CACHE[user_id]
-    user = _load_users().get(user_id)
-    if user:
-        _USER_CACHE[user_id] = user
-    return user
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
+        return None
+    with get_sessionmaker()() as db:
+        dto = UserRepository(db).get_by_id(uid)
+        if dto is None:
+            return None
+        return _compose_user_dict(db, dto)
 
 
 def _get_user_from_request(request: Request) -> dict | None:
@@ -586,24 +644,27 @@ def _get_user_from_request(request: Request) -> dict | None:
 
 
 def _add_session_to_user(user_id: str, session_meta: dict) -> None:
-    users = _load_users()
-    if user_id not in users:
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
         return
-    users[user_id].setdefault("sessions", []).append(session_meta)
-    _save_users(users)
+    with get_sessionmaker()() as db:
+        if UserRepository(db).get_by_id(uid) is None:
+            return
+    sessions = _load_user_sessions(user_id)
+    sessions.append(session_meta)
+    _save_user_sessions(user_id, sessions)
 
 
 def _update_session_in_user(user_id: str, session_id: str, diagnosis: str, ended_at: str) -> None:
-    users = _load_users()
-    if user_id not in users:
-        return
-    for s in users[user_id].get("sessions", []):
+    sessions = _load_user_sessions(user_id)
+    for s in sessions:
         if s.get("session_id") == session_id:
             s["primary_diagnosis"] = diagnosis
             s["ended_at"] = ended_at
             s["status"] = "complete"
             break
-    _save_users(users)
+    _save_user_sessions(user_id, sessions)
 
 
 def _load_doctors() -> list:
@@ -702,31 +763,23 @@ _DOCTOR_SEED = [
 
 
 def _seed_doctor_accounts() -> None:
-    users = _load_users()
-    changed = False
-    for seed in _DOCTOR_SEED:
-        exists = any(
-            u.get("role") == "doctor" and u.get("doctor_id") == seed["doctor_id"]
-            for u in users.values()
-        )
-        if not exists:
-            user_id = str(uuid.uuid4())
-            users[user_id] = {
-                "id": user_id,
-                "name": seed["name"],
-                "email": seed["email"].lower(),
-                "password_hash": _hash_password("Doctor123!"),
-                "role": "doctor",
-                "doctor_id": seed["doctor_id"],
-                "specialty": seed["specialty"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "sessions": [],
-                "tokens": [],
-            }
+    with get_sessionmaker()() as db:
+        repo = UserRepository(db)
+        changed = False
+        for seed in _DOCTOR_SEED:
+            if repo.get_by_doctor_id(seed["doctor_id"]) is not None:
+                continue
+            repo.create_doctor(
+                name=seed["name"],
+                email=seed["email"].lower(),
+                password_hash=_hash_password("Doctor123!"),
+                doctor_id=seed["doctor_id"],
+                specialty=seed["specialty"],
+            )
             changed = True
             _log.info("Seeded doctor account: %s (%s)", seed["name"], seed["email"])
-    if changed:
-        _save_users(users)
+        if changed:
+            db.commit()
 
 
 def _load_report_from_disk(session_id: str) -> dict | None:

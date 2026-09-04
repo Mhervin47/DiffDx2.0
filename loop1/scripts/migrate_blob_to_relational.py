@@ -157,48 +157,76 @@ def migrate_users_and_doctors(session: Session, store: dict, counters: Counters)
             counters.conflicts.append(f"users: unparseable id {user_id_str!r}, skipped")
             continue
 
-        if session.get(User, user_id) is not None:
+        role = u.get("role", "patient")
+        sub_row_model = Doctor if role == "doctor" else Patient
+        existing_user = session.get(User, user_id)
+        sub_row_exists = session.get(sub_row_model, user_id) is not None
+
+        # Idempotency must key off the *role-appropriate sub-row*, not just the
+        # bare `User` row — Task 5's shadow_user() already writes a bare User
+        # row on every login, with no Patient/Doctor sub-row attached. Gating
+        # only on `User` existence would see that shadow row, decide "already
+        # migrated", and skip — permanently leaving that user without a
+        # profile/doctor row once reads flip to relational.
+        if existing_user is not None and sub_row_exists:
             counters.bump_skipped("users")
         else:
-            role = u.get("role", "patient")
-            user = User(
-                id=user_id,
-                name=u.get("name", ""),
-                email=(u.get("email") or "").lower().strip(),
-                password_hash=u.get("password_hash", ""),
-                role=role,
-            )
-            created_at = _parse_dt(u.get("created_at"))
-            if created_at:
-                user.created_at = created_at
-            session.add(user)
-            session.flush()
-            counters.bump_written("users")
-
-            if role == "doctor":
-                directory = doctors_by_id.get(u.get("doctor_id"), {})
-                session.add(Doctor(
-                    user_id=user_id,
-                    doctor_id=u.get("doctor_id", ""),
-                    specialty=u.get("specialty") or directory.get("specialty", "General"),
-                    hospital=directory.get("hospital"),
-                    rating=directory.get("rating"),
-                    avatar_initials=directory.get("avatar_initials"),
-                ))
+            if existing_user is None:
+                user = User(
+                    id=user_id,
+                    name=u.get("name", ""),
+                    email=(u.get("email") or "").lower().strip(),
+                    password_hash=u.get("password_hash", ""),
+                    role=role,
+                )
+                created_at = _parse_dt(u.get("created_at"))
+                if created_at:
+                    user.created_at = created_at
+                session.add(user)
+                session.flush()
+                counters.bump_written("users")
             else:
-                session.add(Patient(
-                    user_id=user_id,
-                    mobile=u.get("mobile"),
-                    age=u.get("age"),
-                    blood_type=u.get("blood_type"),
-                    gender=u.get("gender"),
-                    address=u.get("address"),
-                    emergency_contact_name=u.get("emergency_contact_name"),
-                    emergency_contact_phone=u.get("emergency_contact_phone"),
-                    allergies=u.get("allergies"),
-                    chronic_conditions=u.get("chronic_conditions"),
-                ))
-            session.flush()
+                # Bare shadow row already exists — the blob is still the
+                # source of truth pre-cutover, so sync it in rather than
+                # trusting a shadow row written from a possibly-stale login.
+                existing_user.name = u.get("name") or existing_user.name
+                existing_user.email = (u.get("email") or existing_user.email or "").lower().strip()
+                existing_user.password_hash = u.get("password_hash") or existing_user.password_hash
+                existing_user.role = role
+                created_at = _parse_dt(u.get("created_at"))
+                if created_at:
+                    existing_user.created_at = created_at
+                session.flush()
+
+            if not sub_row_exists:
+                if role == "doctor":
+                    directory = doctors_by_id.get(u.get("doctor_id"), {})
+                    session.add(Doctor(
+                        user_id=user_id,
+                        doctor_id=u.get("doctor_id", ""),
+                        specialty=u.get("specialty") or directory.get("specialty", "General"),
+                        hospital=directory.get("hospital"),
+                        rating=directory.get("rating"),
+                        avatar_initials=directory.get("avatar_initials"),
+                    ))
+                    counters.bump_written("doctors")
+                else:
+                    session.add(Patient(
+                        user_id=user_id,
+                        mobile=u.get("mobile"),
+                        age=u.get("age"),
+                        blood_type=u.get("blood_type"),
+                        gender=u.get("gender"),
+                        address=u.get("address"),
+                        emergency_contact_name=u.get("emergency_contact_name"),
+                        emergency_contact_phone=u.get("emergency_contact_phone"),
+                        allergies=u.get("allergies"),
+                        chronic_conditions=u.get("chronic_conditions"),
+                    ))
+                    counters.bump_written("patients")
+                session.flush()
+            else:
+                counters.bump_skipped(role + "s")
 
         # Dependents (nested list, patients only)
         for dep in u.get("dependents", []):

@@ -102,6 +102,14 @@ class UserRepository:
         user = self._session.execute(stmt).scalar_one_or_none()
         return _to_user_dto(user) if user else None
 
+    def list_all(self) -> list[UserDTO]:
+        return [_to_user_dto(u) for u in self._session.execute(select(User)).scalars()]
+
+    def get_by_doctor_id(self, doctor_id: str) -> UserDTO | None:
+        stmt = select(User).join(Doctor, Doctor.user_id == User.id).where(Doctor.doctor_id == doctor_id)
+        user = self._session.execute(stmt).scalar_one_or_none()
+        return _to_user_dto(user) if user else None
+
     def create_patient(
         self,
         *,
@@ -193,6 +201,52 @@ class UserRepository:
         stmt = select(Dependent).where(Dependent.patient_id == patient_id)
         return [_to_dependent_dto(d) for d in self._session.execute(stmt).scalars()]
 
+    def update_patient(self, user_id: uuid.UUID, *, name: str | None = None, **patient_fields) -> UserDTO | None:
+        """Partial update: only keys actually passed in `patient_fields` are
+        applied (no null-clobber of a field the caller didn't mean to touch).
+        `name` lives on `User`, not `Patient`, so it's a separate kwarg."""
+        user = self._session.get(User, user_id)
+        if user is None:
+            return None
+        if name is not None:
+            user.name = name
+        if user.patient is not None:
+            for key, value in patient_fields.items():
+                setattr(user.patient, key, value)
+        self._session.flush()
+        return _to_user_dto(user)
+
+    def update_doctor(self, user_id: uuid.UUID, *, name: str | None = None, **doctor_fields) -> UserDTO | None:
+        """Same partial-update contract as update_patient, for Doctor columns
+        (specialty, hospital, rating, avatar_initials)."""
+        user = self._session.get(User, user_id)
+        if user is None:
+            return None
+        if name is not None:
+            user.name = name
+        if user.doctor is not None:
+            for key, value in doctor_fields.items():
+                setattr(user.doctor, key, value)
+        self._session.flush()
+        return _to_user_dto(user)
+
+    def update_dependent(self, dependent_id: uuid.UUID, **fields) -> DependentDTO | None:
+        dep = self._session.get(Dependent, dependent_id)
+        if dep is None:
+            return None
+        for key, value in fields.items():
+            setattr(dep, "relationship_" if key == "relationship" else key, value)
+        self._session.flush()
+        return _to_dependent_dto(dep)
+
+    def delete_dependent(self, dependent_id: uuid.UUID) -> bool:
+        dep = self._session.get(Dependent, dependent_id)
+        if dep is None:
+            return False
+        self._session.delete(dep)
+        self._session.flush()
+        return True
+
     def shadow_user(
         self,
         *,
@@ -205,17 +259,17 @@ class UserRepository:
         """Upsert a bare User row (no Patient/Doctor sub-profile) with the
         given primary key.
 
-        Task 5 scaffolding: the live app's user identity is still the
-        legacy blob store (`web.api._load_users`/`_save_users` — see
-        TASK4_SPLIT_ROUTERS.md §2, that cutover is Task 2's unfinished
-        work, out of scope here). But `refresh_tokens` and
-        `audit_log_entries` (both added in Task 1 for exactly this) have a
-        real FK to `users.id`, so a refresh token can't be stored for a
-        user that only exists in the blob store. This keeps a minimal
-        shadow row in sync on every login/register — same id, name,
-        email, password_hash, role as the blob record — so those FKs are
-        satisfiable without touching the other ~90 routes that still read
-        the blob store directly. `Session.merge` does the
+        Originally Task 5 scaffolding for when user identity still lived
+        in the legacy blob store — no longer called by
+        routers/auth.py::_issue_token_pair since the identity cutover
+        (users/patients/doctors/dependents are real relational data now,
+        `UserRepository.create_patient`/`create_doctor` create the real
+        row directly). Still called by `diffdx.audit.log_audit_event` on
+        every audited action, and kept as a cheap safety-net method (it
+        only ever touches `User` columns, never `Patient`/`Doctor`, so it
+        can't clobber profile data) — not removed in case any caller still
+        needs to guarantee a bare row exists before the FK-dependent
+        insert that follows it. `Session.merge` does the
         insert-if-absent/update-if-present logic in one call.
         """
         self._session.merge(User(id=id, name=name, email=email.lower().strip(), password_hash=password_hash, role=role))

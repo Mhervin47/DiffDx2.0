@@ -32,6 +32,7 @@ import base64
 import logging
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
@@ -40,8 +41,11 @@ from sqlalchemy.orm import Session
 from diffdx.db.engine import get_session
 from diffdx.dependencies import get_current_user, require_role
 from diffdx.repositories.appointments import AppointmentRepository
+from diffdx.repositories.files import FileRepository
 from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import PatientRescheduleRequest, RatingRequest
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 router = APIRouter(tags=["appointments"])
 _log = logging.getLogger(__name__)
@@ -70,8 +74,9 @@ async def upload_patient_file(
     test_order_id: str | None = None,       # ties file to a doctor-ordered test
     suggested_test_id: str | None = None,   # ties file to an AI-suggested test
     suggested_test_name: str | None = None, # human label for the suggested test
+    db: Session = Depends(get_session),
 ):
-    from web.api import _MAX_FILE_BYTES, _save_appointments, _save_file_data
+    from web.api import _MAX_FILE_BYTES, _ensure_relational_appointment, _save_appointments, _save_file_data
 
     appointments, appt = _patient_appt_or_403(appt_id, request)
     _ALLOWED_UPLOAD_TYPES = {
@@ -90,10 +95,11 @@ async def upload_patient_file(
     data_b64 = base64.b64encode(raw).decode("ascii")
     # Store file bytes separately so appointments JSON stays small
     _save_file_data(appt_id, file.filename, data_b64)
+    uploaded_at = datetime.now(timezone.utc)
     record = {
         "filename": file.filename,
         "size_bytes": len(raw),
-        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "uploaded_at": uploaded_at.isoformat(),
         "mime_type": file.content_type or "application/octet-stream",
         "test_order_id": test_order_id or None,
         "suggested_test_id": suggested_test_id or None,
@@ -119,6 +125,32 @@ async def upload_patient_file(
             "test_name": suggested_test_name or suggested_test_id,
         }
     _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            dest_dir = _REPO_ROOT / "web" / "data" / "files" / appt_id
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest_path = dest_dir / file.filename
+            dest_path.write_bytes(raw)
+            parsed_suggested_test_id: uuid.UUID | None = None
+            if suggested_test_id:
+                try:
+                    parsed_suggested_test_id = uuid.UUID(suggested_test_id)
+                except ValueError:
+                    parsed_suggested_test_id = None
+            FileRepository(db).replace_for_appointment(
+                appt_uuid, file.filename,
+                storage_path=str(dest_path.relative_to(_REPO_ROOT)),
+                content_type=file.content_type,
+                suggested_test_id=parsed_suggested_test_id,
+                uploaded_at=uploaded_at,
+            )
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of uploaded file failed for appointment %s", appt_id, exc_info=True)
+
     return {"saved": True, "filename": file.filename, "size_bytes": len(raw)}
 
 

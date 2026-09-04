@@ -28,6 +28,7 @@ from diffdx.repositories.clinical import (
     SuggestedTestRepository,
     TreatmentPlanItemRepository,
 )
+from diffdx.repositories.files import FileRepository
 from diffdx.repositories.scheduling import BlockedDateRepository, WaitlistRepository
 
 
@@ -646,3 +647,78 @@ def test_appointment_delete_cascades_to_sub_entities(session_maker):
     with session_maker() as session:
         assert SuggestedTestRepository(session).list_for_appointment(appt_id) == []
         assert ReferralRepository(session).get_for_appointment(appt_id) is None
+
+
+# ---------------------------------------------------------------------------
+# FileRepository
+# ---------------------------------------------------------------------------
+
+def test_file_replace_for_appointment_creates_on_first_call(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        dto = FileRepository(session).replace_for_appointment(
+            appt_id, "report.pdf",
+            storage_path=f"web/data/files/{appt_id}/report.pdf",
+            content_type="application/pdf",
+        )
+        session.commit()
+        assert dto.filename == "report.pdf"
+        assert dto.storage_path == f"web/data/files/{appt_id}/report.pdf"
+
+    with session_maker() as session:
+        files = FileRepository(session).list_for_appointment(appt_id)
+        assert len(files) == 1
+        assert files[0].filename == "report.pdf"
+
+
+def test_file_replace_for_appointment_replaces_not_duplicates(session_maker):
+    """Re-uploading the same filename must swap the row, not add a second
+    one — mirrors the blob's own dedup-by-filename replace semantics."""
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        FileRepository(session).replace_for_appointment(
+            appt_id, "report.pdf",
+            storage_path=f"web/data/files/{appt_id}/report.pdf",
+            content_type="application/pdf",
+        )
+        session.commit()
+
+    with session_maker() as session:
+        FileRepository(session).replace_for_appointment(
+            appt_id, "report.pdf",
+            storage_path=f"web/data/files/{appt_id}/report.pdf",
+            content_type="image/png",
+        )
+        session.commit()
+
+    with session_maker() as session:
+        files = FileRepository(session).list_for_appointment(appt_id)
+        assert len(files) == 1
+        assert files[0].content_type == "image/png"
+
+
+def test_file_replace_for_appointment_with_suggested_test_id(session_maker):
+    patient_id = _make_patient(session_maker)
+    doctor_id = _make_doctor(session_maker)
+    appt_id = _make_appointment(session_maker, patient_id, doctor_id)
+
+    with session_maker() as session:
+        test_dto = SuggestedTestRepository(session).create(appt_id, test="CBC", category="blood")
+        session.commit()
+        suggested_test_id = test_dto.id
+
+    with session_maker() as session:
+        dto = FileRepository(session).replace_for_appointment(
+            appt_id, "labs.jpg",
+            storage_path=f"web/data/files/{appt_id}/labs.jpg",
+            content_type="image/jpeg",
+            suggested_test_id=suggested_test_id,
+        )
+        session.commit()
+        assert dto.suggested_test_id == suggested_test_id

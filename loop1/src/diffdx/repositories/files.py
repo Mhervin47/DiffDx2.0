@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from diffdx.db.models.files import UploadedFile
@@ -69,3 +69,24 @@ class FileRepository:
     def list_for_appointment(self, appointment_id: uuid.UUID) -> list[UploadedFileDTO]:
         stmt = select(UploadedFile).where(UploadedFile.appointment_id == appointment_id)
         return [_to_dto(f) for f in self._session.execute(stmt).scalars()]
+
+    def replace_for_appointment(
+        self, appointment_id: uuid.UUID, filename: str, *,
+        storage_path: str, content_type: str | None = None,
+        suggested_test_id: uuid.UUID | None = None, uploaded_at: datetime | None = None,
+    ) -> UploadedFileDTO:
+        """Delete any existing row(s) for this (appointment_id, filename)
+        pair, then create a fresh one — mirrors the blob's own
+        replace-by-filename semantics (re-uploading the same filename
+        replaces it, doesn't duplicate)."""
+        self._session.execute(
+            delete(UploadedFile).where(
+                UploadedFile.appointment_id == appointment_id,
+                UploadedFile.filename == filename,
+            )
+        )
+        self._session.flush()
+        return self.create(
+            filename=filename, storage_path=storage_path, appointment_id=appointment_id,
+            suggested_test_id=suggested_test_id, content_type=content_type, uploaded_at=uploaded_at,
+        )

@@ -151,7 +151,10 @@ async def doctor_download_patient_file(appt_id: str, filename: str = "", doctor:
 
 
 @router.get("/api/doctor/patient-history/{patient_name}")
-async def get_patient_history(patient_name: str, exclude: str = "", doctor: dict = Depends(require_role("doctor"))):
+async def get_patient_history(
+    patient_name: str, exclude: str = "",
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
     """Return this doctor's own past appointments with a patient (case-insensitive
     name match), sorted newest first.
 
@@ -162,13 +165,29 @@ async def get_patient_history(patient_name: str, exclude: str = "", doctor: dict
     to `doctor_id == doctor.get("doctor_id")` to match the actual product
     intent (the drawer is opened from a doctor's own appointment view to see
     their own prior visits with this patient) and to close the PHI leak.
-    """
-    from web.api import _load_appointments
 
-    appointments = _load_appointments()
+    Phase C of the appointments cutover (see
+    TASK16_APPOINTMENTS_FLIP_DOCTOR_ROUTES.md): same per-item
+    relational-or-blob-fallback pattern as Task 15 — the patient_name
+    match itself has no relational equivalent (not a column on
+    Appointment), so the blob stays authoritative for the filtered entry
+    set; composed data is substituted per-item where a relational row
+    exists.
+    """
+    from web.api import _compose_appointment_dict, _load_appointments
+
     doctor_id = doctor.get("doctor_id")
+    composed_by_id = {}
+    doctor_dto = UserRepository(db).get_by_doctor_id(doctor_id) if doctor_id else None
+    if doctor_dto is not None:
+        composed_by_id = {
+            str(dto.id): _compose_appointment_dict(db, dto)
+            for dto in AppointmentRepository(db).list_for_doctor(doctor_dto.id)
+        }
+    appointments = _load_appointments()
     history = [
-        a for a in appointments.values()
+        composed_by_id.get(appt_id, a)
+        for appt_id, a in appointments.items()
         if a.get("patient_name", "").lower() == patient_name.lower()
         and a.get("appointment_id") != exclude
         and a.get("doctor_id") == doctor_id

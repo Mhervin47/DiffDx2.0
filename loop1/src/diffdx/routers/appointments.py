@@ -34,6 +34,7 @@ from diffdx.db.engine import get_session
 from diffdx.dependencies import get_current_user, require_role
 from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.clinical import ReferralRepository, SuggestedTestRepository
+from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
     NotesRequest,
     ProposeRescheduleRequest,
@@ -100,13 +101,32 @@ async def get_test_notifications(request: Request):
 
 
 @router.get("/api/doctor/appointments")
-async def get_doctor_appointments(doctor: dict = Depends(require_role("doctor"))):
-    """List all appointments assigned to this doctor."""
-    from web.api import _load_appointments
+async def get_doctor_appointments(doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session)):
+    """List all appointments assigned to this doctor.
+
+    Phase C of the appointments cutover (see
+    TASK16_APPOINTMENTS_FLIP_DOCTOR_ROUTES.md): same per-item
+    relational-or-blob-fallback pattern as get_patient_appointments
+    (Task 15) — the blob stays authoritative for which appointments exist
+    for this doctor_id, composed data is substituted in per-item where a
+    relational row exists.
+    """
+    from web.api import _compose_appointment_dict, _load_appointments
 
     doctor_id = doctor.get("doctor_id")
+    composed_by_id = {}
+    doctor_dto = UserRepository(db).get_by_doctor_id(doctor_id) if doctor_id else None
+    if doctor_dto is not None:
+        composed_by_id = {
+            str(dto.id): _compose_appointment_dict(db, dto)
+            for dto in AppointmentRepository(db).list_for_doctor(doctor_dto.id)
+        }
     appointments = _load_appointments()
-    mine = [a for a in appointments.values() if a.get("doctor_id") == doctor_id]
+    mine = [
+        composed_by_id.get(appt_id, a)
+        for appt_id, a in appointments.items()
+        if a.get("doctor_id") == doctor_id
+    ]
     mine.sort(key=lambda a: a.get("slot", ""))
     return mine
 

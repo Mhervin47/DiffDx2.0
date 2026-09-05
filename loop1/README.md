@@ -158,7 +158,7 @@ patient = load_ddxplus_patient(patient_id, split="test")
 ## 5. Quick Start
 
 ### Prerequisites
-- Python 3.11+
+- Python 3.12 (matches `.python-version`, the Dockerfile base image, and `render.yaml`)
 - `uv` package manager (`pip install uv`)
 - Groq API key (free at [console.groq.com](https://console.groq.com))
 
@@ -194,6 +194,12 @@ uv run python -m uvicorn web.api:app --reload --host 0.0.0.0 --port 8000
 # Open http://localhost:8000
 ```
 
+Alternatively, `docker compose up --build` from the repo root runs the same app alongside real
+Postgres and Redis containers — no local Python/uv setup needed, see the root `README.md`. The
+Docker image installs from `requirements-web.txt` (a subset of `requirements.txt` — the web
+server never runs local inference/embedding, so it skips torch, the CUDA stack, and the other
+offline AI-tooling packages `uv sync` installs for local dev).
+
 ### Environment Variables
 
 ```bash
@@ -205,7 +211,12 @@ CRITIC_MODEL=          # Optional. Override critic model.
                        # Default: openrouter/google/gemma-4-31b-it:free
 DATABASE_URL=          # Optional. Postgres URL for production.
                        # Default: SQLite at web/data/diffdx.db
+REDIS_URL=             # Optional. Live diagnostic-session state.
+                       # Default: in-memory dict (single process, no restart survival)
 ```
+
+See `.env.example` for the complete list, including JWT/CORS production requirements and optional
+voice, multilingual, and SMTP integrations.
 
 ---
 

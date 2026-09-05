@@ -98,7 +98,7 @@ Patient / Doctor browser
         │  REST + JSON
         ▼
    FastAPI (loop1/web/api.py)
-        ├── Auth layer (JWT, bcrypt)
+        ├── Auth layer (JWT via PyJWT, PBKDF2-SHA256 password hashing)
         ├── Loop 1 ─── Doctor LLM (Groq / Llama 3.3 70B)
         │               ├── Profile Updater
         │               ├── Compressor
@@ -109,8 +109,13 @@ Patient / Doctor browser
         │               └── DDxPlus eval harness
         └── Loop 3 ─── Router (Urgency / Specialty / Ambiguity)
         ▼
-PostgreSQL (Supabase in prod, SQLite locally)
+PostgreSQL (SQLite locally) — durable data
+Redis (falls back to in-memory) — live diagnostic-session state
 ```
+
+See [`loop1/docs/ARCHITECTURE.md`](loop1/docs/ARCHITECTURE.md) for the full component diagram and
+request lifecycle, and [`loop1/docs/DECISIONS.md`](loop1/docs/DECISIONS.md) for the reasoning
+behind the infrastructure choices (sync SQLAlchemy, PBKDF2 over bcrypt, Redis sidecar, etc.).
 
 ## Tech stack
 
@@ -121,12 +126,25 @@ PostgreSQL (Supabase in prod, SQLite locally)
 | Actor LLM | Groq — `llama-3.3-70b-versatile` |
 | Critic LLM | OpenRouter — Gemma |
 | Embeddings | Sentence Transformers (`all-MiniLM-L6-v2`) + FAISS |
-| Database | PostgreSQL (Supabase in prod) / SQLite locally |
-| Auth | JWT (python-jose) + bcrypt |
+| Database | PostgreSQL in production / SQLite locally, via SQLAlchemy + Alembic |
+| Live session state | Redis (falls back to an in-memory dict if `REDIS_URL` is unset) |
+| Auth | JWT (PyJWT) + PBKDF2-SHA256 password hashing (200k iterations) |
 | Email | Resend API |
-| Deployment | Render (auto-deploy on push to `main`) |
+| Deployment | Render (auto-deploy on push to `main`), or self-hosted via Docker Compose |
 
 ## Running locally
+
+**Option A — Docker Compose** (runs the API alongside real Postgres and Redis containers):
+
+```bash
+cp loop1/.env.example loop1/.env   # add GROQ_API_KEY at minimum
+docker compose up --build
+```
+
+Then open <http://localhost:8000>.
+
+**Option B — plain Python** (uses the SQLite fallback and an in-memory session store unless you
+set `DATABASE_URL`/`REDIS_URL` yourself):
 
 ```bash
 cd loop1
@@ -136,7 +154,10 @@ cp .env.example .env   # add GROQ_API_KEY at minimum
 PYTHONPATH=src python run_web.py
 ```
 
-Then open <http://localhost:8000>.
+`requirements.txt` is the full manifest, including the offline AI-layer tooling (torch, the CUDA
+stack, embeddings). The Docker image and Render deployment instead install from
+`requirements-web.txt`, a hand-curated subset for the web server only — it never runs local
+inference or embedding, so it skips several GB of packages the web tier doesn't need.
 
 Run a headless session from the CLI with `PYTHONPATH=src python scripts/run_session.py`, or the DDxPlus eval with `PYTHONPATH=src python scripts/bake_off.py`.
 
@@ -147,8 +168,13 @@ Run a headless session from the CLI with `PYTHONPATH=src python scripts/run_sess
 | `GROQ_API_KEY` | Yes | Powers the actor LLM (Llama 3.3 70B) |
 | `OPENROUTER_API_KEY` | No | Powers the critic LLM; critic is skipped if unset |
 | `DATABASE_URL` | No | PostgreSQL connection string — falls back to SQLite if unset |
+| `REDIS_URL` | No | Live diagnostic-session state — falls back to an in-memory dict if unset (single process only, no restart survival) |
 | `RESEND_API_KEY` | No | Sends appointment confirmation and reminder emails |
-| `SECRET_KEY` | No | JWT signing secret — auto-generated if unset (sessions reset on restart) |
+| `SECRET_KEY` | Required in production | JWT signing secret — auto-generated per-process in dev (sessions reset on restart); the app refuses to start in production (`ENVIRONMENT=production`) without an explicit value |
+| `CORS_ALLOWED_ORIGINS` | Required in production | Comma-separated allowed origins — defaults to `*` in dev; the app refuses to start in production with the wildcard |
+
+See [`loop1/.env.example`](loop1/.env.example) for the complete list, including optional voice,
+multilingual, and SMTP integrations.
 
 ## Tests
 
@@ -161,6 +187,8 @@ Covers session lifecycle, compressor, retrieval, safety screener, profile update
 
 ## Deployment
 
-Configured for Render via `render.yaml`. Connect the `Mhervin47/DiffDx` GitHub repo, set the environment variables in the Render dashboard, and deploy. Auto-deploys on every push to `main`. Uses PostgreSQL on Render in production and a local `diffx.db` SQLite file in development.
+**Hosted**: configured for Render via `render.yaml`. Connect the `Mhervin47/DiffDx` GitHub repo, set the environment variables in the Render dashboard, and deploy. Auto-deploys on every push to `main`. Uses PostgreSQL on Render in production and a local `diffdx.db` SQLite file in development.
+
+**Self-hosted**: `docker compose up --build` from the repo root runs the API alongside its own Postgres and Redis containers — see "Running locally" above. `loop1/Dockerfile` builds a non-root, multi-stage image with a `/health` liveness check and a `/ready` readiness check (verifies both DB and Redis connectivity).
 
 For more details check this out https://mhervin47.github.io/DiffDx/

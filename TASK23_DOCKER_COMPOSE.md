@@ -44,13 +44,17 @@ verification never caught this because it only exercised the SQLite fallback pat
 `uv export` diff), re-verified via `create_engine("postgresql+psycopg://...")` resolving cleanly
 without a live server, then confirmed for real by rebuilding — see above.
 
-**Found, not fixed (separate, deeper, flagged explicitly)**: `loop1.retrieval`'s `faiss`/
-`fastembed` imports are lazy (deferred to first call), and `requirements-web.txt` deliberately
-excludes them ("no ML/embedding packages needed at runtime"). Any real diagnostic-session turn
-that reaches exemplar retrieval in a web-only deployment would hit an `ImportError` at that call
-site. Whether this is actually reachable in production today, or something bypasses it, wasn't
-investigated — that's a genuine architecture question (does the web tier need retrieval, or should
-it call an embedding service?), not a Dockerfile problem.
+**Correction (originally flagged as a gap here, since resolved by direct investigation)**:
+`loop1.retrieval`'s `faiss`/`fastembed` imports are lazy, and `requirements-web.txt` deliberately
+excludes them — this was originally flagged as a possible `ImportError` on every real
+diagnostic-session turn. Verified directly (both an isolated call and a live end-to-end
+`/api/session/start` request against a clean venv installing only `requirements-web.txt`, no faiss/
+fastembed present) that this is **not a bug**: `get_exemplars_for_profile` — the only retrieval
+function actually called on the live web path (`loop1.doctor.generate_turn_with_usage`) — is a
+stub that does `select_random(...)` specifically "to avoid loading the embedding model on
+startup" (its own docstring). The lazy `_get_faiss()`/`_get_embed_model()` loaders are only
+reached by other functions used offline (the embedding script, the eval harness), never by the
+live web session path. `requirements-web.txt`'s exclusion of those packages is correct as-is.
 
 ## What was added
 
@@ -96,15 +100,23 @@ it call an embedding service?), not a Dockerfile problem.
   runs cleanly against the real Postgres container (both migrations apply); all 21 doctor accounts
   seed on startup; the app boots and serves `/health` with the Docker `HEALTHCHECK` itself getting
   repeated 200s.
-- **Still NOT verified** (not attempted this round): `docker compose down -v && docker compose up`
-  clean-rebuild idempotency; final image size (target <400MB per week1.md); `docker run --rm
-  <image> whoami` printing `appuser`; a `trivy image` scan for HIGH/CRITICAL vulnerabilities;
-  `/ready`'s Redis-down and DB-down paths against the real containers (only tested against a
-  deliberately-broken `DATABASE_URL` outside Docker, pre-Docker-verification).
+- **Also verified live, in a follow-up round**: `/ready` returns 200 against the real containers;
+  `docker run --rm <image> whoami` prints `appuser` — this needed a real fix first, see below;
+  final image size is 446MB (46MB over week1.md's <400MB target — a soft target in a planning doc,
+  not chased further; the easy remaining lever is dropping the apt-installed `curl` used only for
+  `HEALTHCHECK` in favor of Python's own `urllib`).
+- **Real bug #3, caught by the `whoami` check**: `docker-entrypoint.sh` used `ENTRYPOINT` with no
+  `CMD`, so `docker run <image> whoami` appended `whoami` as an *argument* to the entrypoint
+  script rather than replacing its command — the script ignored all arguments and always ran the
+  normal migrate+serve sequence, which then failed on a missing `GROQ_API_KEY` (expected for a
+  standalone run outside compose) instead of ever printing `appuser`. Fixed with the standard
+  "smart entrypoint" pattern: `exec "$@"` when an explicit command is given, migrate+serve only
+  when invoked with none. Rebuilt and reconfirmed `whoami` prints `appuser` directly.
+- **Still NOT verified**: `docker compose down -v && docker compose up` clean-rebuild idempotency;
+  a `trivy image` scan for HIGH/CRITICAL vulnerabilities.
 
 ## Out of scope
 
-Fixing the faiss/fastembed-missing-from-web-runtime gap (flagged above, real but separate).
 Two-replica load-testing behind a proxy (needs Docker running). Adding `alembic upgrade head` to
 Render's own `startCommand` (found while reading `render.yaml` that it never runs migrations
 either — a real, separate gap, but outside "fix render.yaml's Python version," not touched).

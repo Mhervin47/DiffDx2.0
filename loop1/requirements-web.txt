@@ -23,6 +23,8 @@ markupsafe==3.0.2
 multidict==6.6.3
 packaging==26.2
 propcache==0.5.2
+psycopg==3.3.5
+psycopg-binary==3.3.5
 psycopg2-binary==2.9.12
 pydantic==2.13.4
 pydantic-core==2.46.4

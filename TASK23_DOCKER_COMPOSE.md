@@ -3,14 +3,17 @@
 Continues week1.md's original task sequence (Task 6 done — `TASK22_REDIS_SESSIONS.md`). Task 7
 depends on Tasks 5 and 6, both done.
 
-## Hard constraint, agreed with the user up front
+## Hard constraint, agreed with the user up front — later resolved
 
-This environment has no `docker`, `docker-compose`, or `trivy` installed. None of week1.md's Task
-7 acceptance checks (`docker compose up --build`, image size, `docker run --rm diffdx whoami`, a
-trivy scan) could actually be executed. Per explicit direction, everything below was still written
-— carefully, static-review-only — but **none of it has been built or run**. Test with
-`docker compose up --build` on a machine with Docker before trusting any of it for a real
-deployment.
+This environment has no `docker`, `docker-compose`, or `trivy` installed, so the Dockerfile/compose
+files were initially written static-review-only. The user ran `docker compose up --build` on their
+own machine (Docker Desktop was already installed but not on `PATH` and not launched — fixed by
+`open -a Docker` and adding `/Applications/Docker.app/Contents/Resources/bin` to `PATH`) and it
+now **builds and runs successfully end to end**: both stages build, `db`/`redis` pass their
+healthchecks, `docker-entrypoint.sh` runs `alembic upgrade head` against the real Postgres
+container, all 21 doctor accounts seed, the app boots, and Docker's own `HEALTHCHECK` is actively
+polling `/health` and getting 200s. See the second bug below, caught by this real run — the kind
+of thing static review alone couldn't have found.
 
 ## A real bug found and fixed first (this part *is* fully verified, no Docker needed)
 
@@ -28,7 +31,20 @@ raised `ModuleNotFoundError: No module named 'slowapi'`. Diffed the missing pack
 branch — building a Docker image on the old file would have shipped a container that crashed on
 its first request.
 
-**Also found, not fixed (separate, deeper, flagged explicitly)**: `loop1.retrieval`'s `faiss`/
+**Second real bug, caught by the actual `docker compose up --build` run against real Postgres**:
+`diffdx/db/engine.py` deliberately rewrites `postgres://`/`postgresql://` URLs to
+`postgresql+psycopg://` (psycopg **3**, not psycopg2) for SQLAlchemy's engine.
+`requirements-web.txt` only had `psycopg2-binary` (needed separately, by `legacy_store.py`'s raw
+connection pool for the blob store — confirmed both drivers are genuinely needed simultaneously),
+missing `psycopg`/`psycopg-binary` (v3) entirely — `alembic upgrade head` failed inside the
+container with `ModuleNotFoundError: No module named 'psycopg'`. The earlier clean-venv
+verification never caught this because it only exercised the SQLite fallback path (no
+`DATABASE_URL` set) — it never actually hit Postgres dialect resolution. Fixed by adding
+`psycopg==3.3.5`/`psycopg-binary==3.3.5` (matching what `requirements.txt` already had from the
+`uv export` diff), re-verified via `create_engine("postgresql+psycopg://...")` resolving cleanly
+without a live server, then confirmed for real by rebuilding — see above.
+
+**Found, not fixed (separate, deeper, flagged explicitly)**: `loop1.retrieval`'s `faiss`/
 `fastembed` imports are lazy (deferred to first call), and `requirements-web.txt` deliberately
 excludes them ("no ML/embedding packages needed at runtime"). Any real diagnostic-session turn
 that reaches exemplar retrieval in a web-only deployment would hit an `ImportError` at that call
@@ -74,10 +90,17 @@ it call an embedding service?), not a Dockerfile problem.
   boot test, twice); the `/health`/`/ready` routes (live HTTP against the dev server); YAML
   validity of `docker-compose.yml` and `render.yaml`; shell syntax of `docker-entrypoint.sh`; full
   `pytest` — 337-338 passed, same 17-18 pre-existing/unrelated failures, unchanged baseline.
-- **NOT verifiable here, explicitly not claimed as tested**: `docker compose up --build` actually
-  succeeding, the entrypoint's migration step running correctly inside a real container, final
-  image size (target <400MB per week1.md), `docker run --rm diffdx whoami` printing `appuser`, a
-  `trivy image` scan for HIGH/CRITICAL vulnerabilities.
+- **Verified live via a real `docker compose up --build` run** (on the user's machine, Docker
+  Desktop): both image stages build; `db` (`postgres:16-alpine`) and `redis` (`redis:7-alpine`)
+  pass their healthchecks before `api` starts; `docker-entrypoint.sh`'s `alembic upgrade head`
+  runs cleanly against the real Postgres container (both migrations apply); all 21 doctor accounts
+  seed on startup; the app boots and serves `/health` with the Docker `HEALTHCHECK` itself getting
+  repeated 200s.
+- **Still NOT verified** (not attempted this round): `docker compose down -v && docker compose up`
+  clean-rebuild idempotency; final image size (target <400MB per week1.md); `docker run --rm
+  <image> whoami` printing `appuser`; a `trivy image` scan for HIGH/CRITICAL vulnerabilities;
+  `/ready`'s Redis-down and DB-down paths against the real containers (only tested against a
+  deliberately-broken `DATABASE_URL` outside Docker, pre-Docker-verification).
 
 ## Out of scope
 

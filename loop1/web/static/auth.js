@@ -341,3 +341,18 @@ function _injectAmbientBg() {
   document.body.insertBefore(bg, document.body.firstChild);
 }
 document.addEventListener('DOMContentLoaded', _injectAmbientBg);
+
+/** Auto-inject universal reloader fallback if not already in head */
+(function _ensureReloader() {
+  if (!document.querySelector('link[href*="reloader.css"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/reloader.css';
+    document.head.appendChild(link);
+  }
+  if (!window.DiffDxReloader && !document.querySelector('script[src*="reloader.js"]')) {
+    const s = document.createElement('script');
+    s.src = '/reloader.js';
+    document.head.appendChild(s);
+  }
+})();

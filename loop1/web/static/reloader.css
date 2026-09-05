@@ -1,0 +1,339 @@
+/* ═════════════════════════════════════════════════════════════════════
+   DiffDx — Universal Theme-Aware Clinical Reloader & Preloader
+   Renders instantaneously on load/reload with medical telemetry styling
+   ═════════════════════════════════════════════════════════════════════ */
+
+#diffdx-page-reloader {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: 'Sora', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+#diffdx-page-reloader.reloader-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DARK THEME (Default)
+   ───────────────────────────────────────────────────────────── */
+#diffdx-page-reloader.reloader-dark {
+  background-color: #070a13;
+  background-image: 
+    radial-gradient(circle at 50% 38%, rgba(16, 185, 129, 0.13) 0%, rgba(6, 182, 212, 0.06) 42%, transparent 72%),
+    radial-gradient(circle at 20% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 45%);
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-card {
+  background: rgba(13, 18, 32, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 25px 55px -10px rgba(0, 0, 0, 0.8),
+    0 0 35px rgba(16, 185, 129, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-brand {
+  color: #ffffff;
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-brand-accent {
+  background: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-subtitle {
+  color: #94a3b8;
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-status-pill {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #34d399;
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-bar {
+  background: linear-gradient(90deg, #10b981 0%, #06b6d4 50%, #10b981 100%);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.6);
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-pulse-ring {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-ecg-svg {
+  stroke: #10b981;
+  filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.65));
+}
+
+#diffdx-page-reloader.reloader-dark .reloader-dot-live {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LIGHT THEME
+   ───────────────────────────────────────────────────────────── */
+#diffdx-page-reloader.reloader-light {
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(circle at 50% 38%, rgba(16, 185, 129, 0.11) 0%, rgba(6, 182, 212, 0.06) 45%, transparent 72%),
+    radial-gradient(circle at 20% 80%, rgba(14, 165, 233, 0.07) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.09) 0%, transparent 45%);
+}
+
+#diffdx-page-reloader.reloader-light .reloader-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  box-shadow: 
+    0 24px 50px -10px rgba(15, 23, 42, 0.12),
+    0 0 30px rgba(16, 185, 129, 0.15),
+    inset 0 1px 0 #ffffff;
+}
+
+#diffdx-page-reloader.reloader-light .reloader-brand {
+  color: #0f172a;
+}
+
+#diffdx-page-reloader.reloader-light .reloader-brand-accent {
+  background: linear-gradient(135deg, #059669 0%, #0284c7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#diffdx-page-reloader.reloader-light .reloader-subtitle {
+  color: #475569;
+}
+
+#diffdx-page-reloader.reloader-light .reloader-status-pill {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #059669;
+}
+
+#diffdx-page-reloader.reloader-light .reloader-track {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+#diffdx-page-reloader.reloader-light .reloader-bar {
+  background: linear-gradient(90deg, #059669 0%, #0284c7 50%, #059669 100%);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+#diffdx-page-reloader.reloader-light .reloader-pulse-ring {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+#diffdx-page-reloader.reloader-light .reloader-ecg-svg {
+  stroke: #059669;
+  filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.45));
+}
+
+#diffdx-page-reloader.reloader-light .reloader-dot-live {
+  background: #059669;
+  box-shadow: 0 0 6px #059669;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CARD & CONTENT LAYOUT
+   ───────────────────────────────────────────────────────────── */
+.reloader-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28px;
+  padding: 38px 46px;
+  width: 90%;
+  max-width: 420px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* Central Emblem & Ripple Rings */
+.reloader-emblem-wrap {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.reloader-pulse-ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border-width: 1.5px;
+  border-style: solid;
+  pointer-events: none;
+  animation: reloader-ripple 2.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+.reloader-pulse-ring-2 {
+  animation-delay: 1.1s;
+}
+
+.reloader-emblem-core {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(6, 182, 212, 0.18) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  animation: reloader-heartbeat 2s ease-in-out infinite;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+}
+
+.reloader-emblem-icon {
+  width: 34px;
+  height: 34px;
+  color: #10b981;
+}
+#diffdx-page-reloader.reloader-light .reloader-emblem-icon {
+  color: #059669;
+}
+
+/* Brand Title */
+.reloader-brand {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.reloader-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+/* ECG Waveform Telemetry */
+.reloader-ecg-container {
+  width: 100%;
+  max-width: 280px;
+  height: 38px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0.95;
+}
+
+.reloader-ecg-svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: reloader-ecg-dash 2s ease-in-out infinite;
+}
+
+/* Shimmer Progress Track */
+.reloader-track {
+  width: 100%;
+  max-width: 280px;
+  height: 4px;
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.reloader-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 45%;
+  border-radius: 999px;
+  animation: reloader-bar-flow 1.5s ease-in-out infinite;
+}
+
+/* Status Pill */
+.reloader-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: all 0.25s ease;
+}
+
+.reloader-dot-live {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  animation: reloader-live-pulse 1.4s ease-in-out infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   KEYFRAME ANIMATIONS
+   ───────────────────────────────────────────────────────────── */
+@keyframes reloader-heartbeat {
+  0%, 100% { transform: scale(1); }
+  12% { transform: scale(1.12); }
+  24% { transform: scale(1); }
+  36% { transform: scale(1.06); }
+  55% { transform: scale(1); }
+}
+
+@keyframes reloader-ripple {
+  0% { transform: scale(0.85); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes reloader-ecg-dash {
+  0% { stroke-dashoffset: 400; opacity: 0.4; }
+  45% { stroke-dashoffset: 0; opacity: 1; }
+  90% { stroke-dashoffset: -400; opacity: 1; }
+  100% { stroke-dashoffset: -400; opacity: 0.4; }
+}
+
+@keyframes reloader-bar-flow {
+  0% { left: -45%; width: 35%; }
+  50% { left: 35%; width: 55%; }
+  100% { left: 105%; width: 35%; }
+}
+
+@keyframes reloader-live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.75); }
+}

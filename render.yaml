@@ -3,7 +3,7 @@ services:
     name: diffdx
     runtime: python
     rootDir: loop1
-    buildCommand: pip install -r requirements-web.txt && pip install -e . --no-deps
+    buildCommand: pip install -r requirements-web.txt && pip install -e . --no-deps && PYTHONPATH=src alembic upgrade head && PYTHONPATH=src python scripts/seed_doctors.py
     startCommand: PYTHONPATH=src uvicorn web.api:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL

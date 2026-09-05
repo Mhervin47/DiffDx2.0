@@ -20,7 +20,8 @@ data/phase7_critiques/
 docs/
 README.md
 SYSTEM_DOCS.md
-scripts/
+scripts/*
+!scripts/seed_doctors.py
 demo.py
 demo_with_critic.py
 run_web.py

@@ -55,10 +55,11 @@ COPY --from=builder /app/pyproject.toml ./pyproject.toml
 # Runtime data the AI layer reads by path at call time, not just import
 # time — loop1.config reads config.yaml, loop1.doctor and
 # loop2.critic.critic read prompts/*.txt, sessions.py's _CASES_DIR reads
-# test_cases/*.json, loop1.retrieval reads exemplars/ (lazily, on first
-# real retrieval call — see the commit that added this file for the
-# known gap where requirements-web.txt doesn't include the faiss/
-# fastembed packages that call needs).
+# test_cases/*.json. exemplars/ is read by the live web session path via
+# select_random() only — the faiss/fastembed-backed semantic retrieval
+# functions in loop1.retrieval are never called from a real request (only
+# from offline tooling), confirmed live; requirements-web.txt correctly
+# excludes those packages.
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 COPY config.yaml ./config.yaml
@@ -66,6 +67,10 @@ COPY prompts ./prompts
 COPY test_cases ./test_cases
 COPY exemplars ./exemplars
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
+# Only the one script the entrypoint needs, not the whole scripts/
+# directory — the rest is offline AI-layer tooling with its own,
+# heavier dependency needs (not installed here, see requirements-web.txt).
+COPY scripts/seed_doctors.py ./scripts/seed_doctors.py
 RUN chmod +x ./docker-entrypoint.sh
 
 RUN mkdir -p web/data logs/final_records logs/sessions logs/critic_reports \

@@ -11,7 +11,7 @@ the real FastAPI app — worth explaining):
   not have already triggered the engine singleton). Every place that
   needs a session (routers/auth.py's Depends(get_session),
   diffdx.audit.log_audit_event, and now web.api's identity helpers —
-  _load_users/_user_from_access_token/_seed_doctor_accounts, which all
+  _load_users/_user_from_access_token, which all
   resolve get_sessionmaker() by name at call time) picks up this
   monkeypatch transparently, so user creation in this module never
   touches the live dev DB at web/data/diffdx.db — the collision-avoidance
@@ -250,8 +250,8 @@ def test_no_token_on_doctor_route_is_401(client):
 # ---------------------------------------------------------------------------
 
 def _make_doctor(name: str, doctor_id: str) -> tuple[dict, str]:
-    """Doctors are normally only created via the fixed _DOCTOR_SEED list
-    at startup — registration only creates patients. Created directly via
+    """Doctors are normally only created via scripts/seed_doctors.py's
+    fixed doctor list — registration only creates patients. Created directly via
     UserRepository here (same approach test_concurrency.py uses) rather
     than depending on which seeded doctor_ids happen to exist. Since the
     identity cutover, this goes through the module's monkeypatched

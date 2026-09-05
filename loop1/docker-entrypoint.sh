@@ -1,8 +1,12 @@
 #!/bin/sh
-# Runs migrations before starting the server — week1.md Task 7: "API
-# entrypoint runs alembic upgrade head before starting uvicorn." Doctor
-# seeding happens on every startup already (web/api.py's _on_startup),
-# not repeated here.
+# Runs migrations, then seeds doctor accounts, before starting the server —
+# week1.md Task 7: "API entrypoint runs alembic upgrade head before
+# starting uvicorn." Doctor seeding no longer happens on every app boot
+# (moved out of web/api.py's startup hook into scripts/seed_doctors.py —
+# TASK4_SPLIT_ROUTERS.md §2: seeding on every boot is a race in a
+# multi-replica deployment) — this is now the one place it runs, and it's
+# idempotent (a second run against an already-seeded database creates 0
+# doctors).
 #
 # Respects an explicit command (`docker run <image> whoami`, a shell for
 # debugging, etc.) instead of always forcing migrate+serve — standard
@@ -17,6 +21,9 @@ set -e
 if [ "$#" -eq 0 ]; then
     echo "Running alembic upgrade head..."
     alembic upgrade head
+
+    echo "Seeding doctor accounts..."
+    python scripts/seed_doctors.py
 
     echo "Starting uvicorn..."
     exec uvicorn web.api:app --host 0.0.0.0 --port "${PORT:-8000}"

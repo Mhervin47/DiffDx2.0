@@ -742,78 +742,323 @@
     .btn-next:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
 
     /* Loading Overlay */
+    /* ════════════════════════════════════════════════════════════
+       PREMIUM CLINICAL DIAGNOSTIC LOADING OVERLAY
+       ════════════════════════════════════════════════════════════ */
     .loading-overlay {
       display: none;
-      position: fixed; inset: 0; z-index: 9999;
-      background: var(--bg-dark);
+      position: fixed; inset: 0; z-index: 99999;
       flex-direction: column; align-items: center; justify-content: center;
-      gap: 32px;
-      animation: modalFadeIn .3s ease;
+      padding: 20px;
+      user-select: none;
+      animation: lo-fadeIn .35s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
     }
     .loading-overlay.active { display: flex; }
 
-    @keyframes modalFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+    @keyframes lo-fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
     }
 
+    /* Light Theme (Default in history.html root without .dark-theme) */
+    html:not(.dark-theme) .loading-overlay {
+      background: #f8fafc;
+      background-image:
+        radial-gradient(circle at 50% 35%, rgba(16, 185, 129, 0.12) 0%, rgba(6, 182, 212, 0.08) 45%, transparent 75%),
+        radial-gradient(circle at 20% 80%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 45%);
+    }
+
+    /* Dark Theme */
+    html.dark-theme .loading-overlay {
+      background: #070a13;
+      background-image:
+        radial-gradient(circle at 50% 38%, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.07) 45%, transparent 75%),
+        radial-gradient(circle at 20% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.09) 0%, transparent 45%);
+    }
+
+    /* Atmospheric Glow */
     .lo-glow {
       position: absolute; inset: 0; pointer-events: none;
-      background:
-        radial-gradient(ellipse 60% 50% at 50% 40%, rgba(25,198,173,.15) 0%, transparent 65%),
-        radial-gradient(ellipse 40% 40% at 50% 60%, rgba(129,116,232,.1) 0%, transparent 60%);
-      animation: lo-breathe 3s ease-in-out infinite alternate;
+      background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.16) 0%, transparent 60%);
+      animation: lo-breathe 4s ease-in-out infinite alternate;
     }
-    @keyframes lo-breathe { from{opacity:.6} to{opacity:1} }
+    @keyframes lo-breathe { 0%{opacity:.5; transform:scale(.95)} 100%{opacity:1; transform:scale(1.05)} }
 
-    .lo-logo {
-      position: relative; z-index: 1;
-      display: flex; align-items: center; gap: 12px;
-      font-family: var(--font-heading); font-size: 42px; font-weight: 900;
-      letter-spacing: -.05em; color: var(--text-main);
+    /* The Clinical Glass Card */
+    .lo-card {
+      position: relative; z-index: 2;
+      width: 100%; max-width: 440px;
+      border-radius: 28px;
+      padding: 38px 42px;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center;
+      box-sizing: border-box;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      transition: transform .3s ease;
     }
-    .lo-logo svg {
-      filter: drop-shadow(0 0 18px rgba(25,198,173,.9));
-      animation: lo-pulse 2s ease-in-out infinite;
-    }
-    @keyframes lo-pulse {
-      0%,100% { filter: drop-shadow(0 0 18px rgba(25,198,173,.9)); }
-      50%      { filter: drop-shadow(0 0 32px rgba(25,198,173,1)); }
-    }
-    .lo-logo-text {
-      background: linear-gradient(90deg, #19C6AD, #4C8FF5, #8174E8, #19C6AD);
-      background-size: 300% 100%;
-      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-      animation: lo-flow 3s linear infinite;
-    }
-    @keyframes lo-flow { 0%{background-position:0%} 100%{background-position:300%} }
 
-    .lo-message {
-      position: relative; z-index: 1;
-      font-family: var(--font-heading); font-size: 16px; font-weight: 700;
-      color: var(--text-muted); letter-spacing: .02em;
-      animation: lo-blink 2s ease-in-out infinite;
+    html:not(.dark-theme) .lo-card {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(16, 185, 129, 0.24);
+      box-shadow: 
+        0 24px 60px -10px rgba(15, 23, 42, 0.14),
+        0 0 35px rgba(16, 185, 129, 0.14),
+        inset 0 1px 0 #ffffff;
     }
-    @keyframes lo-blink { 0%,100%{opacity:.5} 50%{opacity:1} }
 
+    html.dark-theme .lo-card {
+      background: rgba(13, 18, 32, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 
+        0 28px 70px -12px rgba(0, 0, 0, 0.85),
+        0 0 40px rgba(16, 185, 129, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    /* Emblem & Ripple Unit */
+    .lo-emblem-wrap {
+      position: relative;
+      width: 80px; height: 80px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .lo-pulse-ring {
+      position: absolute; inset: -12px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(16, 185, 129, 0.4);
+      pointer-events: none;
+      animation: lo-ripple 2.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+    }
+    .lo-pulse-ring-2 {
+      animation-delay: 1.1s;
+    }
+
+    .lo-emblem-core {
+      width: 68px; height: 68px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid rgba(16, 185, 129, 0.4);
+      animation: lo-heartbeat 2s ease-in-out infinite;
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.25);
+    }
+
+    .lo-emblem-icon {
+      width: 34px; height: 34px;
+      stroke: #10b981;
+      filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
+    }
+    html:not(.dark-theme) .lo-emblem-icon {
+      stroke: #059669;
+      filter: drop-shadow(0 0 6px rgba(5, 150, 105, 0.5));
+    }
+
+    /* Brand Typography */
+    .lo-brand {
+      font-family: 'Sora', sans-serif;
+      font-size: 28px; font-weight: 800;
+      letter-spacing: -0.6px;
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+    html:not(.dark-theme) .lo-brand { color: #0f172a; }
+    html.dark-theme .lo-brand { color: #ffffff; }
+
+    .lo-brand-accent {
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    html:not(.dark-theme) .lo-brand-accent {
+      background: linear-gradient(135deg, #059669 0%, #0284c7 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* Neural Engine Live Pill */
+    .lo-engine-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 14px; border-radius: 999px;
+      font-size: 11.5px; font-weight: 600;
+      letter-spacing: 0.3px;
+      margin-bottom: 18px;
+    }
+    html:not(.dark-theme) .lo-engine-tag {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #059669;
+    }
+    html.dark-theme .lo-engine-tag {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .lo-pulse-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+      animation: lo-dot-blink 1.4s ease-in-out infinite;
+    }
+
+    /* Real-Time ECG Waveform Telemetry */
+    .lo-ecg-container {
+      width: 100%; max-width: 290px;
+      height: 38px;
+      margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .lo-ecg-svg {
+      width: 100%; height: 100%;
+      fill: none; stroke-width: 2.5;
+      stroke-linecap: round; stroke-linejoin: round;
+      stroke-dasharray: 400; stroke-dashoffset: 400;
+      animation: lo-ecg-dash 2.2s ease-in-out infinite;
+    }
+    html:not(.dark-theme) .lo-ecg-svg {
+      stroke: #059669;
+      filter: drop-shadow(0 0 4px rgba(5, 150, 105, 0.45));
+    }
+    html.dark-theme .lo-ecg-svg {
+      stroke: #10b981;
+      filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.7));
+    }
+
+    /* Shimmer Progress Track */
     .lo-bar-track {
-      position: relative; z-index: 1;
-      width: 280px; height: 3px;
-      background: rgba(143,162,185,.15); border-radius: 9999px; overflow: hidden;
+      width: 100%; max-width: 300px;
+      height: 5px;
+      border-radius: 999px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 18px;
     }
+    html:not(.dark-theme) .lo-bar-track {
+      background: rgba(15, 23, 42, 0.08);
+    }
+    html.dark-theme .lo-bar-track {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
     .lo-bar-fill {
-      height: 100%; border-radius: 9999px;
-      background: linear-gradient(90deg, #19C6AD, #4C8FF5, #8174E8);
-      background-size: 200% 100%;
-      animation: lo-bar 1.8s ease-in-out infinite, lo-bar-flow 2s linear infinite;
-      box-shadow: 0 0 12px rgba(25,198,173,.6);
+      position: absolute; top: 0; left: 0;
+      height: 100%; width: 45%;
+      border-radius: 999px;
+      animation: lo-bar-flow 1.6s ease-in-out infinite;
     }
-    @keyframes lo-bar {
-      0%   { width: 0%;   margin-left: 0; }
-      50%  { width: 70%;  margin-left: 15%; }
-      100% { width: 0%;   margin-left: 100%; }
+    html:not(.dark-theme) .lo-bar-fill {
+      background: linear-gradient(90deg, #059669 0%, #0284c7 50%, #059669 100%);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
     }
-    @keyframes lo-bar-flow { 0%{background-position:0%} 100%{background-position:200%} }
+    html.dark-theme .lo-bar-fill {
+      background: linear-gradient(90deg, #10b981 0%, #06b6d4 50%, #8174e8 100%);
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.65);
+    }
+
+    /* Controls: Elapsed Timer & Cancel Button */
+    .lo-control-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; margin-bottom: 16px;
+    }
+
+    .lo-elapsed-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 13px; border-radius: 999px;
+      font-size: 12px; font-weight: 700;
+      font-family: 'Sora', monospace;
+      letter-spacing: 0.2px;
+    }
+    html:not(.dark-theme) .lo-elapsed-badge {
+      background: rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      color: #475569;
+    }
+    html.dark-theme .lo-elapsed-badge {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+    }
+
+    .lo-cancel-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 14px; border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    html:not(.dark-theme) .lo-cancel-btn {
+      background: transparent;
+      border: 1px solid rgba(15, 23, 42, 0.15);
+      color: #64748b;
+    }
+    html:not(.dark-theme) .lo-cancel-btn:hover {
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #ef4444;
+    }
+    html.dark-theme .lo-cancel-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #94a3b8;
+    }
+    html.dark-theme .lo-cancel-btn:hover {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    /* Live Dynamic Status Message */
+    .lo-message {
+      font-family: 'Sora', sans-serif;
+      font-size: 14.5px; font-weight: 700;
+      letter-spacing: 0.1px;
+      min-height: 22px;
+      transition: opacity .2s ease;
+    }
+    html:not(.dark-theme) .lo-message { color: #0f172a; }
+    html.dark-theme .lo-message { color: #f1f5f9; }
+
+    /* Quotes and Reassuring Subtext */
+    .lo-quote-wrap {
+      font-size: 11.5px; font-style: italic;
+      line-height: 1.5; max-width: 340px;
+      margin-top: 8px; min-height: 36px;
+      transition: opacity .25s ease;
+    }
+    html:not(.dark-theme) .lo-quote-wrap { color: #64748b; }
+    html.dark-theme .lo-quote-wrap { color: #94a3b8; opacity: 0.85; }
+
+    /* Animations */
+    @keyframes lo-heartbeat {
+      0%, 100% { transform: scale(1); }
+      12% { transform: scale(1.12); }
+      24% { transform: scale(1); }
+      36% { transform: scale(1.06); }
+      55% { transform: scale(1); }
+    }
+    @keyframes lo-ripple {
+      0% { transform: scale(0.85); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    @keyframes lo-ecg-dash {
+      0% { stroke-dashoffset: 400; opacity: 0.4; }
+      45% { stroke-dashoffset: 0; opacity: 1; }
+      90% { stroke-dashoffset: -400; opacity: 1; }
+      100% { stroke-dashoffset: -400; opacity: 0.4; }
+    }
+    @keyframes lo-bar-flow {
+      0% { left: -45%; width: 35%; }
+      50% { left: 35%; width: 55%; }
+      100% { left: 105%; width: 35%; }
+    }
+    @keyframes lo-dot-blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.75); }
+    }
 
     /* Responsive queries */
     @media (max-width: 900px) {
@@ -1114,18 +1359,57 @@
   <!-- Loading overlay -->
   <div class="loading-overlay" id="loading-overlay">
     <div class="lo-glow"></div>
-    <div class="lo-logo">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#19C6AD" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-      </svg>
-      <span class="lo-logo-text">DiffDx</span>
+
+    <!-- Frosted Glass Clinical Telemetry Card -->
+    <div class="lo-card">
+      <!-- Concentric Ripple Rings & Heartbeat Core -->
+      <div class="lo-emblem-wrap">
+        <div class="lo-pulse-ring"></div>
+        <div class="lo-pulse-ring lo-pulse-ring-2"></div>
+        <div class="lo-emblem-core">
+          <svg class="lo-emblem-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- DiffDx Brand Header -->
+      <div class="lo-brand">
+        Diff<span class="lo-brand-accent">Dx</span>
+      </div>
+      <div class="lo-engine-tag">
+        <span class="lo-pulse-dot"></span>
+        <span>AI Diagnostic Neural Engine</span>
+      </div>
+
+      <!-- Real-Time Telemetry ECG Waveform -->
+      <div class="lo-ecg-container">
+        <svg class="lo-ecg-svg" viewBox="0 0 300 40">
+          <path d="M 0 20 L 70 20 L 80 12 L 90 28 L 100 20 L 115 20 L 125 4 L 135 36 L 145 10 L 155 24 L 165 20 L 190 20 L 200 14 L 210 24 L 220 20 L 300 20" />
+        </svg>
+      </div>
+
+      <!-- Sleek Shimmer Progress Bar -->
+      <div class="lo-bar-track">
+        <div class="lo-bar-fill"></div>
+      </div>
+
+      <!-- Timer & Cancel Controls -->
+      <div class="lo-control-row">
+        <div class="lo-elapsed-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="history-loader-elapsed">Elapsed: 00:00</span>
+        </div>
+        <button id="history-loader-cancel" class="lo-cancel-btn" type="button">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <span>Cancel</span>
+        </button>
+      </div>
+
+      <!-- Dynamic Stage & Clinical Quote -->
+      <div class="lo-message" id="history-loader-status">Starting diagnosis…</div>
+      <div class="lo-quote-wrap" id="history-loader-quote">“Observation, reason, and human understanding make the physician.”</div>
     </div>
-    <div class="lo-bar-track"><div class="lo-bar-fill"></div></div>
-    <div style="display:flex;align-items:center;gap:12px;margin-top:10px;">
-      <div id="history-loader-elapsed" style="font-size:13px;color:var(--text-muted);">Elapsed: 00:00</div>
-      <button id="history-loader-cancel" style="background:transparent;border:1px solid var(--border-card);color:var(--text-muted);padding:6px 10px;border-radius:8px;cursor:pointer;font-size:12px;">Cancel</button>
-    </div>
-    <div class="lo-message">Starting diagnosis…</div>
   </div>
 
   <script>
@@ -1227,9 +1511,25 @@
     // Load draft on init
     loadHistoryDraft();
 
-    // Loading overlay timer control
+    // Loading overlay timer control & progressive clinical telemetry
     let _histLoaderTimer = null;
     let _histLoaderStart = null;
+    let _histPhaseTimer = null;
+    const _histStages = [
+      'Analyzing patient chief complaints & vitals…',
+      'Synthesizing clinical history & risk factors…',
+      'Cross-referencing differential diagnosis corpus…',
+      'Calibrating interactive clinical reasoning model…',
+      'Securing HIPAA-compliant physician workspace…',
+      'Launching conversational diagnostic session…'
+    ];
+    const _histQuotes = [
+      '“Observation, reason, and human understanding make the physician.” — Martin H. Fischer',
+      '“The good physician treats the disease; the great physician treats the patient.” — Sir William Osler',
+      '“Medicine is a science of uncertainty and an art of probability.” — Sir William Osler',
+      '“Wherever the art of Medicine is loved, there is also a love of Humanity.” — Hippocrates'
+    ];
+
     function _startHistoryLoadingTimer() {
       if (_histLoaderTimer) return;
       _histLoaderStart = Date.now();
@@ -1241,6 +1541,39 @@
         const ss = String(s % 60).padStart(2, '0');
         if (el) el.textContent = `Elapsed: ${mm}:${ss}`;
       }, 1000);
+
+      // Rotate clinical stages and inspirational quotes
+      let stageIdx = 0;
+      let quoteIdx = 0;
+      const statusEl = document.getElementById('history-loader-status');
+      const quoteEl = document.getElementById('history-loader-quote');
+      if (statusEl) statusEl.textContent = _histStages[0];
+      if (quoteEl) quoteEl.textContent = _histQuotes[0];
+
+      if (_histPhaseTimer) clearInterval(_histPhaseTimer);
+      _histPhaseTimer = setInterval(() => {
+        stageIdx = (stageIdx + 1) % _histStages.length;
+        if (statusEl) {
+          statusEl.style.opacity = '0';
+          setTimeout(() => {
+            if (statusEl) {
+              statusEl.textContent = _histStages[stageIdx];
+              statusEl.style.opacity = '1';
+            }
+          }, 180);
+        }
+        if (stageIdx % 2 === 0 && quoteEl) {
+          quoteIdx = (quoteIdx + 1) % _histQuotes.length;
+          quoteEl.style.opacity = '0';
+          setTimeout(() => {
+            if (quoteEl) {
+              quoteEl.textContent = _histQuotes[quoteIdx];
+              quoteEl.style.opacity = '1';
+            }
+          }, 180);
+        }
+      }, 2000);
+
       const cancel = document.getElementById('history-loader-cancel');
       if (cancel) cancel.onclick = () => {
         document.getElementById('loading-overlay').classList.remove('active');
@@ -1250,7 +1583,9 @@
     }
     function _stopHistoryLoadingTimer() {
       if (_histLoaderTimer) clearInterval(_histLoaderTimer);
+      if (_histPhaseTimer) clearInterval(_histPhaseTimer);
       _histLoaderTimer = null;
+      _histPhaseTimer = null;
     }
 
     document.getElementById('history-form').addEventListener('submit', async e => {

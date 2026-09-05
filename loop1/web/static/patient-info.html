@@ -1,460 +1,1387 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark-theme">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Patient Info — DiffDx</title>
+  <script>
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.remove('dark-theme');
+    } else {
+      document.documentElement.classList.add('dark-theme');
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800;900&family=Noto+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body { background: #080810; color: #f1f5f9; font-family: 'Noto Sans', sans-serif; overflow-x: hidden; }
-
-    /* Blobs */
-    .blob-scene { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-    .blob { position: absolute; border-radius: 50%; filter: blur(110px); opacity: .18; animation: drift 22s ease-in-out infinite; }
-    .blob-1 { width: 600px; height: 600px; background: radial-gradient(circle, #10b981, transparent 70%); top: -180px; left: -120px; }
-    .blob-2 { width: 500px; height: 500px; background: radial-gradient(circle, #a855f7, transparent 70%); bottom: -140px; right: -80px; animation-delay: -9s; }
-    .blob-3 { width: 300px; height: 300px; background: radial-gradient(circle, #10b981, transparent 70%); top: 50%; left: 60%; opacity: .08; animation-delay: -16s; }
-    @keyframes drift {
-      0%,100% { transform: translate(0,0) scale(1); }
-      40%      { transform: translate(28px,-20px) scale(1.05); }
-      70%      { transform: translate(-16px,18px) scale(.95); }
+    :root {
+      --bg-dark: #F1F5F9;
+      --bg-card: #FFFFFF;
+      --border-card: #CBD5E1;
+      --teal-primary: #0D9488;
+      --teal-glow: rgba(13, 148, 136, 0.15);
+      --blue-secondary: #2563EB;
+      --purple-accent: #6D28D9;
+      --amber-accent: #D97706;
+      --text-main: #000000;
+      --text-muted: #334155;
+      --nav-bg: rgba(255, 255, 255, 0.92);
+      --fi-bg: #F8FAFC;
+      --fi-border: #0D9488;
+      --wf-bg: #F1F5F9;
+      --btn-nav-bg: #FFFFFF;
+      --btn-nav-border: #94A3B8;
+      --btn-nav-text: #0F1D32;
+      --font-heading: 'Sora', sans-serif;
+      --font-body: 'Noto Sans', sans-serif;
     }
 
-    /* Background sweep glow */
-    .bg-glow {
+    html.dark-theme {
+      --bg-dark: #050D18;
+      --bg-card: #0A1525;
+      --border-card: rgba(150, 180, 210, 0.08);
+      --teal-primary: #19C6AD;
+      --teal-glow: rgba(25, 198, 173, 0.15);
+      --blue-secondary: #4C8FF5;
+      --purple-accent: #8174E8;
+      --amber-accent: #F59E0B;
+      --text-main: #EAF2FA;
+      --text-muted: #8FA2B9;
+      --nav-bg: rgba(5, 13, 24, 0.85);
+      --fi-bg: #0C192A;
+      --fi-border: rgba(25, 198, 173, 0.35);
+      --wf-bg: #081220;
+      --btn-nav-bg: rgba(255, 255, 255, 0.04);
+      --btn-nav-border: rgba(150, 180, 210, 0.10);
+      --btn-nav-text: #EAF2FA;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* Ambient Background Effects */
+    .bg-grid {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(ellipse 70% 50% at 15% 40%, rgba(16,185,129,.06) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 50% at 85% 60%, rgba(168,85,247,.06) 0%, transparent 60%);
+      background-image: radial-gradient(rgba(143, 162, 185, 0.05) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(ellipse 85% 65% at 50% 30%, black 40%, transparent 95%);
     }
 
-    /* Nav override */
+    .bg-glow-left {
+      position: fixed; top: -100px; left: -120px; width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(25, 198, 173, 0.12) 0%, transparent 70%);
+      filter: blur(100px); pointer-events: none; z-index: 0;
+      animation: floatGlowLeft 20s ease-in-out infinite alternate;
+    }
+
+    .bg-glow-right {
+      position: fixed; top: 200px; right: -120px; width: 650px; height: 650px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(76, 143, 245, 0.1) 0%, transparent 70%);
+      filter: blur(110px); pointer-events: none; z-index: 0;
+      animation: floatGlowRight 22s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatGlowLeft {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, 30px) scale(1.08); }
+    }
+
+    @keyframes floatGlowRight {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(-30px, -40px) scale(1.05); }
+    }
+
+    /* Opening Entrance Keyframes */
+    @keyframes animateNavDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes animateHeroFadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes animateHeroVisualIn {
+      from { opacity: 0; transform: scale(0.95) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @keyframes animateCardFadeUp {
+      from { opacity: 0; transform: translateY(32px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Header Navbar */
     .nav-bar {
       position: sticky; top: 0; z-index: 100;
-      background: rgba(8,8,16,.88);
-      backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8);
-      border-bottom: 1px solid rgba(255,255,255,.07);
-      padding: 0 28px; height: 58px;
-      display: flex; align-items: center; gap: 12px;
+      background: var(--nav-bg);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0 28px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      animation: animateNavDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
-    .nav-home {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 16px; border-radius: 9999px;
-      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
-      color: #94a3b8; font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700;
-      text-decoration: none; flex-shrink: 0;
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      transition: all .22s;
-    }
-    .nav-home:hover {
-      color: #f1f5f9; border-color: rgba(16,185,129,.4);
-      background: rgba(16,185,129,.06);
-      box-shadow: 0 0 18px rgba(16,185,129,.18);
-    }
-    .nav-center-badge {
-      display: inline-flex; align-items: center; gap: 9px;
-      padding: 8px 20px; border-radius: 9999px;
-      background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.18);
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-      box-shadow: 0 0 28px rgba(16,185,129,.1);
-      font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 800;
-      color: #f1f5f9; letter-spacing: -.01em;
-      position: absolute; left: 50%; transform: translateX(-50%);
-      white-space: nowrap;
-    }
-    .nav-center-badge svg { color: #10b981; filter: drop-shadow(0 0 7px rgba(16,185,129,.7)); }
-    .nav-center-badge .nb-accent { color: #10b981; }
-    #nav-auth { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
-    /* Page header */
-    .page-header {
+    .nav-home, .nav-signin-btn, #nav-auth a.btn, #nav-auth a.btn-ghost, #nav-sessions-link {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 7px 16px !important; border-radius: 9999px !important;
+      background: var(--btn-nav-bg) !important;
+      border: 1.5px solid var(--btn-nav-border) !important;
+      color: var(--btn-nav-text) !important; font-family: var(--font-heading) !important;
+      font-size: 13px !important; font-weight: 700 !important; text-decoration: none !important;
+      box-shadow: 0 2px 6px rgba(15, 29, 50, 0.05);
+      transition: all .25s ease !important;
+    }
+
+    .nav-home:hover, .nav-signin-btn:hover, #nav-auth a.btn:hover, #nav-auth a.btn-ghost:hover, #nav-sessions-link:hover {
+      color: var(--teal-primary) !important;
+      border-color: var(--teal-primary) !important;
+      background: rgba(16, 191, 165, 0.08) !important;
+      box-shadow: 0 0 16px rgba(16, 191, 165, 0.2) !important;
+    }
+
+    #nav-auth #nav-notif-btn, #nav-auth #nav-refill-btn {
+      padding: 0 !important;
+      border-radius: 8px !important;
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+    }
+
+    .nav-center-logo {
+      display: inline-flex; align-items: center; gap: 9px;
+      position: absolute; left: 50%; transform: translateX(-50%);
+      text-decoration: none;
+    }
+
+    .logo-symbol {
+      width: 26px; height: 26px;
+      filter: drop-shadow(0 0 8px rgba(25, 198, 173, 0.4));
+    }
+
+    .logo-text {
+      font-family: var(--font-heading); font-size: 17px; font-weight: 800;
+      color: var(--text-main); letter-spacing: -.03em;
+    }
+
+    .logo-accent {
+      background: linear-gradient(90deg, #19C6AD, #4C8FF5);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-right-actions {
+      display: flex; align-items: center; gap: 12px; margin-left: auto;
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle-btn {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s ease; outline: none;
+    }
+
+    .theme-toggle-btn:hover {
+      border-color: var(--teal-primary);
+      color: var(--teal-primary);
+      transform: scale(1.05);
+    }
+
+    .theme-toggle-btn .sun-icon { display: none; }
+    .theme-toggle-btn .moon-icon { display: block; }
+    .dark-theme .theme-toggle-btn .moon-icon { display: none; }
+    .dark-theme .theme-toggle-btn .sun-icon { display: block; }
+
+    /* Main Container */
+    .app-container {
+      max-width: 1140px; margin: 0 auto;
+      padding: 24px 24px 80px;
       position: relative; z-index: 1;
-      padding: 52px 24px 40px; text-align: center;
+    }
+
+    /* Hero Section */
+    .hero-section {
+      display: grid; grid-template-columns: 1.1fr 1fr;
+      gap: 32px; align-items: center;
+      margin-bottom: 28px; position: relative;
+    }
+
+    .hero-left {
+      display: flex; flex-direction: column; align-items: flex-start;
+      animation: animateHeroFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
     }
 
     .step-pill {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 5px 16px; border-radius: 9999px;
-      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2);
-      color: #34d399; font-size: 11px; font-weight: 700; letter-spacing: .06em;
-      font-family: 'Sora', sans-serif; margin-bottom: 20px;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 5px 14px; border-radius: 9999px;
+      background: rgba(25, 198, 173, 0.08);
+      border: 1px solid rgba(25, 198, 173, 0.25);
+      color: var(--teal-primary); font-size: 11px; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase;
+      font-family: var(--font-heading); margin-bottom: 18px;
     }
-    .step-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; animation: pulse 2s ease-in-out infinite; }
-    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.6)} }
 
-    .page-title {
-      font-family: 'Sora', sans-serif;
-      font-size: clamp(28px, 4.5vw, 52px);
-      font-weight: 900; letter-spacing: -.04em; line-height: 1.05;
-      margin-bottom: 10px;
+    .step-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--teal-primary);
+      box-shadow: 0 0 10px var(--teal-primary);
+      animation: pulseDot 2s ease-in-out infinite;
     }
-    .page-title span {
-      background: linear-gradient(90deg, #10b981, #34d399, #a855f7, #10b981);
-      background-size: 300% 100%;
-      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-      animation: flow 5s linear infinite;
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .4; transform: scale(0.7); }
     }
-    @keyframes flow { 0%{background-position:0%} 100%{background-position:300%} }
 
-    .page-sub { font-size: 15px; color: #475569; max-width: 420px; margin: 0 auto 32px; line-height: 1.6; }
+    .hero-title {
+      font-family: var(--font-heading);
+      font-size: clamp(32px, 3.8vw, 44px);
+      font-weight: 900; letter-spacing: -.03em; line-height: 1.1;
+      color: var(--text-main); margin-bottom: 12px;
+    }
 
-    /* Step progress */
+    .hero-title span {
+      background: linear-gradient(135deg, #19C6AD 0%, #8174E8 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 14px; color: var(--text-muted);
+      line-height: 1.6; max-width: 440px; margin-bottom: 24px;
+    }
+
+    /* 3 Workflow Steps (Left Hero) */
+    .hero-steps-list {
+      display: flex; flex-direction: column; gap: 12px; width: 100%;
+    }
+
+    .step-card {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 18px; border-radius: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      transition: all .25s ease;
+      position: relative; overflow: hidden;
+      animation: animateHeroFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .step-card:nth-child(1) { animation-delay: 0.18s; }
+    .step-card:nth-child(2) { animation-delay: 0.26s; }
+    .step-card:nth-child(3) { animation-delay: 0.34s; }
+
+    .step-card.active {
+      border-color: var(--teal-primary);
+      background: rgba(25, 198, 173, 0.08);
+      box-shadow: 0 0 24px rgba(25, 198, 173, 0.15);
+    }
+
+    .step-card.active::before {
+      content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
+      background: var(--teal-primary); border-radius: 3px;
+    }
+
+    .step-card-num {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-heading); font-size: 13px; font-weight: 800;
+      background: rgba(143, 162, 185, 0.12); color: var(--text-muted);
+      border: 1px solid var(--border-card);
+      transition: all .25s ease;
+    }
+
+    .step-card.active .step-card-num {
+      background: var(--teal-primary);
+      color: #06101D; border-color: var(--teal-primary);
+      box-shadow: 0 0 12px rgba(25, 198, 173, 0.4);
+    }
+
+    .step-card-content {
+      display: flex; flex-direction: column; gap: 2px; flex: 1;
+    }
+
+    .step-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .step-card-title {
+      font-family: var(--font-heading); font-size: 14px; font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .step-card.active .step-card-title {
+      color: var(--teal-primary);
+    }
+
+    .active-badge {
+      font-family: var(--font-heading); font-size: 10px; font-weight: 800;
+      padding: 3px 10px; border-radius: 9999px;
+      background: rgba(25, 198, 173, 0.15); color: var(--teal-primary);
+      border: 1px solid rgba(25, 198, 173, 0.3); letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    .step-card-desc {
+      font-size: 12px; color: var(--text-muted); line-height: 1.45;
+    }
+
+    /* Hero Right Visual Column */
+    .hero-visual-col {
+      position: relative; height: 320px;
+      display: flex; align-items: center; justify-content: center;
+      animation: animateHeroVisualIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+    }
+
+    .hero-scan-ring {
+      position: absolute; width: 320px; height: 320px; border-radius: 50%;
+      border: 2px dashed rgba(16, 191, 165, 0.65);
+      box-shadow: 0 0 20px rgba(16, 191, 165, 0.2);
+      animation: rotateRing 40s linear infinite; pointer-events: none;
+    }
+
+    .dark-theme .hero-scan-ring {
+      border-color: rgba(25, 198, 173, 0.5);
+      box-shadow: 0 0 25px rgba(25, 198, 173, 0.25);
+    }
+
+    @keyframes rotateRing {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .hero-ecg-bg {
+      position: absolute; width: 100%; height: 100px;
+      stroke: rgba(25, 198, 173, 0.25); opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .hero-3d-wrapper {
+      position: relative; z-index: 2;
+      width: 290px; height: 210px;
+      border-radius: 18px; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.2), 0 0 30px rgba(25, 198, 173, 0.18);
+      border: 1px solid var(--teal-primary);
+      background: var(--bg-card);
+    }
+
+    .hero-3d-img {
+      width: 100%; height: 100%; object-fit: cover; object-position: center;
+      display: block;
+    }
+
+    /* Floating Mini Visual Cards */
+    .floating-card {
+      position: absolute; z-index: 3;
+      background: var(--bg-card);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-card);
+      border-radius: 12px; padding: 10px 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+    }
+
+    .fc-title {
+      font-family: var(--font-heading); font-size: 10px; font-weight: 800;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em;
+      margin-bottom: 6px;
+    }
+
+    .card-ai-analysis {
+      top: 10px; right: 0; width: 140px;
+    }
+
+    .ai-check-item {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 10px; color: var(--text-main); margin-bottom: 4px;
+    }
+
+    .ai-check-item svg { color: var(--teal-primary); }
+
+    .card-vitals {
+      bottom: 20px; right: -10px; width: 150px;
+    }
+
+    .card-vitals svg { stroke: var(--teal-primary); }
+
+    .card-insight {
+      top: 50%; left: -15px; transform: translateY(-50%);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* Progress Track Workflow */
+    .progress-track-wrapper {
+      display: flex; align-items: center; justify-content: center;
+      margin: 12px 0 32px; position: relative; z-index: 2;
+      animation: animateHeroFadeUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+    }
+
     .progress-track {
-      display: flex; align-items: center; justify-content: center; gap: 0; margin-top: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 10px 24px; border-radius: 9999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      backdrop-filter: blur(12px);
     }
-    .pr-node { display: flex; align-items: center; gap: 8px; font-size: 13px; font-family: 'Sora', sans-serif; font-weight: 700; }
-    .pr-node.active { color: #10b981; }
-    .pr-node.inactive { color: #334155; }
+
+    .pr-node {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-family: var(--font-heading); font-weight: 700;
+    }
+
+    .pr-node.active { color: var(--teal-primary); }
+    .pr-node.inactive { color: var(--text-muted); opacity: 0.6; }
+
     .pr-circle {
       width: 26px; height: 26px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800; font-family: 'Sora', sans-serif;
+      font-size: 11px; font-weight: 800; font-family: var(--font-heading);
       flex-shrink: 0;
     }
+
     .pr-node.active .pr-circle {
-      background: linear-gradient(135deg, #059669, #10b981); color: #021a12;
-      box-shadow: 0 0 16px rgba(16,185,129,.55);
+      background: linear-gradient(135deg, #19C6AD, #0FA892);
+      color: #06101D;
+      box-shadow: 0 0 16px rgba(25, 198, 173, 0.5);
     }
+
     .pr-node.inactive .pr-circle {
-      background: rgba(255,255,255,.05); border: 1.5px solid rgba(255,255,255,.1); color: #334155;
-    }
-    .pr-line { width: 48px; height: 2px; margin: 0 10px; background: rgba(255,255,255,.08); border-radius: 2px; }
-
-    /* Content */
-    .page-body {
-      position: relative; z-index: 1;
-      max-width: 760px; margin: 0 auto;
-      padding: 0 24px 100px;
-      display: flex; flex-direction: column; gap: 20px;
+      background: rgba(143, 162, 185, 0.12);
+      border: 1.5px solid var(--border-card);
+      color: var(--text-muted);
     }
 
-    /* Section cards */
+    .pr-line {
+      width: 44px; height: 2px; margin: 0 14px;
+      background: var(--border-card); border-radius: 2px;
+    }
+
+    /* Form 50/50 Grid Layout */
+    .form-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+    }
+
+    /* Section Cards */
     .section-card {
-      background: rgba(255,255,255,.04);
-      backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 20px; padding: 28px 28px;
-      transition: border-color .25s, box-shadow .25s;
+      background: var(--bg-card);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid var(--border-card);
+      border-radius: 20px; padding: 24px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      position: relative; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: space-between;
+      transition: border-color .3s ease, box-shadow .3s ease, background 0.3s ease;
+      animation: animateCardFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
+
+    .card-basic { animation-delay: 0.4s; }
+    .card-chief { animation-delay: 0.5s; }
+    .card-symptoms { animation-delay: 0.6s; }
+    .card-clinical { animation-delay: 0.7s; }
+
+    .section-card::before {
+      content: ''; position: absolute; top: 0; left: 24px; right: 24px; height: 1px;
+      opacity: 0.8; transition: opacity .3s ease;
+    }
+
+    .card-basic::before {
+      background: linear-gradient(90deg, transparent, rgba(129, 116, 232, 0.4), transparent);
+    }
+    .card-chief::before {
+      background: linear-gradient(90deg, transparent, rgba(25, 198, 173, 0.4), transparent);
+    }
+    .card-symptoms::before {
+      background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.4), transparent);
+    }
+    .card-clinical::before {
+      background: linear-gradient(90deg, transparent, rgba(76, 143, 245, 0.4), transparent);
+    }
+
     .section-card:focus-within {
-      border-color: rgba(16,185,129,.28);
-      box-shadow: 0 0 0 1px rgba(16,185,129,.1), 0 20px 60px rgba(0,0,0,.4);
+      border-color: rgba(25, 198, 173, 0.25);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 18px rgba(25, 198, 173, 0.06);
     }
 
-    .sec-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 24px; }
+    .sec-head {
+      display: flex; align-items: flex-start; gap: 14px;
+      margin-bottom: 20px;
+    }
+
     .sec-icon {
-      width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
+      transition: transform .3s ease;
     }
-    .si-teal   { background: rgba(16,185,129,.1);  border: 1px solid rgba(16,185,129,.22); }
-    .si-violet { background: rgba(168,85,247,.1);  border: 1px solid rgba(168,85,247,.22); }
-    .si-amber  { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2);  }
-    .sec-title {
-      font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 800;
-      color: #f1f5f9; letter-spacing: -.02em; margin-bottom: 3px;
-    }
-    .sec-sub { font-size: 13px; color: #475569; }
 
-    /* Field groups */
-    .field-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .field-row.two-col { grid-template-columns: 120px 1fr; }
-    .field { display: flex; flex-direction: column; gap: 7px; }
-    .field-label {
-      font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 800;
-      color: #475569; letter-spacing: .08em; text-transform: uppercase;
+    .section-card:hover .sec-icon { transform: scale(1.04); }
+
+    .si-violet {
+      background: rgba(129, 116, 232, 0.08);
+      border: 1px solid rgba(129, 116, 232, 0.18);
+      color: var(--purple-accent);
     }
-    .req { color: #ef4444; }
+
+    .si-teal {
+      background: rgba(25, 198, 173, 0.08);
+      border: 1px solid rgba(25, 198, 173, 0.18);
+      color: var(--teal-primary);
+    }
+
+    .si-amber {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.18);
+      color: var(--amber-accent);
+    }
+
+    .si-blue {
+      background: rgba(76, 143, 245, 0.08);
+      border: 1px solid rgba(76, 143, 245, 0.18);
+      color: var(--blue-secondary);
+    }
+
+    .sec-title {
+      font-family: var(--font-heading); font-size: 15px; font-weight: 800;
+      color: var(--text-main); letter-spacing: -.02em; margin-bottom: 2px;
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    .sec-sub {
+      font-size: 12px; color: var(--text-muted);
+      line-height: 1.45; font-family: var(--font-body);
+    }
+
+    /* Input Fields */
+    .field-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    }
+
+    .field-row.two-col {
+      grid-template-columns: 120px 1fr;
+    }
+
+    .field {
+      display: flex; flex-direction: column; gap: 7px;
+    }
+
+    .field-label {
+      font-family: var(--font-heading); font-size: 10px; font-weight: 800;
+      color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase;
+    }
+
+    .req { color: #EF4444; }
 
     .fi {
-      font-family: 'Noto Sans', sans-serif; font-size: 14px; color: #f1f5f9;
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
-      border-radius: 12px; padding: 12px 15px; outline: none; width: 100%;
-      transition: border-color .2s, box-shadow .2s, background .2s;
+      font-family: var(--font-body); font-size: 14px; color: var(--text-main);
+      background: var(--fi-bg);
+      border: 1.5px solid var(--fi-border) !important;
+      border-radius: 11px; padding: 11px 14px; outline: none; width: 100%;
+      transition: all .25s ease;
     }
-    .fi:focus {
-      border-color: rgba(16,185,129,.5);
-      box-shadow: 0 0 0 3px rgba(16,185,129,.1), 0 0 20px rgba(16,185,129,.08);
-      background: rgba(16,185,129,.03);
-    }
-    .fi::placeholder { color: #334155; }
-    select.fi { cursor: pointer; }
-    select.fi option { background: #0d0d1a; }
 
-    /* Segmented sex selector */
-    .sex-toggle { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    body:not(.dark-theme) .fi,
+    body:not(.dark-theme) .fi-area,
+    body:not(.dark-theme) select.fi,
+    body:not(.dark-theme) #bmi-value {
+      color: #000000 !important;
+      font-weight: 700;
+    }
+
+    body:not(.dark-theme) select.fi option {
+      background-color: #FFFFFF !important;
+      color: #000000 !important;
+    }
+
+    html.dark-theme .fi,
+    html.dark-theme .fi-area,
+    html.dark-theme select.fi,
+    html.dark-theme #bmi-value {
+      color: #EAF2FA !important;
+    }
+
+    html.dark-theme select.fi option {
+      background-color: #0A1525 !important;
+      color: #EAF2FA !important;
+    }
+
+    .fi:hover {
+      border-color: var(--teal-primary) !important;
+    }
+
+    .fi:focus {
+      border-color: var(--teal-primary) !important;
+      box-shadow: 0 0 12px var(--teal-glow);
+    }
+
+    .fi::placeholder { color: var(--text-muted); opacity: 0.75; }
+
+    /* Custom Dropdown Select */
+    select.fi {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230D9488' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px 16px;
+      padding-right: 38px;
+      cursor: pointer;
+    }
+
+    html.dark-theme select.fi {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2319C6AD' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    }
+
+    /* Segmented Sex Selector */
+    .sex-toggle {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+      background: var(--fi-bg); padding: 3px; border-radius: 12px;
+      border: 1.5px solid var(--fi-border);
+    }
+
     .sex-opt { display: none; }
+
     .sex-label {
       display: flex; align-items: center; justify-content: center;
-      padding: 11px 8px; border-radius: 12px; cursor: pointer;
-      border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.03);
-      font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700; color: #475569;
-      transition: all .2s;
+      padding: 9px 6px; border-radius: 9px; cursor: pointer;
+      border: 1px solid transparent; background: transparent;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 700;
+      color: var(--text-muted); transition: all .2s ease;
     }
+
+    .sex-label:hover {
+      color: var(--text-main);
+    }
+
     .sex-opt:checked + .sex-label {
-      background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.4);
-      color: #10b981; box-shadow: 0 0 16px rgba(16,185,129,.15);
+      background: rgba(25, 198, 173, 0.14);
+      border: 1px solid var(--teal-primary);
+      color: var(--teal-primary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
-    .sex-label:hover { background: rgba(255,255,255,.06); color: #94a3b8; }
+
+    /* Clinical BMI Indicator Display */
+    #bmi-display {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: var(--fi-bg);
+      border: 1.5px solid var(--fi-border); border-radius: 11px;
+      min-height: 42px; transition: all .25s ease;
+    }
+
+    #bmi-value {
+      font-family: var(--font-heading); font-size: 15px; font-weight: 800;
+      color: var(--text-main);
+    }
+
+    #bmi-label {
+      font-family: var(--font-heading); font-size: 10px; font-weight: 800;
+      border-radius: 9999px; padding: 2px 8px; text-transform: uppercase;
+      letter-spacing: .04em; background: rgba(25, 198, 173, 0.12);
+      color: var(--teal-primary); border: 1px solid rgba(25, 198, 173, 0.25);
+    }
 
     /* Textarea */
     .fi-area {
-      font-family: 'Noto Sans', sans-serif; font-size: 14px; line-height: 1.75; color: #f1f5f9;
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
-      border-radius: 12px; padding: 14px 16px; resize: vertical; min-height: 100px;
-      outline: none; width: 100%;
-      transition: border-color .2s, box-shadow .2s, background .2s;
+      font-family: var(--font-body); font-size: 14px; line-height: 1.6;
+      color: var(--text-main); background: var(--fi-bg);
+      border: 1.5px solid var(--fi-border);
+      border-radius: 12px; padding: 14px 16px; resize: vertical; min-height: 140px;
+      outline: none; width: 100%; transition: all .25s ease;
     }
-    .fi-area:focus {
-      border-color: rgba(16,185,129,.5);
-      box-shadow: 0 0 0 3px rgba(16,185,129,.1), 0 0 20px rgba(16,185,129,.08);
-      background: rgba(16,185,129,.03);
-    }
-    .fi-area::placeholder { color: #334155; }
 
-    /* Symptom adder */
+    .fi-area:hover {
+      border-color: var(--teal-primary);
+    }
+
+    .fi-area:focus {
+      border-color: var(--teal-primary);
+      box-shadow: 0 0 12px var(--teal-glow);
+    }
+
+    .fi-area::placeholder { color: var(--text-muted); opacity: 0.75; }
+
+    /* Translucent Glassmorphism Alert Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(5, 13, 24, 0.65);
+      backdrop-filter: blur(16px) saturate(1.5);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      animation: modalFadeIn 0.25s ease both;
+    }
+
+    .modal-card {
+      background: rgba(10, 21, 37, 0.88);
+      border: 1.5px solid rgba(25, 198, 173, 0.35);
+      border-radius: 24px; padding: 32px 28px;
+      max-width: 420px; width: 100%; text-align: center;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(25, 198, 173, 0.15);
+      animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    body:not(.dark-theme) .modal-backdrop {
+      background: rgba(15, 29, 50, 0.45);
+    }
+
+    body:not(.dark-theme) .modal-card {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1.5px solid rgba(13, 148, 136, 0.4);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.18), 0 0 30px rgba(13, 148, 136, 0.15);
+    }
+
+    .modal-icon-wrap {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #F59E0B;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+    }
+
+    .modal-title {
+      font-family: var(--font-heading); font-size: 18px; font-weight: 800;
+      color: var(--text-main); margin-bottom: 8px;
+    }
+
+    body:not(.dark-theme) .modal-title {
+      color: #000000 !important;
+    }
+
+    .modal-desc {
+      font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;
+    }
+
+    .modal-missing-list {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 24px;
+    }
+
+    .modal-missing-chip {
+      padding: 6px 14px; border-radius: 99px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #EF4444; font-family: var(--font-heading);
+      font-size: 12px; font-weight: 800;
+    }
+
+    .modal-close-btn {
+      width: 100%; padding: 13px 24px; border-radius: 12px; border: none;
+      background: linear-gradient(135deg, #19C6AD 0%, #3B82F6 100%);
+      color: #06101D; font-family: var(--font-heading);
+      font-size: 14px; font-weight: 800; cursor: pointer;
+      box-shadow: 0 6px 20px rgba(25, 198, 173, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .modal-close-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(25, 198, 173, 0.45);
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes modalScaleUp {
+      from { opacity: 0; transform: scale(0.92) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* Symptom Adder */
     .sym-row { display: flex; gap: 10px; }
     .sym-row .fi { flex: 1; }
+
     .btn-add {
-      padding: 12px 22px; border-radius: 9999px;
-      font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 800;
+      padding: 10px 18px; border-radius: 11px;
+      font-family: var(--font-heading); font-size: 12px; font-weight: 800;
       white-space: nowrap; flex-shrink: 0; cursor: pointer;
-      background: rgba(16,185,129,.1); color: #10b981;
-      border: 1px solid rgba(16,185,129,.25);
-      transition: all .22s cubic-bezier(.16,1,.3,1);
-    }
-    .btn-add:hover {
-      background: rgba(16,185,129,.18); border-color: rgba(16,185,129,.5);
-      box-shadow: 0 0 20px rgba(16,185,129,.2); transform: translateY(-1px);
+      background: rgba(25, 198, 173, 0.08); color: var(--teal-primary);
+      border: 1px solid rgba(25, 198, 173, 0.25);
+      transition: all .25s cubic-bezier(.16, 1, .3, 1);
     }
 
-    .sym-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; min-height: 20px; }
+    .btn-add:hover {
+      background: rgba(25, 198, 173, 0.16);
+      border-color: var(--teal-primary);
+      transform: translateY(-1px);
+    }
+
+    .sym-chips {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; min-height: 24px;
+    }
+
     .sym-chip {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 6px 14px; border-radius: 9999px;
-      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2);
-      font-size: 12px; font-weight: 600; color: #a7f3d0;
-      font-family: 'Noto Sans', sans-serif;
-      animation: chip-in .2s cubic-bezier(.16,1,.3,1);
+      padding: 5px 12px; border-radius: 9999px;
+      background: rgba(25, 198, 173, 0.08);
+      border: 1px solid rgba(25, 198, 173, 0.22);
+      font-size: 12px; font-weight: 600; color: var(--teal-primary);
+      font-family: var(--font-body);
+      animation: chipIn .25s cubic-bezier(.16, 1, .3, 1);
     }
-    @keyframes chip-in { from{opacity:0;transform:scale(.85)} to{opacity:1;transform:scale(1)} }
+
+    @keyframes chipIn {
+      from { opacity: 0; transform: scale(.88); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
     .chip-remove {
-      background: none; border: none; cursor: pointer; color: #6ee7b7;
-      font-size: 16px; line-height: 1; padding: 0; display: flex; align-items: center;
+      background: none; border: none; cursor: pointer; color: var(--teal-primary);
+      font-size: 15px; line-height: 1; padding: 0; display: flex; align-items: center;
       transition: color .15s;
     }
-    .chip-remove:hover { color: #f87171; }
-    .sym-empty { font-size: 12px; color: #334155; font-style: italic; font-family: 'Noto Sans', sans-serif; margin-top: 4px; }
 
-    /* Bottom CTA bar */
-    .cta-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 20px 0 0; position: relative; z-index: 1;
+    .chip-remove:hover { color: #F87171; }
+
+    .sym-empty {
+      font-size: 12px; color: var(--text-muted);
+      font-style: italic; font-family: var(--font-body); margin-top: 4px;
     }
-    .cta-hint { font-size: 12px; color: #334155; font-family: 'Noto Sans', sans-serif; }
+
+    /* Card 4: Clinical Picture Visual Workflow (Decorative) */
+    .clinical-picture-card {
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+
+    .workflow-steps {
+      display: flex; align-items: center; justify-content: space-around;
+      margin: 16px 0 20px; padding: 14px 8px;
+      background: var(--wf-bg);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+    }
+
+    .wf-step {
+      display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+      max-width: 70px;
+    }
+
+    .wf-icon {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(25, 198, 173, 0.08); border: 1px solid rgba(25, 198, 173, 0.18);
+      color: var(--teal-primary); font-size: 13px;
+    }
+
+    .wf-label {
+      font-family: var(--font-heading); font-size: 10px; font-weight: 700;
+      color: var(--text-main); line-height: 1.2;
+    }
+
+    .wf-arrow {
+      color: var(--text-muted); opacity: 0.4; font-size: 11px;
+    }
+
+    .cp-tagline {
+      text-align: center; font-family: var(--font-heading);
+      font-size: 12px; font-weight: 600; color: var(--teal-primary);
+      padding: 10px; background: rgba(25, 198, 173, 0.05);
+      border-radius: 10px; border: 1px solid rgba(25, 198, 173, 0.12);
+    }
+
+    /* Bottom CTA Section */
+    .cta-section {
+      margin-top: 32px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+      animation: animateHeroFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
+    }
 
     .btn-next {
       display: inline-flex; align-items: center; gap: 10px;
-      padding: 15px 36px; border-radius: 9999px;
-      font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 800;
+      padding: 15px 44px; border-radius: 9999px;
+      font-family: var(--font-heading); font-size: 15px; font-weight: 800;
       letter-spacing: -.01em; cursor: pointer; border: none;
-      background: linear-gradient(135deg, #059669 0%, #10b981 60%, #34d399 100%);
-      color: #021a12;
-      box-shadow: 0 6px 28px rgba(16,185,129,.45), 0 0 60px rgba(16,185,129,.15);
-      transition: all .28s cubic-bezier(.16,1,.3,1);
-      position: relative;
+      background: linear-gradient(135deg, #19C6AD 0%, #3B82F6 100%);
+      color: #06101D;
+      box-shadow: 0 8px 32px rgba(25, 198, 173, 0.35), 0 0 50px rgba(25, 198, 173, 0.15);
+      transition: all .28s cubic-bezier(.16, 1, .3, 1);
+      position: relative; overflow: hidden;
     }
-    .btn-next::after {
-      content: ''; position: absolute; inset: -2px; border-radius: 9999px;
-      background: linear-gradient(135deg, #10b981, #a855f7);
-      opacity: 0; z-index: -1; filter: blur(14px); transition: opacity .28s;
+
+    .btn-next::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, #20E5C9 0%, #60A5FA 100%);
+      opacity: 0; transition: opacity .28s ease;
     }
+
     .btn-next:hover {
-      transform: translateY(-3px) scale(1.02);
-      box-shadow: 0 12px 40px rgba(16,185,129,.6), 0 0 80px rgba(16,185,129,.2);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 38px rgba(25, 198, 173, 0.48), 0 0 60px rgba(59, 130, 246, 0.25);
     }
-    .btn-next:hover::after { opacity: .5; }
-    .btn-next:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-next:hover::before { opacity: 1; }
+
+    .btn-next span, .btn-next svg { position: relative; z-index: 1; }
+
+    .btn-next:disabled {
+      opacity: .4; cursor: not-allowed; transform: none; box-shadow: none;
+    }
+
+    .security-note {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-muted); font-family: var(--font-body);
+    }
+
+    /* Responsive queries */
+    @media (max-width: 900px) {
+      .hero-section { grid-template-columns: 1fr; text-align: center; }
+      .hero-left { align-items: center; }
+      .hero-visual-col { display: none; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
 
     @media (max-width: 640px) {
-      .field-row { grid-template-columns: 1fr 1fr; }
-      .field-row.two-col { grid-template-columns: 90px 1fr; }
-      .section-card { padding: 22px 18px; }
-      .cta-bar { flex-direction: column; gap: 14px; align-items: stretch; }
-      .btn-next { justify-content: center; }
+      .field-row { grid-template-columns: 1fr; }
+      .field-row.two-col { grid-template-columns: 1fr; }
+      .section-card { padding: 20px 16px; }
+      .btn-next { width: 100%; justify-content: center; }
+      .progress-track { padding: 8px 14px; }
+      .pr-line { width: 20px; margin: 0 6px; }
     }
   </style>
 </head>
 <body>
-  <div class="bg-glow" aria-hidden="true"></div>
-  <div class="blob-scene" aria-hidden="true">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-  </div>
+  <!-- Ambient background overlays -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow-left" aria-hidden="true"></div>
+  <div class="bg-glow-right" aria-hidden="true"></div>
 
+  <!-- Header Navbar -->
   <nav class="nav-bar">
     <a href="/" class="nav-home">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       Home
     </a>
-    <div class="nav-center-badge" style="display:flex;align-items:center;gap:8px;background:none;border:none;padding:0;">
-      <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px rgba(16,185,129,.5))">
+    <a href="/" class="nav-center-logo">
+      <svg class="logo-symbol" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="pi-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-          <linearGradient id="pi-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#34d399"/></linearGradient>
-          <linearGradient id="pi-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
+          <linearGradient id="pi-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#8174E8"/></linearGradient>
+          <linearGradient id="pi-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#4C8FF5"/></linearGradient>
+          <linearGradient id="pi-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#8174E8"/></linearGradient>
         </defs>
-        <circle cx="14" cy="14" r="12.5" stroke="url(#pi-ring)" stroke-width="1.25" fill="rgba(16,185,129,.08)"/>
-        <line x1="6" y1="14" x2="13" y2="14" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="14" cy="14" r="12.5" stroke="url(#pi-ring)" stroke-width="1.25" fill="rgba(25,198,173,.08)"/>
+        <line x1="6" y1="14" x2="13" y2="14" stroke="#19C6AD" stroke-width="2" stroke-linecap="round"/>
         <path d="M13 14 L19 8.5" stroke="url(#pi-ft)" stroke-width="2" stroke-linecap="round"/>
         <path d="M13 14 L19 19.5" stroke="url(#pi-fb)" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="20" cy="8.5" r="2" fill="#34d399"/>
-        <circle cx="20" cy="19.5" r="2" fill="#a855f7"/>
+        <circle cx="20" cy="8.5" r="2" fill="#4C8FF5"/>
+        <circle cx="20" cy="19.5" r="2" fill="#8174E8"/>
       </svg>
-      <span style="font-family:'Sora',sans-serif;font-size:15px;font-weight:800;letter-spacing:-.03em;color:#f1f5f9;">Diff<span style="background:linear-gradient(90deg,#10b981,#34d399);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">/Dx</span></span>
+      <span class="logo-text">Diff<span class="logo-accent">/Dx</span></span>
+    </a>
+
+    <div class="nav-right-actions">
+      <!-- Theme Toggle Button -->
+      <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
+        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+
+      <div id="nav-auth">
+        <a href="/login.html" class="nav-signin-btn">
+          Sign In
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        </a>
+      </div>
     </div>
-    <div id="nav-auth"></div>
   </nav>
 
-  <header class="page-header">
-    <div class="step-pill"><div class="step-dot"></div> Step 1 of 3</div>
-    <h1 class="page-title">Tell us about <span>yourself</span></h1>
-    <p class="page-sub">Your details help the AI ask the right questions and build an accurate picture</p>
-    <div class="progress-track">
-      <div class="pr-node active">
-        <div class="pr-circle">1</div>
-        <span>Patient Info</span>
+  <main class="app-container">
+    <!-- HERO SECTION -->
+    <header class="hero-section">
+      <!-- Left Column: Title & Highlighted 3 Diagnostic Workflow Steps -->
+      <div class="hero-left">
+        <div class="step-pill"><div class="step-dot"></div> Clinical Intake &bull; Step 1 of 3</div>
+        <h1 class="hero-title">Tell us about <span>yourself</span></h1>
+        <p class="hero-sub">Your details help us formulate targeted questions and build an accurate clinical picture.</p>
+
+        <!-- 3 Workflow Steps (Highlighted active section: Patient Info) -->
+        <div class="hero-steps-list">
+          <!-- Step 1: Patient Info (ACTIVE & HIGHLIGHTED) -->
+          <div class="step-card active">
+            <div class="step-card-num active">1</div>
+            <div class="step-card-content">
+              <div class="step-card-header">
+                <span class="step-card-title">Patient Info</span>
+                <span class="active-badge">Active Step</span>
+              </div>
+              <span class="step-card-desc">Basic details, body measurements & chief complaint</span>
+            </div>
+          </div>
+
+          <!-- Step 2: Medical History (Upcoming) -->
+          <div class="step-card">
+            <div class="step-card-num">2</div>
+            <div class="step-card-content">
+              <div class="step-card-header">
+                <span class="step-card-title">Medical History</span>
+              </div>
+              <span class="step-card-desc">Past conditions, medications & risk factors</span>
+            </div>
+          </div>
+
+          <!-- Step 3: Diagnostic Session (Upcoming) -->
+          <div class="step-card">
+            <div class="step-card-num">3</div>
+            <div class="step-card-content">
+              <div class="step-card-header">
+                <span class="step-card-title">Diagnostic Session</span>
+              </div>
+              <span class="step-card-desc">Interactive symptom analysis & differential reasoning</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="pr-line"></div>
-      <div class="pr-node inactive">
-        <div class="pr-circle">2</div>
-        <span>Medical History</span>
+
+      <!-- Right Column: 3D Illustration & Floating Decorative Mini Cards -->
+      <div class="hero-visual-col" aria-hidden="true">
+        <div class="hero-scan-ring"></div>
+        <svg class="hero-ecg-bg" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 50 H100 L110 30 L120 70 L135 10 L150 90 L165 40 L175 60 L185 50 H400" stroke="#19C6AD" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+
+        <div class="hero-3d-wrapper">
+          <video class="hero-3d-img" src="/video.mov" poster="/doctor_patient_3d.jpg" autoplay loop muted playsinline aria-label="Doctor Patient Consultation Video">
+            <img class="hero-3d-img" src="/doctor_patient_3d.jpg" alt="Doctor Patient Consultation" />
+          </video>
+        </div>
+
+        <!-- Floating Card 1: Clinical Intake -->
+        <div class="floating-card card-ai-analysis">
+          <div class="fc-title">Clinical Intake</div>
+          <div class="ai-check-item"><span>Symptoms</span> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="ai-check-item"><span>Context</span> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="ai-check-item"><span>History</span> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        </div>
+
+        <!-- Floating Card 2: Vitals Overview -->
+        <div class="floating-card card-vitals">
+          <div class="fc-title">Vitals Overview</div>
+          <svg width="120" height="24" viewBox="0 0 120 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 12 H30 L35 4 L40 20 L48 2 L56 22 L62 10 L68 14 L72 12 H120" stroke="#19C6AD" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <!-- Floating Card 3: Clinical Insight -->
+        <div class="floating-card card-insight">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#19C6AD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span style="font-family:var(--font-heading);font-size:10px;font-weight:700;color:var(--text-main);">Clinical Insight</span>
+        </div>
       </div>
-      <div class="pr-line"></div>
-      <div class="pr-node inactive">
-        <div class="pr-circle">3</div>
-        <span>Diagnostic Session</span>
+    </header>
+
+    <!-- PROGRESS TRACK WORKFLOW -->
+    <div class="progress-track-wrapper">
+      <div class="progress-track">
+        <div class="pr-node active">
+          <div class="pr-circle">1</div>
+          <span>Patient Info</span>
+        </div>
+        <div class="pr-line"></div>
+        <div class="pr-node inactive">
+          <div class="pr-circle">2</div>
+          <span>Medical History</span>
+        </div>
+        <div class="pr-line"></div>
+        <div class="pr-node inactive">
+          <div class="pr-circle">3</div>
+          <span>Diagnostic Session</span>
+        </div>
       </div>
     </div>
-  </header>
 
-  <div class="page-body">
+    <!-- PATIENT FORM 50/50 GRID -->
     <form id="patient-form" novalidate>
+      <div class="form-grid">
 
-      <!-- Basic info -->
-      <div class="section-card">
-        <div class="sec-head">
-          <div class="sec-icon si-violet">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-          </div>
+        <!-- CARD 1: Basic Information -->
+        <div class="section-card card-basic">
           <div>
-            <div class="sec-title">Basic Information</div>
-            <div class="sec-sub">Age, sex, and body measurements</div>
-          </div>
-        </div>
+            <div class="sec-head">
+              <div class="sec-icon si-violet">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div>
+                <div class="sec-title">Basic Information</div>
+                <div class="sec-sub">Age, sex, and body measurements</div>
+              </div>
+            </div>
 
-        <!-- Row 1: Age + Sex -->
-        <div class="field-row two-col" style="margin-bottom:16px;">
-          <div class="field">
-            <label class="field-label" for="age">Age <span class="req">*</span></label>
-            <input class="fi" type="number" id="age" min="1" max="120" placeholder="e.g. 34" required />
-          </div>
-          <div class="field">
-            <label class="field-label">Sex <span class="req">*</span></label>
-            <div class="sex-toggle">
-              <input class="sex-opt" type="radio" name="sex" id="sex-m" value="M">
-              <label class="sex-label" for="sex-m">Male</label>
-              <input class="sex-opt" type="radio" name="sex" id="sex-f" value="F">
-              <label class="sex-label" for="sex-f">Female</label>
-              <input class="sex-opt" type="radio" name="sex" id="sex-o" value="other">
-              <label class="sex-label" for="sex-o">Other</label>
+            <!-- Row 1: Age + Sex -->
+            <div class="field-row two-col" style="margin-bottom:16px;">
+              <div class="field">
+                <label class="field-label" for="age">Age <span class="req">*</span></label>
+                <input class="fi" type="number" id="age" min="1" max="120" placeholder="e.g. 34" required />
+              </div>
+              <div class="field">
+                <label class="field-label" for="sex-select">Sex <span class="req">*</span></label>
+                <select class="fi sex-select" id="sex-select" required onchange="syncSexRadio(this.value)">
+                  <option value="" disabled selected>Select Sex</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                  <option value="other">Other</option>
+                </select>
+                <!-- Hidden radio inputs for legacy & test backward compatibility -->
+                <div style="display:none;" aria-hidden="true">
+                  <input class="sex-opt" type="radio" name="sex" id="sex-m" value="M">
+                  <input class="sex-opt" type="radio" name="sex" id="sex-f" value="F">
+                  <input class="sex-opt" type="radio" name="sex" id="sex-o" value="other">
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 2: Height + Weight + BMI -->
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label" for="height">Height <span style="color:var(--text-muted);font-weight:500;font-size:9px;text-transform:none;">(cm, optional)</span></label>
+                <input class="fi" type="number" id="height" min="50" max="250" step="0.5" placeholder="e.g. 170" oninput="calcBMI()" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="weight">Weight <span style="color:var(--text-muted);font-weight:500;font-size:9px;text-transform:none;">(kg, optional)</span></label>
+                <input class="fi" type="number" id="weight" min="10" max="300" step="0.5" placeholder="e.g. 70" oninput="calcBMI()" />
+              </div>
+              <div class="field">
+                <label class="field-label">BMI <span style="color:var(--text-muted);font-weight:500;font-size:9px;text-transform:none;">(auto-calculated)</span></label>
+                <div id="bmi-display">
+                  <span id="bmi-value">—</span>
+                  <span id="bmi-label" style="display:none;"></span>
+                </div>
+                <input type="hidden" id="bmi" />
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Row 2: Height + Weight + BMI -->
-        <div class="field-row">
-          <div class="field">
-            <label class="field-label" for="height">Height <span style="color:#475569;font-weight:500;font-size:9px;text-transform:none;">(cm, optional)</span></label>
-            <input class="fi" type="number" id="height" min="50" max="250" step="0.5" placeholder="e.g. 170" oninput="calcBMI()" />
-          </div>
-          <div class="field">
-            <label class="field-label" for="weight">Weight <span style="color:#475569;font-weight:500;font-size:9px;text-transform:none;">(kg, optional)</span></label>
-            <input class="fi" type="number" id="weight" min="10" max="300" step="0.5" placeholder="e.g. 70" oninput="calcBMI()" />
-          </div>
-          <div class="field">
-            <label class="field-label">BMI <span style="color:#475569;font-weight:500;font-size:9px;text-transform:none;">(auto-calculated)</span></label>
-            <div id="bmi-display" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;min-height:42px;">
-              <span id="bmi-value" style="font-size:16px;font-weight:700;color:#475569;">—</span>
-              <span id="bmi-label" style="font-size:10px;font-weight:700;border-radius:99px;padding:2px 8px;display:none;"></span>
+        <!-- CARD 2: Chief Complaint -->
+        <div class="section-card card-chief">
+          <div>
+            <div class="sec-head">
+              <div class="sec-icon si-teal">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              </div>
+              <div>
+                <div class="sec-title">Chief Complaint <span class="req">*</span></div>
+                <div class="sec-sub">What is bothering you the most today? Describe in your own words.</div>
+              </div>
             </div>
-            <input type="hidden" id="bmi" />
+            <textarea id="chief_complaint" class="fi-area"
+              placeholder="e.g. I've had a pounding headache on the right side of my head for two days. It gets worse with light and movement..."
+              required></textarea>
           </div>
         </div>
-      </div>
 
-      <!-- Chief complaint -->
-      <div class="section-card">
-        <div class="sec-head">
-          <div class="sec-icon si-teal">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-            </svg>
-          </div>
+        <!-- CARD 3: Additional Symptoms -->
+        <div class="section-card card-symptoms">
           <div>
-            <div class="sec-title">Chief Complaint <span class="req">*</span></div>
-            <div class="sec-sub">What is bothering you the most today? Describe in your own words.</div>
+            <div class="sec-head">
+              <div class="sec-icon si-amber">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </div>
+              <div>
+                <div class="sec-title">Additional Symptoms</div>
+                <div class="sec-sub">Add any other symptoms you are experiencing, one at a time</div>
+              </div>
+            </div>
+            <div class="sym-row">
+              <input class="fi" type="text" id="sym-input" placeholder="e.g. Nausea, Fatigue, Dizziness…" />
+              <button type="button" class="btn-add" id="sym-add-btn">+ Add</button>
+            </div>
+            <div class="sym-chips" id="sym-chips">
+              <span class="sym-empty">No symptoms added yet</span>
+            </div>
           </div>
         </div>
-        <textarea id="chief_complaint" class="fi-area"
-          placeholder="e.g. I've had a pounding headache on the right side of my head for two days. It gets worse with light and movement..."
-          required></textarea>
-      </div>
 
-      <!-- Additional symptoms -->
-      <div class="section-card">
-        <div class="sec-head">
-          <div class="sec-icon si-amber">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </div>
+        <!-- CARD 4: Your Clinical Picture (Decorative Visual Card) -->
+        <div class="section-card clinical-picture-card card-clinical">
           <div>
-            <div class="sec-title">Additional Symptoms</div>
-            <div class="sec-sub">Add any other symptoms you are experiencing, one at a time</div>
+            <div class="sec-head">
+              <div class="sec-icon si-blue">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </div>
+              <div>
+                <div class="sec-title">Your Clinical Picture</div>
+                <div class="sec-sub">We use your information to build a clearer clinical picture.</div>
+              </div>
+            </div>
+
+            <div class="workflow-steps">
+              <div class="wf-step">
+                <div class="wf-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <span class="wf-label">Your Information</span>
+              </div>
+              <div class="wf-arrow">→</div>
+              <div class="wf-step">
+                <div class="wf-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </div>
+                <span class="wf-label">Symptoms & Context</span>
+              </div>
+              <div class="wf-arrow">→</div>
+              <div class="wf-step">
+                <div class="wf-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <span class="wf-label">Medical History</span>
+              </div>
+              <div class="wf-arrow">→</div>
+              <div class="wf-step">
+                <div class="wf-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                </div>
+                <span class="wf-label">Diagnostic Session</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cp-tagline">
+            Smarter questions. Better insights. Improved care.
           </div>
         </div>
-        <div class="sym-row">
-          <input class="fi" type="text" id="sym-input" placeholder="e.g. Nausea, Fatigue, Dizziness…" />
-          <button type="button" class="btn-add" id="sym-add-btn">+ Add</button>
-        </div>
-        <div class="sym-chips" id="sym-chips">
-          <span class="sym-empty">No symptoms added yet</span>
-        </div>
+
       </div>
 
-      <!-- CTA -->
-      <div class="cta-bar">
-        <span class="cta-hint"><span class="req">*</span> Required fields</span>
+      <!-- Bottom CTA Section -->
+      <div class="cta-section">
         <button type="submit" class="btn-next" id="next-btn">
-          Continue to Medical History
+          <span>Continue to Medical History</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
+        <span class="security-note">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Your information is handled securely
+        </span>
       </div>
-
     </form>
+  </main>
+
+  <!-- TRANSLUCENT GLASSMORPHISM VALIDATION ALERT MODAL -->
+  <div id="validation-modal" class="modal-backdrop" aria-hidden="true" style="display:none;" onclick="if(event.target===this) closeValidationModal();">
+    <div class="modal-card">
+      <div class="modal-icon-wrap">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <h3 class="modal-title">Please Fill Required Details</h3>
+      <p class="modal-desc">Please complete all required fields before continuing to Medical History:</p>
+      <div class="modal-missing-list" id="modal-missing-list"></div>
+      <button type="button" class="modal-close-btn" onclick="closeValidationModal()">Got It, Fill Details</button>
+    </div>
   </div>
 
   <script>
     const symptoms = [];
+
+    function savePatientInfoDraft() {
+      try {
+        const age = document.getElementById('age')?.value.trim() || '';
+        const sex = document.getElementById('sex-select')?.value || document.querySelector('input[name="sex"]:checked')?.value || '';
+        const height = document.getElementById('height')?.value.trim() || '';
+        const weight = document.getElementById('weight')?.value.trim() || '';
+        const bmi = document.getElementById('bmi')?.value.trim() || '';
+        const cc = document.getElementById('chief_complaint')?.value.trim() || '';
+        sessionStorage.setItem('patientInfo', JSON.stringify({
+          age, sex, height, weight, bmi: bmi || null,
+          chief_complaint: cc,
+          symptoms: [...symptoms]
+        }));
+        updateStep2Clickability();
+      } catch (_) {}
+    }
+
+    function loadPatientInfoDraft() {
+      try {
+        const raw = sessionStorage.getItem('patientInfo');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data.age && !document.getElementById('age').value) {
+          document.getElementById('age').value = data.age;
+        }
+        if (data.sex) {
+          const sel = document.getElementById('sex-select');
+          if (sel) sel.value = data.sex;
+          const radio = document.querySelector(`input[name="sex"][value="${data.sex}"]`);
+          if (radio) radio.checked = true;
+        }
+        if (data.height && !document.getElementById('height').value) {
+          document.getElementById('height').value = data.height;
+        }
+        if (data.weight && !document.getElementById('weight').value) {
+          document.getElementById('weight').value = data.weight;
+        }
+        if (data.chief_complaint && !document.getElementById('chief_complaint').value) {
+          document.getElementById('chief_complaint').value = data.chief_complaint;
+        }
+        if (Array.isArray(data.symptoms) && data.symptoms.length > 0 && symptoms.length === 0) {
+          data.symptoms.forEach(s => {
+            if (!symptoms.includes(s)) symptoms.push(s);
+          });
+          renderChips();
+        }
+        calcBMI();
+        updateStep2Clickability();
+      } catch (_) {}
+    }
+
+    function updateStep2Clickability() {
+      const raw = sessionStorage.getItem('patientInfo');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.age && data.sex && data.chief_complaint) {
+          const step2Card = document.querySelectorAll('.hero-steps-list .step-card')[1];
+          if (step2Card) {
+            step2Card.style.cursor = 'pointer';
+            step2Card.title = 'Click to proceed to Medical History';
+            step2Card.onclick = () => window.location.href = '/history';
+          }
+          const step2PrNode = document.querySelectorAll('.progress-track .pr-node')[1];
+          if (step2PrNode) {
+            step2PrNode.style.cursor = 'pointer';
+            step2PrNode.title = 'Click to proceed to Medical History';
+            step2PrNode.onclick = () => window.location.href = '/history';
+          }
+        }
+      } catch (_) {}
+    }
+
+    function syncSexRadio(val) {
+      const radio = document.querySelector(`input[name="sex"][value="${val}"]`);
+      if (radio) radio.checked = true;
+      savePatientInfoDraft();
+    }
 
     // Pre-fill age + sex from saved profile
     async function prefillFromProfile() {
@@ -466,19 +1393,33 @@
         if (p.age && !document.getElementById('age').value) {
           document.getElementById('age').value = p.age;
         }
-        if (p.gender && !document.querySelector('input[name="sex"]:checked')) {
+        if (p.gender) {
           const g = p.gender.toLowerCase();
           const sexVal = g.startsWith('male') || g === 'm' ? 'M'
                        : g.startsWith('female') || g === 'f' ? 'F'
                        : 'other';
           const radio = document.querySelector(`input[name="sex"][value="${sexVal}"]`);
           if (radio) radio.checked = true;
+          const sel = document.getElementById('sex-select');
+          if (sel) sel.value = sexVal;
         }
+        savePatientInfoDraft();
       } catch (_) {}
     }
 
-    // Run after auth.js has loaded (auth.js is deferred after this inline script)
-    window.addEventListener('load', prefillFromProfile);
+    // Run after auth.js has loaded
+    window.addEventListener('load', () => {
+      prefillFromProfile();
+      loadPatientInfoDraft();
+    });
+
+    // Auto-save draft on input events
+    ['age', 'height', 'weight', 'chief_complaint'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', savePatientInfoDraft);
+    });
+    const sexSelEl = document.getElementById('sex-select');
+    if (sexSelEl) sexSelEl.addEventListener('change', savePatientInfoDraft);
 
     function renderChips() {
       const c = document.getElementById('sym-chips');
@@ -495,7 +1436,11 @@
       });
     }
 
-    function removeSym(i) { symptoms.splice(i, 1); renderChips(); }
+    function removeSym(i) {
+      symptoms.splice(i, 1);
+      renderChips();
+      savePatientInfoDraft();
+    }
 
     document.getElementById('sym-add-btn').addEventListener('click', () => {
       const inp = document.getElementById('sym-input');
@@ -503,6 +1448,7 @@
       if (!val || symptoms.includes(val)) return;
       symptoms.push(val);
       renderChips();
+      savePatientInfoDraft();
       inp.value = '';
       inp.focus();
     });
@@ -521,12 +1467,12 @@
         const bmi = (w / ((h / 100) ** 2)).toFixed(1);
         hiddenEl.value = bmi;
         valEl.textContent = bmi;
-        valEl.style.color = '#e2e8f0';
+        valEl.style.color = 'var(--text-main)';
         let cat, bg, color;
-        if      (bmi < 18.5) { cat = 'Underweight'; bg = 'rgba(59,130,246,.15)';  color = '#60a5fa'; }
-        else if (bmi < 25)   { cat = 'Normal';      bg = 'rgba(16,185,129,.15)';  color = '#10b981'; }
-        else if (bmi < 30)   { cat = 'Overweight';  bg = 'rgba(245,158,11,.15)';  color = '#f59e0b'; }
-        else                 { cat = 'Obese';        bg = 'rgba(239,68,68,.15)';   color = '#ef4444'; }
+        if      (bmi < 18.5) { cat = 'Underweight'; bg = 'rgba(76,143,245,.15)';  color = '#60A5FA'; }
+        else if (bmi < 25)   { cat = 'Normal';      bg = 'rgba(25,198,173,.15)';  color = '#19C6AD'; }
+        else if (bmi < 30)   { cat = 'Overweight';  bg = 'rgba(245,158,11,.15)';  color = '#F59E0B'; }
+        else                 { cat = 'Obese';        bg = 'rgba(239,68,68,.15)';   color = '#EF4444'; }
         labelEl.textContent = cat;
         labelEl.style.background = bg;
         labelEl.style.color = color;
@@ -535,15 +1481,38 @@
       } else {
         hiddenEl.value = '';
         valEl.textContent = '—';
-        valEl.style.color = 'var(--text-muted,#64748b)';
+        valEl.style.color = 'var(--text-muted)';
         labelEl.style.display = 'none';
+      }
+    }
+
+    function showValidationModal(missing) {
+      const modal = document.getElementById('validation-modal');
+      const listEl = document.getElementById('modal-missing-list');
+      if (!modal || !listEl) return;
+      listEl.innerHTML = '';
+      missing.forEach(item => {
+        const chip = document.createElement('span');
+        chip.className = 'modal-missing-chip';
+        chip.textContent = '• ' + item;
+        listEl.appendChild(chip);
+      });
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeValidationModal() {
+      const modal = document.getElementById('validation-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
       }
     }
 
     document.getElementById('patient-form').addEventListener('submit', e => {
       e.preventDefault();
       const age = document.getElementById('age').value.trim();
-      const sex = document.querySelector('input[name="sex"]:checked')?.value || '';
+      const sex = document.getElementById('sex-select')?.value || document.querySelector('input[name="sex"]:checked')?.value || '';
       const bmi = document.getElementById('bmi').value.trim();
       const cc  = document.getElementById('chief_complaint').value.trim();
 
@@ -552,19 +1521,24 @@
         if (!age) missing.push('Age');
         if (!sex) missing.push('Sex');
         if (!cc)  missing.push('Chief Complaint');
-        alert('Please fill in: ' + missing.join(', '));
+        showValidationModal(missing);
         return;
       }
 
-      sessionStorage.setItem('patientInfo', JSON.stringify({
-        age, sex, bmi: bmi || null,
-        chief_complaint: cc,
-        symptoms: [...symptoms]
-      }));
-
+      savePatientInfoDraft();
       window.location.href = '/history';
     });
+
+    // Theme toggle handling
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark-theme');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      });
+    }
   </script>
   <script src="/auth.js"></script>
 </body>
 </html>
+

@@ -13,4 +13,4 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.12.2

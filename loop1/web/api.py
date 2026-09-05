@@ -110,6 +110,7 @@ from diffdx.routers.appointments5 import router as appointments5_router
 from diffdx.routers.appointments6 import router as appointments6_router
 from diffdx.routers.auth import router as auth_router
 from diffdx.routers.doctors import router as doctors_router
+from diffdx.routers.health import router as health_router
 from diffdx.routers.messaging import router as messaging_router
 from diffdx.routers.pages import router as pages_router
 from diffdx.routers.session_test_files import router as session_test_files_router
@@ -220,6 +221,7 @@ app.include_router(appointments5_router)
 app.include_router(appointments6_router)
 app.include_router(auth_router)
 app.include_router(doctors_router)
+app.include_router(health_router)
 app.include_router(messaging_router)
 app.include_router(pages_router)
 app.include_router(session_test_files_router)

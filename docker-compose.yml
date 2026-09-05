@@ -1,0 +1,65 @@
+version: "3.9"
+
+# week1.md Task 7. NOTE: written and statically reviewed but never
+# actually run — no `docker`/`docker-compose` binary was available while
+# authoring this. Run `docker compose up --build` and fix whatever it
+# surfaces before trusting this for anything real.
+#
+# `docker compose up` on a clean checkout should produce a working app at
+# localhost:8000 with migrations applied and doctors seeded, no manual
+# steps — docker-entrypoint.sh runs `alembic upgrade head` before
+# uvicorn starts, and web/api.py's startup hook seeds doctor accounts on
+# every boot (idempotent — skips seeds that already exist).
+
+services:
+  api:
+    build:
+      context: ./loop1
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./loop1/.env
+    environment:
+      # Override whatever's in .env — inside the compose network these
+      # must point at the service names, not localhost or unset.
+      DATABASE_URL: postgresql://diffdx:diffdx@db:5432/diffdx
+      REDIS_URL: redis://redis:6379/0
+      PORT: "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: diffdx
+      POSTGRES_USER: diffdx
+      POSTGRES_PASSWORD: diffdx
+    ports:
+      - "5432:5432"
+    volumes:
+      - diffdx-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U diffdx -d diffdx"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - diffdx-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  diffdx-postgres-data:
+  diffdx-redis-data:

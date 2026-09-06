@@ -1,490 +1,417 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark-theme">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DiffDx — Session Report</title>
+  <script>
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.remove('dark-theme');
+    } else {
+      document.documentElement.classList.add('dark-theme');
+    }
+  </script>
   <link rel="stylesheet" href="/reloader.css">
   <script src="/reloader.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=Noto+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="/auth.js"></script>
   <script src="/notif-toggle.js"></script>
   <style>
-    .diagnosis-hero {
-      text-align: center;
-      padding: 40px 0 28px;
-    }
-    .diagnosis-eyebrow {
-      font-size: 12px; font-weight: 700; letter-spacing: .1em;
-      text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px;
-    }
-    .diagnosis-name {
-      font-size: 38px; font-weight: 700; color: var(--primary);
-      line-height: 1.15; margin-bottom: 14px;
-    }
-    .diagnosis-chips { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    /* ═══════════════════════════════════════════════════════════════
+       DIFFDX MEDICAL REPORT — RESTORED ALIGNMENT & THEME SYSTEM
+       Matches history.html and patient-info.html theme & layout
+       ═══════════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; }
 
-    .report-section { margin-bottom: 32px; }
-    .report-section-title {
-      font-size: 12px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--text-dim);
-      margin-bottom: 14px; padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
+    :root {
+      --bg-dark: #F1F5F9;
+      --bg-card: #FFFFFF;
+      --border-card: #CBD5E1;
+      --teal-primary: #0D9488;
+      --teal-glow: rgba(13, 148, 136, 0.15);
+      --blue-secondary: #2563EB;
+      --purple-accent: #6D28D9;
+      --amber-accent: #D97706;
+      --text-main: #000000;
+      --text-muted: #334155;
+      --text-dim: #475569;
+      --nav-bg: rgba(255, 255, 255, 0.94);
+      --border-nav: #CBD5E1;
+      --nav-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      --btn-nav-bg: #FFFFFF;
+      --btn-nav-border: #94A3B8;
+      --btn-nav-text: #0F1D32;
+      --bg-input: #F8FAFC;
+      --bg-table-head: #F1F5F9;
+      --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+      --font-heading: 'Sora', sans-serif;
+      --font-body: 'Noto Sans', sans-serif;
 
-    .action-bar-bottom {
-      display: flex; gap: 12px; justify-content: center;
-      margin-top: 40px; padding-bottom: 48px;
-    }
-
-    /* score colored cells */
-    .score-cell { font-weight: 700; }
-    .score-green { color: var(--success); }
-    .score-yellow { color: var(--warning); }
-    .score-red { color: var(--danger); }
-
-    /* final diff mini bars */
-    .final-diff { display: flex; flex-direction: column; gap: 8px; }
-
-    /* ---- Next Steps / Routing block ---- */
-    .routing-block { margin-bottom: 32px; }
-    .urgency-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 12px; border-radius: 99px;
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; margin-bottom: 10px;
-    }
-    .urgency-emergency { background: rgba(239,68,68,.15); color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
-    .urgency-urgent    { background: rgba(245,158,11,.15); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
-    .urgency-routine   { background: rgba(16,185,129,.15); color: #10b981; border: 1px solid rgba(16,185,129,.3); }
-
-    @keyframes emergency-glow {
-      0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0), 0 0 18px 4px rgba(239,68,68,.18); border-color: rgba(239,68,68,.35); }
-      50%      { box-shadow: 0 0 0 6px rgba(239,68,68,.12), 0 0 36px 12px rgba(239,68,68,.32); border-color: rgba(239,68,68,.8); }
-    }
-    @keyframes emergency-icon-pulse {
-      0%,100% { opacity: 1; transform: scale(1); }
-      50%      { opacity: .6; transform: scale(1.15); }
-    }
-    .emergency-alert {
-      background: rgba(239,68,68,.08); border: 2px solid rgba(239,68,68,.5);
-      border-radius: var(--radius-lg); padding: 20px 24px;
-      display: flex; align-items: flex-start; gap: 14px;
-      animation: emergency-glow 1.6s ease-in-out infinite;
-    }
-    .emergency-alert-icon { color: #ef4444; flex-shrink: 0; margin-top: 2px;
-      animation: emergency-icon-pulse 1.6s ease-in-out infinite; }
-    .emergency-alert-title { font-size: 16px; font-weight: 700; color: #ef4444; margin-bottom: 6px; }
-    .emergency-alert-body { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
-
-    /* Nearby hospitals grid */
-    .hospital-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
-    .hospital-card {
-      background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2);
-      border-radius: var(--radius-lg); padding: 16px 18px;
-    }
-    .hospital-card-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-    .hospital-card-dist { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
-    .hospital-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .hospital-btn {
-      flex: 1; min-width: 80px; padding: 7px 10px; font-size: 12px; font-weight: 600;
-      border-radius: var(--radius); border: none; cursor: pointer; text-align: center;
-      text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-    }
-    .hospital-btn-call { background: #ef4444; color: #fff; }
-    .hospital-btn-call:hover { background: #dc2626; }
-    .hospital-btn-maps { background: var(--surface-3); color: var(--text); border: 1px solid var(--border); }
-    .hospital-btn-maps:hover { border-color: var(--primary); }
-
-    .doctor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-    .doctor-card {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 18px;
-      display: flex; flex-direction: column; gap: 12px;
-      transition: border-color .15s;
-    }
-    .doctor-card:hover { border-color: var(--primary-dim); }
-    .doctor-card-header { display: flex; align-items: center; gap: 12px; }
-    .doctor-avatar {
-      width: 44px; height: 44px; border-radius: 50%;
-      background: var(--primary-dim); color: var(--primary);
-      font-size: 14px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .doctor-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-    .doctor-hospital { font-size: 12px; color: var(--text-muted); }
-    .doctor-rating { font-size: 12px; color: var(--warning); font-weight: 600; }
-    .doctor-card-footer { margin-top: auto; }
-    .book-btn {
-      width: 100%; padding: 9px; font-size: 13px; font-weight: 600;
-      background: var(--primary); color: #000; border: none;
-      border-radius: var(--radius); cursor: pointer;
-      transition: opacity .15s;
-    }
-    .book-btn:hover { opacity: .85; }
-    .book-btn:disabled { opacity: .45; cursor: not-allowed; }
-
-    .booking-confirmed {
-      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25);
-      border-radius: var(--radius-lg); padding: 18px 22px;
-      display: flex; align-items: center; gap: 12px;
-      font-size: 14px; color: var(--success); font-weight: 600;
+      /* Compatibility aliases for styles.css components */
+      --bg: #F1F5F9;
+      --bg-2: #FFFFFF;
+      --surface-1: #FFFFFF;
+      --surface-2: #F8FAFC;
+      --surface-3: #F1F5F9;
+      --surface-4: #E2E8F0;
+      --surface-5: #CBD5E1;
+      --text: #0F172A;
+      --border: #CBD5E1;
+      --border-subtle: #E2E8F0;
+      --primary: #0D9488;
+      --primary-dim: rgba(13, 148, 136, 0.12);
+      --primary-glow: rgba(13, 148, 136, 0.2);
     }
 
-    /* ---- Own doctor search ---- */
-    .own-doctor-section {
-      margin-top: 28px; padding-top: 22px;
-      border-top: 1px solid var(--border);
-    }
-    .own-doctor-toggle {
-      display: flex; align-items: center; gap: 8px;
-      background: none; border: none; cursor: pointer;
-      color: var(--text-dim); font-size: 13px; font-weight: 600;
-      padding: 0; font-family: var(--font);
-      transition: color .15s;
-    }
-    .own-doctor-toggle:hover { color: var(--text); }
-    .own-doctor-toggle svg { transition: transform .2s; }
-    .own-doctor-toggle.open svg { transform: rotate(180deg); }
-    .own-doctor-body { display: none; margin-top: 14px; }
-    .own-doctor-body.open { display: block; }
-    .own-doctor-search-wrap { position: relative; margin-bottom: 10px; }
-    .own-doctor-search-wrap svg {
-      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-      color: var(--text-muted); pointer-events: none;
-    }
-    .own-doctor-input {
-      width: 100%; background: var(--surface-3); border: 1px solid var(--border);
-      border-radius: var(--radius); color: var(--text); font-family: var(--font);
-      font-size: 14px; padding: 10px 12px 10px 38px; outline: none;
-      transition: border-color .15s;
-    }
-    .own-doctor-input:focus { border-color: var(--primary); }
-    .own-doctor-input::placeholder { color: var(--text-muted); }
+    html.dark-theme {
+      --bg-dark: #050D18;
+      --bg-card: #0A1525;
+      --border-card: rgba(150, 180, 210, 0.08);
+      --teal-primary: #19C6AD;
+      --teal-glow: rgba(25, 198, 173, 0.15);
+      --blue-secondary: #4C8FF5;
+      --purple-accent: #8174E8;
+      --amber-accent: #F59E0B;
+      --text-main: #EAF2FA;
+      --text-muted: #8FA2B9;
+      --text-dim: #94a3b8;
+      --nav-bg: rgba(5, 13, 24, 0.88);
+      --border-nav: rgba(25, 198, 173, 0.35);
+      --nav-shadow: 0 10px 36px rgba(0, 0, 0, 0.5), 0 0 35px rgba(25, 198, 173, 0.12);
+      --btn-nav-bg: rgba(255, 255, 255, 0.04);
+      --btn-nav-border: rgba(150, 180, 210, 0.10);
+      --btn-nav-text: #EAF2FA;
+      --bg-input: rgba(255, 255, 255, 0.04);
+      --bg-table-head: rgba(255, 255, 255, 0.035);
+      --card-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
 
-    /* Specialty filter chips */
-    .own-doctor-filters {
-      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+      /* Compatibility aliases for styles.css components */
+      --bg: #050D18;
+      --bg-2: #0A1525;
+      --surface-1: #0A1525;
+      --surface-2: #0E1B2E;
+      --surface-3: #13243C;
+      --surface-4: #192F4D;
+      --surface-5: #223D62;
+      --text: #EAF2FA;
+      --border: rgba(150, 180, 210, 0.12);
+      --border-subtle: rgba(150, 180, 210, 0.06);
+      --primary: #19C6AD;
+      --primary-dim: rgba(25, 198, 173, 0.15);
+      --primary-glow: rgba(25, 198, 173, 0.25);
     }
-    .own-doc-chip {
-      font-size: 11px; font-weight: 600; padding: 4px 11px;
-      border-radius: 99px; cursor: pointer; border: 1px solid var(--border);
-      background: var(--surface-3); color: var(--text-muted);
-      transition: border-color .12s, color .12s, background .12s;
-      font-family: var(--font);
-    }
-    .own-doc-chip:hover  { color: var(--text); border-color: var(--text-muted); }
-    .own-doc-chip.active { background: rgba(0,180,216,.12); border-color: var(--primary); color: var(--primary); }
 
-    /* Doctor result cards */
-    .own-doctor-results {
-      display: flex; flex-direction: column; gap: 10px;
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      transition: background 0.3s ease, color 0.3s ease;
     }
-    .own-doctor-card {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 14px 16px;
-      transition: border-color .15s;
-    }
-    .own-doctor-card:hover { border-color: rgba(0,180,216,.35); }
-    .own-doctor-card.mismatch-card { border-color: rgba(245,158,11,.25); }
-    .own-doctor-card-top {
-      display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
-    }
-    .own-doctor-card-info { flex: 1; min-width: 0; }
-    .own-doctor-name { font-size: 14px; font-weight: 600; color: var(--text); }
-    .own-doctor-meta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
-    .own-doctor-mismatch-badge {
-      font-size: 10px; font-weight: 700; padding: 2px 8px;
-      background: rgba(245,158,11,.1); color: #f59e0b;
-      border: 1px solid rgba(245,158,11,.25); border-radius: 99px;
-      white-space: nowrap; flex-shrink: 0;
-    }
-    /* Slot chips row */
-    .own-doctor-slots {
-      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
-    }
-    .own-doctor-slot-chip {
-      font-size: 11px; font-weight: 600; padding: 4px 10px;
-      border-radius: 99px; cursor: pointer;
-      background: var(--surface-3); border: 1px solid var(--border);
-      color: var(--text-dim); font-family: var(--font);
-      transition: border-color .12s, color .12s, background .12s;
-    }
-    .own-doctor-slot-chip:hover {
-      background: rgba(0,180,216,.1); border-color: var(--primary); color: var(--primary);
-    }
-    .own-doctor-no-slots {
-      font-size: 11px; color: var(--text-muted); font-style: italic;
-    }
-    .own-doctor-card-actions { display: flex; justify-content: flex-end; }
-    .own-doctor-not-found {
-      text-align: center; padding: 24px 16px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); margin-top: 8px;
-    }
-    .own-doctor-not-found-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-    .own-doctor-not-found-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
 
-    /* Mismatch dialog */
-    .mismatch-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.65);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 1100; padding: 24px;
+    /* Ambient Background Effects */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(143, 162, 185, 0.06) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(ellipse 85% 65% at 50% 30%, black 40%, transparent 95%);
+      -webkit-mask-image: radial-gradient(ellipse 85% 65% at 50% 30%, black 40%, transparent 95%);
     }
-    .mismatch-overlay.hidden { display: none; }
-    .mismatch-box {
-      background: var(--surface-1); border: 1px solid rgba(255,185,95,.3);
-      border-radius: var(--radius-lg); width: 100%; max-width: 400px;
-      padding: 28px;
-    }
-    .mismatch-icon { font-size: 28px; margin-bottom: 10px; }
-    .mismatch-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-    .mismatch-body { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
-    .mismatch-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
-    /* Slot picker modal */
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.6);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 1000; padding: 24px;
+    .bg-glow-left {
+      position: fixed; top: -100px; left: -120px; width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--teal-glow) 0%, transparent 70%);
+      filter: blur(100px); pointer-events: none; z-index: 0;
+      animation: floatGlowLeft 20s ease-in-out infinite alternate;
     }
-    .modal-overlay.hidden { display: none; }
-    .modal-box {
-      background: var(--surface-1); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); width: 100%; max-width: 420px;
-      padding: 28px; position: relative;
-    }
-    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-    .modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
-    .slot-list {
-      display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;
-      max-height: 320px; overflow-y: auto;
-      padding-right: 4px;
-      scrollbar-width: thin; scrollbar-color: var(--surface-4) transparent;
-    }
-    .slot-list::-webkit-scrollbar { width: 4px; }
-    .slot-list::-webkit-scrollbar-track { background: transparent; }
-    .slot-list::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 99px; }
-    .slot-btn {
-      padding: 10px 14px; background: var(--surface-3);
-      border: 1px solid var(--border); border-radius: var(--radius);
-      color: var(--text); font-size: 13px; text-align: left; cursor: pointer;
-      transition: border-color .15s, background .15s;
-    }
-    .slot-btn:hover, .slot-btn.selected { border-color: var(--primary); background: var(--surface-4); }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
-    .modal-close {
-      position: absolute; top: 14px; right: 14px;
-      background: none; border: none; color: var(--text-muted);
-      cursor: pointer; font-size: 18px; line-height: 1;
-    }
-    .modal-close:hover { color: var(--text); }
 
-    /* ---- Suggested Tests ---- */
-    .suggested-tests-section { margin-bottom: 32px; }
-    .sug-header {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+    .bg-glow-right {
+      position: fixed; top: 200px; right: -120px; width: 650px; height: 650px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(129, 116, 232, 0.1) 0%, transparent 70%);
+      filter: blur(110px); pointer-events: none; z-index: 0;
+      animation: floatGlowRight 22s ease-in-out infinite alternate;
     }
-    .sug-rationale {
-      font-size: 13px; color: var(--text-muted); margin-bottom: 16px;
-      padding: 10px 14px; background: rgba(0,180,216,.05);
-      border-left: 3px solid var(--primary); border-radius: 0 var(--radius) var(--radius) 0;
-      line-height: 1.6;
+
+    @keyframes floatGlowLeft {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, 30px) scale(1.08); }
     }
-    .sug-none {
-      display: flex; align-items: center; gap: 12px; padding: 18px 20px;
-      background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2);
-      border-radius: var(--radius-lg); font-size: 13px; color: #4edea3; font-weight: 600;
+
+    @keyframes floatGlowRight {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(-30px, -40px) scale(1.05); }
     }
-    .sug-checkbox {
-      width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
-      border: 2px solid var(--border); background: var(--surface-3);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: all .15s;
+
+    @keyframes cardFadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-    .sug-checkbox:hover { border-color: #4edea3; }
-    .sug-checkbox-done { background: #4edea3; border-color: #4edea3; color: #051424; }
-    .sug-test-card {
-      display: flex; align-items: flex-start; gap: 14px;
-      padding: 16px 18px; border-radius: 14px;
-      border: 1px solid var(--border);
-      background: var(--surface-2);
-      transition: border-color .2s, box-shadow .2s, opacity .2s;
-      position: relative; overflow: hidden;
-      margin-bottom: 10px;
+
+    /* ── Floating Frosted Nav Pill ── */
+    .nav {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 18px; height: 52px;
+      background: var(--nav-bg);
+      backdrop-filter: blur(24px) saturate(1.8);
+      -webkit-backdrop-filter: blur(24px) saturate(1.8);
+      border: 1px solid var(--border-nav);
+      border-radius: 9999px;
+      box-shadow: var(--nav-shadow);
+      width: 92%; max-width: 1080px; min-width: 600px;
+      transition: all 0.3s ease;
     }
-    .sug-test-card::before {
-      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-      border-radius: 14px 0 0 14px; opacity: 0; transition: opacity .2s;
-    }
-    .sug-test-card.card-urgent::before { background: #f59e0b; opacity: 1; }
-    .sug-test-card.card-routine::before { background: #4edea3; opacity: 1; }
-    .sug-test-card:hover { border-color: rgba(255,255,255,.12); box-shadow: 0 4px 20px rgba(0,0,0,.25); }
-    .sug-test-card.done { opacity: .6; }
-    .sug-icon {
-      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center; font-size: 20px;
-    }
-    .sug-icon-blood   { background: rgba(239,68,68,.12); box-shadow: inset 0 0 0 1px rgba(239,68,68,.2); }
-    .sug-icon-urine   { background: rgba(245,158,11,.12); box-shadow: inset 0 0 0 1px rgba(245,158,11,.2); }
-    .sug-icon-imaging { background: rgba(99,102,241,.12); box-shadow: inset 0 0 0 1px rgba(99,102,241,.2); }
-    .sug-icon-vitals  { background: rgba(16,185,129,.12); box-shadow: inset 0 0 0 1px rgba(16,185,129,.2); }
-    .sug-icon-other   { background: rgba(100,116,139,.12); box-shadow: inset 0 0 0 1px rgba(100,116,139,.2); }
-    .sug-test-name { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
-    .sug-test-name-done { text-decoration: line-through; color: var(--text-muted); }
-    .sug-test-why  { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin-top: 3px; }
-    .sug-test-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .sug-badge {
-      font-size: 10px; font-weight: 700; padding: 3px 9px;
-      border-radius: 99px; text-transform: uppercase; letter-spacing: .07em;
-    }
-    .sug-badge-routine { background: rgba(16,185,129,.1); color: #4edea3; border: 1px solid rgba(16,185,129,.25); }
-    .sug-badge-urgent  { background: rgba(245,158,11,.1); color: #f59e0b; border: 1px solid rgba(245,158,11,.25); }
-    .sug-meta-pill {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: 11px; color: var(--text-dim); background: var(--surface-3);
-      border: 1px solid var(--border); border-radius: 99px; padding: 3px 9px;
-    }
-    .sug-meta-pill svg { flex-shrink: 0; opacity: .7; }
-    .sug-prep {
-      margin-top: 8px; font-size: 11px; color: var(--text-dim);
-      background: var(--surface-3); border-radius: 8px; padding: 6px 11px;
-      border-left: 2px solid var(--border);
-    }
-    .sug-done-badge {
-      flex-shrink: 0; font-size: 11px; font-weight: 700; padding: 3px 10px;
-      border-radius: 99px; background: rgba(78,222,163,.12); color: #4edea3;
-      border: 1px solid rgba(78,222,163,.25);
-    }
-    .sug-status-bar {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
-    }
-    .sug-progress { flex: 1; height: 4px; background: var(--surface-3); border-radius: 99px; overflow: hidden; }
-    .sug-progress-fill { height: 100%; background: #4edea3; border-radius: 99px; transition: width .3s; }
-    .sug-loading {
-      display: flex; align-items: center; gap: 10px; padding: 20px 0;
-      font-size: 13px; color: var(--text-muted);
-    }
-    .sug-upload-btn {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 11px; font-weight: 600; padding: 4px 10px;
-      border-radius: 7px; border: 1px solid var(--border);
-      background: var(--surface-3); color: var(--text-muted);
-      cursor: pointer; transition: border-color .15s, color .15s;
+
+    .nav-left { display: flex; align-items: center; }
+    .nav-back-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 7px 16px; border-radius: 9999px;
+      border: 1px solid var(--btn-nav-border);
+      background: var(--btn-nav-bg);
+      color: var(--btn-nav-text);
+      font-family: var(--font-heading);
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      text-decoration: none; transition: all .2s ease;
       white-space: nowrap;
     }
-    .sug-upload-btn:hover { border-color: var(--primary); color: var(--primary); }
-    .sug-uploaded-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 11px; font-weight: 600; padding: 4px 10px;
-      border-radius: 7px; border: 1px solid rgba(78,222,163,.3);
-      background: rgba(78,222,163,.08); color: #4edea3; white-space: nowrap;
+    .nav-back-pill:hover {
+      border-color: var(--teal-primary);
+      color: var(--teal-primary);
+      background: rgba(13, 148, 136, 0.08);
     }
 
-    /* ---- Conversation Viewer ---- */
-    .conv-toggle-btn {
-      display: flex; align-items: center; gap: 8px; cursor: pointer;
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 9px 16px;
-      font-size: 13px; font-weight: 600; color: var(--text-dim);
-      transition: border-color .15s, color .15s; width: 100%;
-    }
-    .conv-toggle-btn:hover { border-color: var(--primary-dim); color: var(--text); }
-    .conv-toggle-btn svg { transition: transform .2s; }
-    .conv-toggle-btn.open svg { transform: rotate(180deg); }
-    .conv-scroll-wrap {
-      max-height: 480px; overflow-y: auto; margin-top: 14px;
-      border: 1px solid var(--border); border-radius: var(--radius-lg);
-      padding: 4px 0; display: none;
-      scroll-behavior: smooth;
-    }
-    .conv-scroll-wrap.open { display: block; }
-    .conv-turn {
-      padding: 18px 20px; border-bottom: 1px solid var(--border);
-    }
-    .conv-turn:last-child { border-bottom: none; }
-    .conv-turn-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
+    .nav-center-logo {
+      position: absolute; left: 50%; transform: translateX(-50%);
       display: flex; align-items: center; gap: 8px;
     }
-    .conv-turn-num {
-      background: var(--primary-dim); color: var(--primary);
-      border-radius: 99px; padding: 2px 10px; font-size: 11px; font-weight: 700;
+    .nav-brand-capsule {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 18px; border-radius: 9999px;
+      background: rgba(13, 148, 136, 0.08);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+      font-family: var(--font-heading);
+      font-size: 14px; font-weight: 800; letter-spacing: -0.02em;
+      color: var(--text-main);
     }
-    .conv-bubble-doctor {
-      background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.2);
-      border-radius: 12px 12px 12px 2px; padding: 12px 16px;
-      font-size: 14px; color: var(--text); line-height: 1.6; margin-bottom: 10px;
-    }
-    .conv-bubble-patient {
-      background: var(--surface-3); border: 1px solid var(--border);
-      border-radius: 12px 12px 2px 12px; padding: 12px 16px;
-      font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-left: 24px;
-    }
-    .conv-rationale-toggle {
-      font-size: 11px; color: var(--text-muted); cursor: pointer;
-      margin-top: 8px; display: flex; align-items: center; gap: 4px;
-      background: none; border: none; padding: 0;
-    }
-    .conv-rationale-toggle:hover { color: var(--primary); }
-    .conv-rationale-body {
-      display: none; font-size: 12px; color: var(--text-muted);
-      line-height: 1.6; margin-top: 6px; padding: 10px 14px;
-      background: var(--surface-2); border-radius: var(--radius); border-left: 3px solid var(--primary-dim);
-    }
-    .conv-rationale-body.open { display: block; }
-    .conv-confidence {
-      font-size: 11px; color: var(--text-muted); margin-top: 10px;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .conv-conf-bar {
-      height: 4px; border-radius: 2px; background: var(--surface-4); flex: 1; max-width: 100px;
-    }
-    .conv-conf-fill {
-      height: 100%; border-radius: 2px; background: var(--primary);
+    html.dark-theme .nav-brand-capsule {
+      background: rgba(25, 198, 173, 0.08);
+      border-color: rgba(25, 198, 173, 0.25);
+      box-shadow: 0 0 20px rgba(25, 198, 173, 0.12);
     }
 
-    /* ---- Patient Summary ---- */
-    .patient-summary-card {
-      background: rgba(16,185,129,.05);
-      border: 1px solid rgba(16,185,129,.18);
-      border-radius: 18px; padding: 22px 24px;
+    .nav-right-cluster {
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main); cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.2s ease; outline: none; flex-shrink: 0;
+    }
+    .theme-toggle-btn:hover {
+      border-color: var(--teal-primary);
+      color: var(--teal-primary);
+      transform: scale(1.05);
+    }
+    .theme-toggle-btn .sun-icon { display: none; }
+    .theme-toggle-btn .moon-icon { display: block; }
+    html.dark-theme .theme-toggle-btn .moon-icon { display: none; }
+    html.dark-theme .theme-toggle-btn .sun-icon { display: block; }
+
+    .session-chip {
+      display: inline-flex; align-items: center;
+      padding: 5px 12px; border-radius: 9999px;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 700;
+      letter-spacing: .02em; white-space: nowrap;
+    }
+    .chip-green {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--teal-primary);
+    }
+    .live-dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--teal-primary); box-shadow: 0 0 8px var(--teal-primary);
+      animation: live-blink 2s ease-in-out infinite; flex-shrink: 0;
+    }
+    @keyframes live-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Main Layout Container ── */
+    .page {
+      max-width: 1080px;
+      width: 92%;
+      margin: 0 auto;
+      padding: 96px 0 60px;
+      position: relative;
+      z-index: 1;
+      animation: cardFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    /* ── Diagnosis Hero (Restored Original Alignment) ── */
+    .diagnosis-hero {
+      text-align: center;
+      padding: 36px 0 26px;
+      position: relative;
+    }
+    .diagnosis-eyebrow {
+      font-family: var(--font-heading);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .diagnosis-name {
+      font-family: var(--font-heading);
+      font-size: 44px;
+      font-weight: 900;
+      letter-spacing: -.03em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      color: #00b4d8;
+      background: linear-gradient(90deg, #00b4d8, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    html:not(.dark-theme) .diagnosis-name {
+      color: #0284c7;
+      background: linear-gradient(90deg, #0284c7, #0d9488);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .diagnosis-chips {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 14px; border-radius: 9999px;
+      font-family: var(--font-heading); font-size: 12px; font-weight: 700;
+      letter-spacing: .01em; backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+    }
+    .badge-teal {
+      background: rgba(13, 148, 136, 0.12);
+      border: 1px solid rgba(13, 148, 136, 0.3);
+      color: var(--teal-primary);
+    }
+    html.dark-theme .badge-teal {
+      background: rgba(25, 198, 173, 0.12);
+      border-color: rgba(25, 198, 173, 0.3);
+      color: #34d399;
+    }
+    .badge-dim {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-dim);
+    }
+    .badge-amber {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #f59e0b;
+    }
+    .badge-green {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: var(--teal-primary);
+    }
+
+    /* ── Common Card Styling ── */
+    .card, .patient-summary-card, .closing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      padding: 24px 28px;
+      box-shadow: var(--card-shadow);
+      position: relative;
       margin-bottom: 28px;
+      transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .report-section {
+      margin-bottom: 30px;
+    }
+    .report-section-title {
+      font-family: var(--font-heading);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    /* ── Patient Summary Card ── */
+    .patient-summary-card {
+      border-color: rgba(13, 148, 136, 0.28);
+    }
+    html.dark-theme .patient-summary-card {
+      border-color: rgba(25, 198, 173, 0.28);
     }
     .patient-summary-header {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
     .patient-summary-label {
-      font-size: 10px; font-weight: 800; letter-spacing: .12em;
-      text-transform: uppercase; color: rgba(16,185,129,.8);
-      display: flex; align-items: center; gap: 7px;
+      font-family: var(--font-heading);
+      font-size: 11px; font-weight: 800; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--teal-primary);
+      display: flex; align-items: center; gap: 8px;
     }
     .patient-summary-text {
-      font-size: 15px; line-height: 1.75; color: var(--text);
+      font-size: 15px; line-height: 1.75; color: var(--text-main);
     }
     .ps-listen-btn {
       display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 18px; border-radius: 9999px; border: none; cursor: pointer;
-      font-size: 12px; font-weight: 700; font-family: var(--font);
-      background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.25);
-      color: #10b981; transition: all .2s ease; white-space: nowrap; flex-shrink: 0;
+      padding: 7px 18px; border-radius: 9999px; cursor: pointer;
+      font-size: 12px; font-weight: 700; font-family: var(--font-heading);
+      background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.25);
+      color: var(--teal-primary); transition: all .2s ease; white-space: nowrap; flex-shrink: 0;
+    }
+    html.dark-theme .ps-listen-btn {
+      background: rgba(25, 198, 173, 0.1);
+      border-color: rgba(25, 198, 173, 0.3);
+      color: #34d399;
     }
     .ps-listen-btn:hover {
-      background: rgba(16,185,129,.18); border-color: rgba(16,185,129,.5);
-      box-shadow: 0 0 18px rgba(16,185,129,.2);
+      background: rgba(13, 148, 136, 0.16); border-color: var(--teal-primary);
+      transform: translateY(-1px);
     }
     .ps-listen-btn.speaking {
-      background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.35);
-      color: #f87171;
+      background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.4);
+      color: #ef4444;
     }
-    .ps-speaking-bars { display: flex; align-items: center; gap: 2px; height: 12px; }
+    .ps-speaking-bars { display: flex; align-items: center; gap: 2.5px; height: 12px; }
     .ps-speaking-bars span {
-      display: inline-block; width: 2px; background: #f87171; border-radius: 2px;
+      display: inline-block; width: 2.5px; background: currentColor; border-radius: 2px;
       height: 100%; transform-origin: bottom;
       animation: speak-bar .7s ease-in-out infinite;
     }
@@ -493,27 +420,31 @@
     @keyframes speak-bar { 0%,100%{transform:scaleY(.3)} 50%{transform:scaleY(1)} }
 
     .ps-lang-row {
-      display: flex; align-items: center; gap: 8px; margin-top: 14px;
+      display: flex; align-items: center; gap: 10px; margin-top: 18px;
+      padding-top: 14px; border-top: 1px solid var(--border-card);
       flex-wrap: wrap;
     }
     .ps-lang-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-      color: rgba(16,185,129,.6); white-space: nowrap; flex-shrink: 0;
+      font-family: var(--font-heading);
+      font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
     }
     .ps-lang-select {
-      flex: 1; min-width: 0; max-width: 260px;
-      background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2);
-      color: var(--text); border-radius: 9999px; padding: 5px 14px;
-      font-size: 12px; font-weight: 600; font-family: var(--font);
+      background: var(--bg-input); border: 1px solid var(--border-card);
+      color: var(--text-main); border-radius: 9999px; padding: 6px 14px;
+      font-size: 12px; font-weight: 600; font-family: var(--font-heading);
       cursor: pointer; outline: none; appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2310b981' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%230D9488' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
       background-repeat: no-repeat; background-position: right 12px center;
-      padding-right: 28px; transition: border-color .15s;
+      padding-right: 30px; transition: border-color .15s;
     }
-    .ps-lang-select:focus { border-color: rgba(16,185,129,.5); }
+    html.dark-theme .ps-lang-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2319C6AD' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    }
+    .ps-lang-select:focus { border-color: var(--teal-primary); }
     .ps-translating {
-      font-size: 11px; color: rgba(16,185,129,.6); display: none;
-      align-items: center; gap: 5px;
+      font-size: 11px; color: var(--teal-primary); display: none;
+      align-items: center; gap: 5px; font-family: var(--font-heading);
     }
     .ps-translating.show { display: flex; }
     @keyframes ps-dot { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
@@ -521,272 +452,488 @@
     .ps-translating span:nth-child(2) { animation-delay: .2s; }
     .ps-translating span:nth-child(3) { animation-delay: .4s; }
 
-    /* ---- Differential Evolution toggle ---- */
-    .diff-evo-toggle {
-      width: 100%; display: flex; align-items: center; justify-content: space-between;
-      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
-      border-radius: 12px; padding: 12px 16px; cursor: pointer;
-      font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-      color: var(--text-muted); font-family: var(--font);
-      transition: border-color .18s, background .18s;
+    /* ── Doctor's Assessment / Closing Card ── */
+    .closing-card {
+      border-color: var(--border-card);
+      margin-bottom: 28px;
     }
-    .diff-evo-toggle:hover {
-      border-color: rgba(16,185,129,.25); background: rgba(16,185,129,.04);
-      color: var(--text);
+    .closing-header {
+      display: flex; align-items: center; gap: 9px;
+      font-family: var(--font-heading); font-weight: 800; font-size: 16px;
+      color: var(--teal-primary); margin-bottom: 18px;
+    }
+    .closing-section { margin-bottom: 16px; }
+    .closing-section:last-child { margin-bottom: 0; }
+    .closing-section-title {
+      font-family: var(--font-heading);
+      font-size: 11px; font-weight: 800; letter-spacing: .08em;
+      color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;
+    }
+    .closing-text {
+      font-size: 14px; color: var(--text-main); line-height: 1.7;
+    }
+    .closing-steps {
+      list-style: none; display: flex; flex-direction: column; gap: 8px;
+      margin: 0; padding: 0;
+    }
+    .closing-steps li {
+      display: flex; gap: 10px; align-items: flex-start;
+      font-size: 14px; color: var(--text-dim); line-height: 1.6;
+    }
+    .closing-steps li::before {
+      content: '✓'; color: var(--teal-primary); font-weight: 800; flex-shrink: 0;
+      background: rgba(13, 148, 136, 0.12); width: 18px; height: 18px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; margin-top: 2px;
     }
 
-    /* ---- Differential Evolution ---- */
+    /* ── Performance Overview Metric Cards ── */
+    .metric-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 18px;
+      padding: 20px 16px;
+      text-align: center;
+      box-shadow: var(--card-shadow);
+      transition: transform .2s ease, border-color .2s ease;
+    }
+    .metric-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--teal-primary);
+    }
+    .metric-ring {
+      position: relative; width: 72px; height: 72px; margin: 0 auto 12px;
+    }
+    .metric-ring svg { transform: rotate(-90deg); }
+    .metric-ring-val {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-heading); font-size: 17px; font-weight: 800; color: var(--text-main);
+    }
+    .metric-card-label {
+      font-family: var(--font-heading); font-size: 11px; color: var(--text-muted);
+      font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    }
+
+    /* ── Turn-by-Turn Critique Table ── */
+    .data-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 16px; overflow: hidden;
+      font-size: 13.5px;
+    }
+    .data-table thead tr {
+      background: var(--bg-table-head);
+    }
+    .data-table th {
+      font-family: var(--font-heading); font-size: 11px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--text-muted); padding: 12px 16px; text-align: left;
+      border-bottom: 1px solid var(--border-card);
+    }
+    .data-table td {
+      padding: 12px 16px; color: var(--text-main);
+      border-bottom: 1px solid var(--border-card);
+      transition: background 0.15s ease;
+    }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: rgba(13, 148, 136, 0.04); }
+
+    .score-cell { font-family: var(--font-heading); font-weight: 700; }
+    .score-green { color: #10b981; }
+    .score-yellow { color: #f59e0b; }
+    .score-red { color: #ef4444; }
+    .mean-row td {
+      background: var(--bg-table-head) !important;
+      font-family: var(--font-heading); font-weight: 800;
+    }
+
+    /* ── Conversation Viewer ── */
+    .conv-toggle-btn {
+      display: flex; align-items: center; gap: 10px; cursor: pointer;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 14px; padding: 12px 18px;
+      font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      color: var(--text-dim); width: 100%; transition: all .2s ease;
+    }
+    .conv-toggle-btn:hover {
+      border-color: var(--teal-primary); color: var(--text-main);
+    }
+    .conv-toggle-btn svg { transition: transform .25s ease; }
+    .conv-toggle-btn.open svg:last-child { transform: rotate(180deg); }
+    .conv-scroll-wrap {
+      max-height: 520px; overflow-y: auto; margin-top: 14px;
+      border: 1px solid var(--border-card); border-radius: 16px;
+      background: var(--bg-card); padding: 6px 0; display: none;
+    }
+    .conv-scroll-wrap.open { display: block; }
+    .conv-turn {
+      padding: 18px 22px; border-bottom: 1px solid var(--border-card);
+    }
+    .conv-turn:last-child { border-bottom: none; }
+    .conv-turn-label {
+      font-family: var(--font-heading); font-size: 11px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .conv-turn-num {
+      background: rgba(13, 148, 136, 0.12); color: var(--teal-primary);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+      border-radius: 9999px; padding: 2px 10px; font-size: 11px; font-weight: 700;
+    }
+    .conv-bubble-doctor {
+      background: rgba(13, 148, 136, 0.06); border: 1px solid rgba(13, 148, 136, 0.2);
+      border-radius: 16px 16px 16px 4px; padding: 14px 18px;
+      font-size: 14px; color: var(--text-main); line-height: 1.65; margin-bottom: 10px;
+    }
+    .conv-bubble-patient {
+      background: var(--bg-input); border: 1px solid var(--border-card);
+      border-radius: 16px 16px 4px 16px; padding: 14px 18px;
+      font-size: 14px; color: var(--text-dim); line-height: 1.65; margin-left: 28px;
+    }
+    .conv-confidence {
+      font-family: var(--font-heading); font-size: 11px; font-weight: 600;
+      color: var(--text-muted); margin-top: 10px; display: flex; align-items: center; gap: 8px;
+    }
+    .conv-conf-bar {
+      height: 5px; border-radius: 9999px; background: var(--border-card); flex: 1; max-width: 120px; overflow: hidden;
+    }
+    .conv-conf-fill { height: 100%; border-radius: 9999px; background: var(--teal-primary); }
+
+    /* ── Differential Evolution ── */
+    .diff-evo-toggle {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 14px; padding: 12px 18px; cursor: pointer;
+      font-family: var(--font-heading); font-size: 12px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted);
+      transition: all .2s ease;
+    }
+    .diff-evo-toggle:hover {
+      border-color: var(--teal-primary); color: var(--text-main);
+    }
     .diff-evo-turn {
-      margin-bottom: 16px; padding: 14px 16px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
+      margin-bottom: 14px; padding: 16px 18px;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 16px;
     }
     .diff-evo-turn-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .06em;
-      text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
     }
-    .diff-evo-bar-row { margin-bottom: 7px; }
+    .diff-evo-bar-row { margin-bottom: 8px; }
     .diff-evo-bar-header {
-      display: flex; justify-content: space-between;
-      font-size: 12px; color: var(--text-dim); margin-bottom: 3px;
+      display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-bottom: 4px;
     }
     .diff-evo-bar-track {
-      height: 6px; background: var(--surface-4); border-radius: 3px; overflow: hidden;
+      height: 7px; background: var(--border-card); border-radius: 9999px; overflow: hidden;
     }
     .diff-evo-bar-fill {
-      height: 100%; border-radius: 3px;
+      height: 100%; border-radius: 9999px;
+      background: linear-gradient(90deg, var(--teal-primary), #38bdf8);
       transition: width .4s ease;
     }
 
-    /* Doctor's Note */
-    .doctors-note-card {
-      background: rgba(59,130,246,.06);
-      border-left: 4px solid #3b82f6;
-      border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-      padding: 16px 20px;
+    /* ── Final Differential Diagnosis ── */
+    .final-diff { display: flex; flex-direction: column; gap: 10px; }
+    .diff-bar-row {
+      padding: 12px 14px; border-radius: 12px;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      transition: border-color .15s ease;
     }
-    .doctors-note-label {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: #3b82f6; margin-bottom: 8px;
+    .diff-bar-row.top-dx {
+      border-color: var(--teal-primary);
+      background: rgba(13, 148, 136, 0.05);
     }
-    .doctors-note-text { font-size: 14px; color: var(--text); line-height: 1.65; white-space: pre-line; }
-
-    /* ---- Auth modal (guest → login/register to book) ---- */
-    .auth-modal-box {
-      background: var(--surface-1); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); width: 100%; max-width: 400px;
-      padding: 32px 28px; position: relative;
-      box-shadow: 0 8px 40px rgba(0,0,0,.6);
+    .diff-bar-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
     }
-    .auth-modal-eyebrow {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--primary); margin-bottom: 6px;
+    .diff-bar-name {
+      font-family: var(--font-heading); font-size: 13px; font-weight: 700; color: var(--text-main);
     }
-    .auth-modal-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-    .auth-modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; line-height: 1.5; }
-    .auth-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 22px; }
-    .auth-tab {
-      flex: 1; padding: 9px 0; font-size: 13px; font-weight: 600;
-      text-align: center; cursor: pointer; color: var(--text-muted);
-      border-bottom: 2px solid transparent; transition: color .12s, border-color .12s;
+    .diff-bar-prob {
+      font-family: var(--font-heading); font-size: 12px; font-weight: 800; color: var(--teal-primary);
     }
-    .auth-tab:hover { color: var(--text); }
-    .auth-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-    .auth-form { display: flex; flex-direction: column; gap: 14px; }
-    .auth-field { display: flex; flex-direction: column; gap: 5px; }
-    .auth-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
-    .auth-input {
-      background: var(--surface-3); border: 1px solid var(--border);
-      border-radius: var(--radius); color: var(--text); font-family: var(--font);
-      font-size: 14px; padding: 10px 14px; outline: none;
-      transition: border-color .15s, box-shadow .15s;
+    .diff-bar-track {
+      height: 6px; background: var(--border-card); border-radius: 9999px; overflow: hidden;
     }
-    .auth-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,180,216,.12); }
-    .auth-input::placeholder { color: var(--text-muted); }
-    .auth-error { font-size: 12px; color: var(--danger); min-height: 16px; }
-    .auth-submit {
-      width: 100%; padding: 11px; font-size: 14px; font-weight: 700;
-      background: linear-gradient(135deg,#009ec0,#00b4d8); color: #000;
-      border: none; border-radius: var(--radius); cursor: pointer;
-      transition: opacity .15s; margin-top: 4px;
-      box-shadow: 0 2px 8px rgba(0,180,216,.25);
-    }
-    .auth-submit:hover { opacity: .88; }
-    .auth-submit:disabled { opacity: .45; cursor: not-allowed; }
-    .auth-divider { text-align: center; font-size: 12px; color: var(--text-muted); }
-
-    /* Patient test orders */
-    .test-orders-alert {
-      background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.35);
-      border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 14px;
-      display: flex; align-items: center; gap: 12px;
-    }
-    .test-orders-alert-icon { color: #f59e0b; flex-shrink: 0; }
-    .test-orders-alert-text { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
-    .test-orders-alert-title { font-weight: 700; color: #f59e0b; margin-bottom: 2px; font-size: 14px; }
-    .patient-test-orders { display: flex; flex-direction: column; gap: 10px; }
-    .patient-test-item {
-      display: flex; align-items: flex-start; gap: 12px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 14px 16px;
-      transition: border-color .15s;
-    }
-    .patient-test-item:hover { border-color: rgba(245,158,11,.4); }
-    .patient-test-icon {
-      width: 36px; height: 36px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px; flex-shrink: 0;
-    }
-    .pti-blood   { background: rgba(239,68,68,.15); }
-    .pti-imaging { background: rgba(0,180,216,.15); }
-    .pti-urine   { background: rgba(234,179,8,.15); }
-    .pti-other   { background: rgba(245,158,11,.15); }
-    .patient-test-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
-    .patient-test-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .patient-test-priority {
-      font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
-      padding: 2px 8px; border-radius: 99px;
-    }
-    .ptp-stat    { background: rgba(239,68,68,.15); color: #ef4444; }
-    .ptp-urgent  { background: rgba(245,158,11,.15); color: #f59e0b; }
-    .ptp-routine { background: rgba(16,185,129,.15); color: #10b981; }
-    .patient-test-notes { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.5;
-      padding: 6px 10px; background: var(--surface-3); border-radius: var(--radius); }
-    .test-action-note {
-      margin-top: 14px; font-size: 12px; color: var(--text-muted); line-height: 1.6;
-      padding: 10px 14px; background: var(--surface-2); border-radius: var(--radius);
-      border-left: 3px solid rgba(245,158,11,.5);
+    .diff-bar-fill {
+      height: 100%; border-radius: 9999px; background: linear-gradient(90deg, var(--teal-primary), #38bdf8);
     }
 
-    /* ── premium report overrides ── */
-    .diagnosis-name {
-      font-size: 40px; font-weight: 900; letter-spacing: -.05em;
-      background: linear-gradient(90deg, #00b4d8, #38bdf8);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .report-section-title {
-      font-size: 10px; font-weight: 800; letter-spacing: .1em;
-      color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,.06);
+    /* ── Doctor Routing Cards ── */
+    .doctor-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
     }
     .doctor-card {
-      background: rgba(255,255,255,.025);
-      border: 1px solid rgba(255,255,255,.07);
-      border-radius: 16px; transition: border-color .18s, transform .15s;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 14px;
+      box-shadow: var(--card-shadow); transition: transform .2s ease, border-color .2s ease;
     }
-    .doctor-card:hover { border-color: rgba(0,180,216,.3); transform: translateY(-1px); }
+    .doctor-card:hover {
+      transform: translateY(-2px); border-color: var(--teal-primary);
+    }
+    .doctor-card-header { display: flex; align-items: center; gap: 12px; }
     .doctor-avatar {
-      border-radius: 12px;
-      background: linear-gradient(135deg, #0077a8, #00b4d8);
-      box-shadow: 0 0 0 1px rgba(0,180,216,.3), 0 4px 12px rgba(0,180,216,.2);
-      color: #000d1a; font-weight: 800;
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--teal-primary), #0284c7);
+      color: #ffffff; font-family: var(--font-heading); font-size: 14px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
     }
-    .doctor-name { font-weight: 800; font-size: 14px; }
+    .doctor-name {
+      font-family: var(--font-heading); font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 2px;
+    }
+    .doctor-hospital { font-size: 12px; color: var(--text-muted); }
+    .doctor-rating { font-family: var(--font-heading); font-size: 12px; color: #f59e0b; font-weight: 700; margin-top: 2px; }
     .book-btn {
-      border-radius: 10px; font-weight: 800;
-      background: linear-gradient(135deg, #009ec0, #00b4d8);
-      box-shadow: 0 2px 10px rgba(0,180,216,.3);
-      transition: all .15s;
+      width: 100%; padding: 10px 16px; font-size: 13px; font-weight: 800; font-family: var(--font-heading);
+      background: linear-gradient(135deg, var(--teal-primary) 0%, #0f766e 100%);
+      color: #ffffff; border: none; border-radius: 9999px; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(13, 148, 136, 0.25);
+      transition: all .2s ease;
     }
-    .book-btn:hover { opacity: 1; box-shadow: 0 4px 16px rgba(0,180,216,.4); transform: translateY(-1px); }
-    .conv-toggle-btn {
-      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
-      border-radius: 12px;
+    html.dark-theme .book-btn {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
     }
-    .conv-toggle-btn:hover { border-color: rgba(0,180,216,.3); }
-    .conv-scroll-wrap { border: 1px solid rgba(255,255,255,.07); border-radius: 14px; }
-    .conv-bubble-doctor {
-      background: rgba(0,180,216,.07); border: 1px solid rgba(0,180,216,.15);
-      border-radius: 12px 12px 12px 2px;
+    .book-btn:hover {
+      transform: translateY(-1px); filter: brightness(1.08);
     }
-    .conv-bubble-patient {
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
-      border-radius: 12px 12px 2px 12px;
+
+    /* ── Suggested Tests & Doctor Orders ── */
+    .sug-test-card {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 16px 18px; border-radius: 16px;
+      border: 1px solid var(--border-card);
+      background: var(--bg-card);
+      transition: border-color .2s, box-shadow .2s;
+      position: relative; overflow: hidden; margin-bottom: 10px;
     }
-    .conv-rationale-body {
-      background: rgba(0,180,216,.04); border: none;
-      border-left: 2px solid rgba(0,180,216,.3); border-radius: 0 8px 8px 0;
+    .sug-test-card:hover { border-color: var(--teal-primary); }
+    .sug-icon {
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
     }
-    .diff-evo-turn {
-      background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.07);
-      border-radius: 14px;
+    .sug-icon-blood   { background: rgba(239,68,68,.12); }
+    .sug-icon-urine   { background: rgba(245,158,11,.12); }
+    .sug-icon-imaging { background: rgba(99,102,241,.12); }
+    .sug-icon-vitals  { background: rgba(16,185,129,.12); }
+    .sug-icon-other   { background: rgba(100,116,139,.12); }
+    .sug-test-name {
+      font-family: var(--font-heading); font-size: 14px; font-weight: 700; color: var(--text-main);
     }
-    .booking-confirmed {
-      background: rgba(78,222,163,.07); border: 1px solid rgba(78,222,163,.2);
-      border-radius: 14px;
+    .sug-test-why { font-size: 12px; color: var(--text-muted); line-height: 1.55; margin-top: 3px; }
+    .sug-checkbox {
+      width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0;
+      border: 1.5px solid var(--border-card); background: var(--bg-input);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .15s;
     }
-    .own-doctor-card {
-      background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.07);
-      border-radius: 14px; transition: border-color .18s;
+    .sug-checkbox:hover { border-color: var(--teal-primary); }
+    .sug-checkbox-done { background: var(--teal-primary); border-color: var(--teal-primary); color: #ffffff; }
+    .sug-upload-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 700; padding: 5px 12px;
+      border-radius: 9999px; border: 1px solid var(--border-card);
+      background: var(--bg-card); color: var(--text-dim);
+      cursor: pointer; transition: all .15s;
     }
-    .own-doctor-card:hover { border-color: rgba(0,180,216,.3); }
-    .own-doctor-slot-chip {
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
-      border-radius: 8px; font-weight: 700;
+    .sug-upload-btn:hover { border-color: var(--teal-primary); color: var(--teal-primary); }
+
+    /* ── Bottom Action Bar ── */
+    .action-bar-bottom {
+      display: flex; gap: 12px; justify-content: center; align-items: center;
+      margin-top: 44px; padding-bottom: 48px; flex-wrap: wrap;
     }
-    .own-doctor-slot-chip:hover { background: rgba(0,180,216,.1); border-color: rgba(0,180,216,.4); }
-    .own-doc-chip {
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
-      border-radius: 99px; font-weight: 700;
+    .btn {
+      font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      padding: 10px 22px; border-radius: 9999px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      text-decoration: none; transition: all .2s ease;
     }
-    .own-doc-chip.active { background: rgba(0,180,216,.12); border-color: rgba(0,180,216,.45); }
-    .own-doctor-input {
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
-      border-radius: 12px;
+    .btn-ghost {
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      color: var(--text-dim);
     }
-    .own-doctor-input:focus { border-color: rgba(0,180,216,.5); box-shadow: 0 0 0 3px rgba(0,180,216,.1); }
-    .modal-overlay { background: rgba(0,0,0,.75); backdrop-filter: blur(12px); }
+    .btn-ghost:hover {
+      background: rgba(13, 148, 136, 0.08); border-color: var(--teal-primary);
+      color: var(--teal-primary);
+      transform: translateY(-1px);
+    }
+    .btn-secondary, #btn-pdf {
+      background: linear-gradient(135deg, var(--teal-primary) 0%, #0f766e 100%);
+      border: 1px solid rgba(13, 148, 136, 0.4); color: #ffffff;
+      box-shadow: 0 4px 20px rgba(13, 148, 136, 0.3);
+    }
+    html.dark-theme .btn-secondary, html.dark-theme #btn-pdf {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35);
+    }
+    .btn-secondary:hover, #btn-pdf:hover {
+      transform: translateY(-2px); filter: brightness(1.08);
+    }
+
+    /* ── Modals & Overlays ── */
+    .modal-overlay, .mismatch-overlay {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000; padding: 24px;
+    }
+    .modal-overlay.hidden, .mismatch-overlay.hidden { display: none; }
     .modal-box, .auth-modal-box, .mismatch-box {
-      background: #0d1120;
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 18px;
-      box-shadow: 0 32px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 22px; padding: 28px 30px; box-shadow: 0 25px 70px rgba(0,0,0,0.4);
+      width: 100%; max-width: 420px; position: relative;
     }
-    .mismatch-box { border-color: rgba(255,185,95,.25); }
-    .auth-input {
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
-      border-radius: 10px;
+    .modal-title, .auth-modal-title, .mismatch-title {
+      font-family: var(--font-heading); font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 6px;
     }
-    .auth-input:focus { border-color: rgba(0,180,216,.5); box-shadow: 0 0 0 3px rgba(0,180,216,.1); }
-    .slot-btn {
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09);
-      border-radius: 10px; transition: all .12s;
+    .modal-close {
+      position: absolute; top: 16px; right: 16px; background: none; border: none;
+      color: var(--text-muted); cursor: pointer; font-size: 18px;
     }
-    .slot-btn:hover, .slot-btn.selected { border-color: rgba(0,180,216,.5); background: rgba(0,180,216,.1); color: var(--primary); }
-    .patient-test-item {
-      background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.07);
-      border-radius: 12px; transition: border-color .15s;
+    .modal-close:hover { color: var(--text-main); }
+
+    /* ── Emergency Alert ── */
+    .emergency-alert {
+      background: rgba(239, 68, 68, 0.08); border: 1.5px solid rgba(239, 68, 68, 0.45);
+      border-radius: 18px; padding: 20px 24px; display: flex; align-items: flex-start; gap: 14px;
     }
-    .patient-test-item:hover { border-color: rgba(245,158,11,.3); }
-    .patient-test-icon { border-radius: 10px; }
+    .emergency-alert-title { font-family: var(--font-heading); font-size: 16px; font-weight: 800; color: #ef4444; margin-bottom: 4px; }
+    .emergency-alert-body { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; }
+    .hospital-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
+    .hospital-card {
+      background: var(--bg-card); border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 16px; padding: 16px 18px;
+    }
+    .hospital-card-name { font-family: var(--font-heading); font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+    .hospital-card-dist { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+    .hospital-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .hospital-btn {
+      flex: 1; min-width: 80px; padding: 7px 10px; font-size: 12px; font-weight: 700; font-family: var(--font-heading);
+      border-radius: 9999px; border: none; cursor: pointer; text-align: center; text-decoration: none;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .hospital-btn-call { background: #ef4444; color: #ffffff; }
+    .hospital-btn-maps { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-card); }
+
+    /* ── Own Doctor Search ── */
+    .own-doctor-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-card); }
+    .own-doctor-toggle {
+      display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 13px; font-weight: 700; font-family: var(--font-heading);
+      transition: color .15s;
+    }
+    .own-doctor-toggle:hover { color: var(--text-main); }
+    .own-doctor-toggle.open svg:last-child { transform: rotate(180deg); }
+    .own-doctor-body { display: none; margin-top: 14px; }
+    .own-doctor-body.open { display: block; }
+    .own-doctor-input {
+      width: 100%; background: var(--bg-input); border: 1px solid var(--border-card);
+      border-radius: 12px; color: var(--text-main); font-family: var(--font-body);
+      font-size: 13.5px; padding: 10px 14px 10px 38px; outline: none; transition: border-color .15s;
+    }
+    .own-doctor-input:focus { border-color: var(--teal-primary); }
+    .own-doc-chip {
+      font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; cursor: pointer;
+      border: 1px solid var(--border-card); background: var(--bg-card); color: var(--text-muted);
+      font-family: var(--font-heading); transition: all .15s;
+    }
+    .own-doc-chip:hover { color: var(--text-main); border-color: var(--teal-primary); }
+    .own-doc-chip.active { background: rgba(13, 148, 136, 0.12); border-color: var(--teal-primary); color: var(--teal-primary); }
+    .own-doctor-card {
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 16px; padding: 14px 18px; margin-bottom: 10px;
+    }
+
+    /* ── Weakness Tag List ── */
+    .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+    /* ── Doctor's Note Card ── */
     .doctors-note-card {
-      background: rgba(59,130,246,.05); border-left: 3px solid rgba(59,130,246,.5);
-      border-radius: 0 12px 12px 0;
+      background: var(--bg-card); border-left: 4px solid #3b82f6;
+      border-top: 1px solid var(--border-card); border-right: 1px solid var(--border-card); border-bottom: 1px solid var(--border-card);
+      border-radius: 0 18px 18px 0; padding: 20px 24px; box-shadow: var(--card-shadow);
     }
-    /* Patient referral card */
+    .doctors-note-label {
+      font-family: var(--font-heading); font-size: 11px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; color: #3b82f6; margin-bottom: 8px;
+    }
+    .doctors-note-text { font-size: 14px; color: var(--text-main); line-height: 1.65; white-space: pre-line; }
+
+    /* ── Patient Test Orders & Alerts ── */
+    .test-orders-alert {
+      background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35);
+      border-radius: 18px; padding: 18px 22px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .test-orders-alert-icon { color: #f59e0b; flex-shrink: 0; }
+    .test-orders-alert-title { font-family: var(--font-heading); font-weight: 800; color: #f59e0b; margin-bottom: 3px; font-size: 14px; }
+    .test-orders-alert-text { font-size: 13.5px; color: var(--text-dim); line-height: 1.5; }
+    .patient-test-orders { display: flex; flex-direction: column; gap: 10px; }
+    .patient-test-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 16px; padding: 16px 18px; transition: border-color .15s;
+    }
+    .patient-test-item:hover { border-color: rgba(245, 158, 11, 0.4); }
+    .patient-test-icon {
+      width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .pti-blood   { background: rgba(239, 68, 68, 0.15); }
+    .pti-imaging { background: rgba(0, 180, 216, 0.15); }
+    .pti-urine   { background: rgba(234, 179, 8, 0.15); }
+    .pti-other   { background: rgba(245, 158, 11, 0.15); }
+    .patient-test-name { font-family: var(--font-heading); font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 3px; }
+    .patient-test-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .patient-test-priority {
+      font-family: var(--font-heading); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 9999px;
+    }
+    .ptp-stat    { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .ptp-urgent  { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .ptp-routine { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .patient-test-notes {
+      font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.5;
+      padding: 6px 12px; background: var(--bg-input); border-radius: 8px;
+    }
+    .test-action-note {
+      margin-top: 14px; font-size: 12.5px; color: var(--text-muted); line-height: 1.6;
+      padding: 12px 16px; background: var(--bg-card); border-radius: 12px; border-left: 3px solid rgba(245, 158, 11, 0.6);
+    }
+
+    /* ── Patient Referral Card ── */
     .ref-pt-card {
-      background: rgba(0,180,216,.04); border: 1px solid rgba(0,180,216,.18);
-      border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 18px; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: var(--card-shadow);
     }
     .ref-pt-header { display: flex; align-items: center; gap: 14px; }
     .ref-pt-icon {
-      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
-      background: rgba(0,180,216,.1); border: 1px solid rgba(0,180,216,.2);
-      display: flex; align-items: center; justify-content: center; color: var(--primary);
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      background: rgba(13, 148, 136, 0.12); border: 1px solid rgba(13, 148, 136, 0.25);
+      display: flex; align-items: center; justify-content: center; color: var(--teal-primary); font-size: 20px;
     }
-    .ref-pt-specialty { font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: -.01em; }
+    .ref-pt-specialty { font-family: var(--font-heading); font-size: 15px; font-weight: 800; color: var(--text-main); }
     .ref-pt-to { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
-    .ref-pt-to strong { color: var(--text); }
+    .ref-pt-to strong { color: var(--text-main); }
     .ref-pt-urgency {
-      margin-left: auto; flex-shrink: 0; font-size: 11px; font-weight: 700;
-      padding: 3px 10px; border-radius: 99px;
+      margin-left: auto; flex-shrink: 0; font-family: var(--font-heading); font-size: 11px; font-weight: 700;
+      padding: 4px 12px; border-radius: 9999px;
     }
-    .ref-urg-routine { background: rgba(78,222,163,.1); color: #4edea3; border: 1px solid rgba(78,222,163,.2); }
-    .ref-urg-urgent  { background: rgba(255,185,95,.1);  color: #ffb95f; border: 1px solid rgba(255,185,95,.2); }
-    .ref-urg-emergency { background: rgba(255,107,107,.1); color: #ff6b6b; border: 1px solid rgba(255,107,107,.2); }
-    .ref-pt-notes { font-size: 13px; color: var(--text-dim); line-height: 1.6; padding: 10px 14px; background: rgba(255,255,255,.03); border-radius: 9px; }
+    .ref-urg-routine { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .ref-urg-urgent  { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .ref-urg-emergency { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .ref-pt-notes { font-size: 13px; color: var(--text-dim); line-height: 1.6; padding: 12px 16px; background: var(--bg-input); border-radius: 10px; }
     .ref-pt-meta { font-size: 11px; color: var(--text-muted); }
-    .ref-pt-chooser { border-top: 1px solid rgba(255,255,255,.07); padding-top: 14px; }
+    .ref-pt-chooser { border-top: 1px solid var(--border-card); padding-top: 14px; }
     .ref-pt-chooser-label {
       display: flex; align-items: center; gap: 7px;
       font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;
@@ -794,267 +941,169 @@
     .ref-pt-doc-list { display: flex; flex-direction: column; gap: 8px; }
     .ref-pt-doc-card {
       display: flex; align-items: center; gap: 12px;
-      padding: 11px 14px; border-radius: 11px; cursor: pointer;
-      border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.025);
-      transition: all .15s;
+      padding: 12px 16px; border-radius: 12px; cursor: pointer;
+      border: 1px solid var(--border-card); background: var(--bg-card);
+      transition: all .15s ease;
     }
-    .ref-pt-doc-card:hover { border-color: rgba(0,180,216,.35); background: rgba(0,180,216,.06); }
+    .ref-pt-doc-card:hover { border-color: var(--teal-primary); background: rgba(13, 148, 136, 0.05); }
     .ref-pt-doc-av {
       width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
-      background: linear-gradient(135deg,#0077a8,#00b4d8);
-      color: #000d1a; font-size: 12px; font-weight: 800;
+      background: linear-gradient(135deg, var(--teal-primary), #0284c7);
+      color: #ffffff; font-family: var(--font-heading); font-size: 12px; font-weight: 800;
       display: flex; align-items: center; justify-content: center;
     }
-    .ref-pt-doc-name { font-size: 13px; font-weight: 700; color: var(--text); }
+    .ref-pt-doc-name { font-family: var(--font-heading); font-size: 13.5px; font-weight: 700; color: var(--text-main); }
     .ref-pt-doc-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
     .ref-pt-doc-slots {
-      margin-left: auto; flex-shrink: 0; font-size: 11px; font-weight: 600;
-      padding: 3px 9px; border-radius: 7px;
-      background: rgba(78,222,163,.08); color: #4edea3; border: 1px solid rgba(78,222,163,.18);
+      margin-left: auto; flex-shrink: 0; font-family: var(--font-heading); font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 9999px;
+      background: rgba(13, 148, 136, 0.1); color: var(--teal-primary); border: 1px solid rgba(13, 148, 136, 0.25);
     }
     .ref-pt-loading, .ref-pt-none { font-size: 12px; color: var(--text-muted); padding: 10px 0; font-style: italic; }
-    .hospital-card { border-radius: 14px; }
-    .hospital-btn-maps { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-radius: 8px; }
 
-    /* ── Print / PDF export ───────────────────────────────────────────── */
-    @page {
-      size: A4 portrait;
-      margin: 16mm 18mm 20mm;
+    /* ── Suggested Tests Section ── */
+    .suggested-tests-section { margin-bottom: 30px; }
+    .sug-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .sug-rationale {
+      font-size: 13px; color: var(--text-dim); margin-bottom: 16px;
+      padding: 12px 16px; background: rgba(13, 148, 136, 0.05);
+      border-left: 3px solid var(--teal-primary); border-radius: 0 12px 12px 0; line-height: 1.6;
+    }
+    .sug-none {
+      display: flex; align-items: center; gap: 12px; padding: 18px 20px;
+      background: rgba(13, 148, 136, 0.06); border: 1px solid rgba(13, 148, 136, 0.25);
+      border-radius: 16px; font-size: 13.5px; color: var(--teal-primary); font-weight: 600;
+    }
+    .sug-status-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .sug-progress { flex: 1; height: 5px; background: var(--border-card); border-radius: 9999px; overflow: hidden; }
+    .sug-progress-fill { height: 100%; background: var(--teal-primary); border-radius: 9999px; transition: width .3s ease; }
+    .sug-badge {
+      font-family: var(--font-heading); font-size: 10px; font-weight: 800; padding: 3px 9px;
+      border-radius: 9999px; text-transform: uppercase; letter-spacing: .07em;
+    }
+    .sug-badge-routine { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .sug-badge-urgent  { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .sug-meta-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; color: var(--text-dim); background: var(--bg-card);
+      border: 1px solid var(--border-card); border-radius: 9999px; padding: 3px 10px;
+    }
+    .sug-prep {
+      margin-top: 8px; font-size: 11.5px; color: var(--text-dim);
+      background: var(--bg-input); border-radius: 8px; padding: 6px 12px;
+      border-left: 2px solid var(--border-card);
+    }
+    .sug-done-badge {
+      flex-shrink: 0; font-family: var(--font-heading); font-size: 11px; font-weight: 800; padding: 4px 12px;
+      border-radius: 9999px; background: rgba(13, 148, 136, 0.15); color: var(--teal-primary);
+      border: 1px solid rgba(13, 148, 136, 0.3);
+    }
+    .sug-uploaded-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 700; padding: 4px 12px;
+      border-radius: 9999px; border: 1px solid rgba(13, 148, 136, 0.3);
+      background: rgba(13, 148, 136, 0.1); color: var(--teal-primary); white-space: nowrap;
+    }
+    .sug-test-name-done { text-decoration: line-through; opacity: 0.6; }
+    .sug-loading { display: flex; align-items: center; gap: 10px; padding: 20px 0; font-size: 13px; color: var(--text-muted); }
+
+    /* ── Slot Picker Modal ── */
+    .slot-list {
+      display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;
+      max-height: 320px; overflow-y: auto; padding-right: 4px;
+    }
+    .slot-btn {
+      padding: 11px 16px; background: var(--bg-input);
+      border: 1px solid var(--border-card); border-radius: 12px;
+      color: var(--text-main); font-family: var(--font-heading); font-size: 13px; font-weight: 600; text-align: left; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .slot-btn:hover, .slot-btn.selected {
+      border-color: var(--teal-primary); background: rgba(13, 148, 136, 0.1); color: var(--teal-primary);
     }
 
+    /* ── Auth Modal Inside Report ── */
+    .auth-modal-eyebrow {
+      font-family: var(--font-heading); font-size: 11px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--teal-primary); margin-bottom: 6px;
+    }
+    .auth-modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; line-height: 1.5; }
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--border-card); margin-bottom: 22px; }
+    .auth-tab {
+      flex: 1; padding: 10px 0; font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      text-align: center; cursor: pointer; color: var(--text-muted);
+      border-bottom: 2px solid transparent; transition: color .15s, border-color .15s;
+    }
+    .auth-tab:hover { color: var(--text-main); }
+    .auth-tab.active { color: var(--teal-primary); border-bottom-color: var(--teal-primary); }
+    .auth-form { display: flex; flex-direction: column; gap: 14px; }
+    .auth-field { display: flex; flex-direction: column; gap: 6px; }
+    .auth-label { font-family: var(--font-heading); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+    .auth-input {
+      background: var(--bg-input); border: 1px solid var(--border-card);
+      border-radius: 12px; color: var(--text-main); font-family: var(--font-body);
+      font-size: 14px; padding: 10px 14px; outline: none; transition: border-color .15s;
+    }
+    .auth-input:focus { border-color: var(--teal-primary); }
+    .auth-error { font-size: 12px; color: #ef4444; min-height: 16px; }
+    .auth-submit {
+      width: 100%; padding: 11px; font-family: var(--font-heading); font-size: 14px; font-weight: 800;
+      background: linear-gradient(135deg, var(--teal-primary) 0%, #0f766e 100%); color: #ffffff;
+      border: none; border-radius: 9999px; cursor: pointer; transition: opacity .15s;
+      box-shadow: 0 4px 16px rgba(13, 148, 136, 0.3);
+    }
+    html.dark-theme .auth-submit {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    .auth-submit:hover { opacity: .9; }
+    .auth-submit:disabled { opacity: .45; cursor: not-allowed; }
+    .auth-divider { text-align: center; font-size: 12px; color: var(--text-muted); }
+
+    /* ── Print / PDF Export ── */
+    @page { size: A4 portrait; margin: 16mm 18mm 20mm; }
     @media print {
-      /* Force color rendering */
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      /* Always expand diff evolution in print */
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-shadow: none !important; animation: none !important; }
+      body { background: #ffffff !important; color: #0f172a !important; font-family: 'Noto Sans', sans-serif !important; }
+      .bg-grid, .bg-glow-left, .bg-glow-right, .nav, .action-bar-bottom, .ps-listen-btn, .ps-lang-row { display: none !important; }
+      .page { max-width: 100% !important; padding: 0 !important; width: 100% !important; }
+      .patient-summary-card, .closing-card, .card, .metric-card {
+        background: #f8f9fb !important; border: 1px solid #e2e8f0 !important; box-shadow: none !important;
+      }
+      .diagnosis-name { -webkit-text-fill-color: #0284c7 !important; color: #0284c7 !important; font-size: 32px !important; }
       .diff-evo-body { display: block !important; }
       .diff-evo-toggle { display: none !important; }
-      /* Hide listen button and lang row in print */
-      .ps-listen-btn { display: none !important; }
-      .ps-lang-row { display: none !important; }
-
-      /* Reset dark theme to light */
-      :root {
-        --background: #ffffff;
-        --surface-1: #ffffff;
-        --surface-2: #f8f9fb;
-        --surface-3: #f1f3f6;
-        --surface-4: #e4e8ee;
-        --text:       #0f172a;
-        --text-dim:   #334155;
-        --text-muted: #64748b;
-        --border:     #e2e8f0;
-        --primary:         #0284c7;
-        --primary-dim:     rgba(2,132,199,.12);
-        --success:         #059669;
-        --warning:         #d97706;
-        --danger:          #dc2626;
-        --radius:     8px;
-        --radius-lg:  12px;
-      }
-
-      body {
-        background: #fff !important;
-        color: #0f172a !important;
-        font-family: Inter, system-ui, sans-serif;
-      }
-
-      /* ── Hide all UI chrome ─────────────────────────────── */
-      .nav,
-      #patient-tabbar,
-      .action-bar-bottom,
-      #notif-toggle-btn,
-      .notif-toggle-btn,
-      .modal-overlay,
-      .mismatch-overlay,
-      .own-doctor-section,
-      .slot-picker-modal,
-      #slot-modal,
-      #auth-modal,
-      .book-btn,
-      .booking-confirmed .book-btn { display: none !important; }
-
-      /* ── Page ──────────────────────────────────────────── */
-      .page { max-width: 100% !important; padding: 0 !important; }
-
-      /* ── Print header watermark ─────────────────────────── */
-      body::before {
-        content: 'DiffDx — Session Report';
-        display: block;
-        font-size: 10px; font-weight: 700; letter-spacing: .1em;
-        text-transform: uppercase; color: #94a3b8;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #e2e8f0;
-        margin-bottom: 24px;
-      }
-
-      /* ── Diagnosis hero ─────────────────────────────────── */
-      .diagnosis-hero { padding: 16px 0 20px; text-align: center; }
-      .diagnosis-eyebrow { color: #64748b !important; }
-      .diagnosis-name { color: #0284c7 !important; font-size: 32px !important; }
-
-      /* ── Section headers ────────────────────────────────── */
-      .report-section-title {
-        color: #475569 !important;
-        border-bottom: 1.5px solid #e2e8f0 !important;
-        padding-bottom: 6px !important; margin-bottom: 14px !important;
-      }
-
-      /* ── Cards / sections ───────────────────────────────── */
-      .card,
-      .closing-card,
-      .doctors-note-card {
-        background: #f8f9fb !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 10px !important;
-        box-shadow: none !important;
-      }
-
-      .report-section {
-        break-inside: avoid;
-        margin-bottom: 24px !important;
-      }
-
-      /* ── Performance metric rings ───────────────────────── */
-      .metric-cards {
-        display: flex; gap: 24px; justify-content: center;
-        break-inside: avoid;
-      }
-      .metric-card {
-        background: #f8f9fb !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 12px !important;
-        padding: 16px 24px !important;
-      }
-      .metric-card-label { color: #475569 !important; }
-      .metric-ring-val { color: inherit !important; }
-      /* ensure track ring is visible on white */
-      .metric-ring svg circle:first-child { stroke: #e2e8f0 !important; }
-
-      /* ── Scores table ───────────────────────────────────── */
-      table { width: 100%; border-collapse: collapse; break-inside: avoid; }
-      thead tr { background: #f1f3f6 !important; }
-      th {
-        background: #f1f3f6 !important;
-        color: #475569 !important;
-        font-size: 11px !important;
-        letter-spacing: .06em !important;
-        text-transform: uppercase !important;
-        padding: 8px 12px !important;
-        border: 1px solid #e2e8f0 !important;
-      }
-      td {
-        padding: 8px 12px !important;
-        border: 1px solid #e2e8f0 !important;
-        color: #0f172a !important;
-      }
-      .mean-row td { background: #f1f3f6 !important; font-weight: 700 !important; }
-      .score-green { color: #059669 !important; }
-      .score-yellow { color: #d97706 !important; }
-      .score-red { color: #dc2626 !important; }
-
-      /* ── Badges ─────────────────────────────────────────── */
-      .badge, .badge-teal, .badge-dim, .badge-amber {
-        border: 1px solid !important;
-        box-shadow: none !important;
-      }
-      .badge-teal  { background: rgba(2,132,199,.08) !important; color: #0284c7 !important; border-color: rgba(2,132,199,.25) !important; }
-      .badge-dim   { background: #f1f3f6 !important; color: #475569 !important; border-color: #e2e8f0 !important; }
-      .badge-amber { background: rgba(217,119,6,.08) !important; color: #d97706 !important; border-color: rgba(217,119,6,.25) !important; }
-
-      /* ── Weakness tag list ──────────────────────────────── */
-      .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
-
-      /* ── Diff evolution bars ────────────────────────────── */
-      .diff-evo-turn {
-        background: #f8f9fb !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 10px !important;
-        break-inside: avoid;
-      }
-      .diff-evo-turn-label { color: #475569 !important; border-bottom: 1px solid #e2e8f0 !important; }
-      .diff-evo-bar-track { background: #e2e8f0 !important; }
-      .diff-evo-bar-fill  { background: #0284c7 !important; }
-      .diff-evo-bar-header span { color: #334155 !important; }
-
-      /* ── Final differential bars ────────────────────────── */
-      .diff-bar-track  { background: #e2e8f0 !important; }
-      .diff-bar-fill   { background: #0284c7 !important; }
-      .diff-bar-name   { color: #0f172a !important; }
-      .diff-bar-prob   { color: #475569 !important; }
-      .top-dx .diff-bar-name { color: #0284c7 !important; }
-
-      /* ── Conversation viewer ────────────────────────────── */
-      .conv-toggle-btn { display: none !important; }
-      .conv-scroll-wrap {
-        display: block !important;
-        max-height: none !important;
-        overflow: visible !important;
-        border: none !important;
-      }
-      .conv-turn {
-        break-inside: avoid;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 10px !important;
-        background: #f8f9fb !important;
-        margin-bottom: 10px !important;
-      }
-      .conv-q-label, .conv-a-label { color: #64748b !important; }
-      .conv-q-text { color: #0f172a !important; }
-      .conv-a-text { color: #334155 !important; }
-      .conv-conf { color: #475569 !important; }
-
-      /* ── Doctor cards ───────────────────────────────────── */
-      .doctor-card, .doctor-grid {
-        background: #f8f9fb !important;
-        border: 1px solid #e2e8f0 !important;
-        break-inside: avoid;
-      }
-      .doctor-name  { color: #0f172a !important; }
-      .doctor-hospital, .doctor-rating, .doctor-meta { color: #475569 !important; }
-      .doctor-avatar { background: rgba(2,132,199,.12) !important; color: #0284c7 !important; }
-
-      /* ── Closing card ───────────────────────────────────── */
-      .closing-header { color: #0284c7 !important; }
-      .closing-section-title { color: #64748b !important; }
-      .closing-text { color: #334155 !important; }
-      .closing-steps li { color: #334155 !important; }
-      .closing-steps li::before { color: #059669 !important; }
-
-      /* ── Urgency badges ─────────────────────────────────── */
-      .urgency-emergency { background: rgba(220,38,38,.08) !important; color: #dc2626 !important; }
-      .urgency-urgent    { background: rgba(217,119,6,.08) !important; color: #d97706 !important; }
-      .urgency-routine   { background: rgba(5,150,105,.08) !important; color: #059669 !important; }
-      .emergency-alert   { animation: none !important; }
-
-      /* ── Symptom history ────────────────────────────────── */
-      #symptom-history-section { display: none !important; }
-
-      /* ── Misc ───────────────────────────────────────────── */
-      a { text-decoration: none !important; color: inherit !important; }
-      * { box-shadow: none !important; animation: none !important; transition: none !important; }
     }
   </style>
 </head>
 <body>
 
-<nav class="nav" style="display:flex;align-items:center;padding:0 20px;gap:12px;">
-  <!-- left -->
-  <div style="flex:1;display:flex;align-items:center;">
-    <button class="nav-back" onclick="window.location.href='/session/'+(sessionStorage.getItem('sessionId')||'')">
+<!-- Ambient background lighting effects -->
+<div class="bg-grid"></div>
+<div class="bg-glow-left"></div>
+<div class="bg-glow-right"></div>
+
+<!-- Floating Frosted Nav Pill -->
+<nav class="nav">
+  <div class="nav-left">
+    <a class="nav-back-pill" href="/session" onclick="window.location.href='/session/'+(sessionStorage.getItem('sessionId')||''); return false;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-      Session
+      <span>Session</span>
+    </a>
+  </div>
+
+  <div class="nav-center-logo">
+    <div class="nav-brand-capsule">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--teal-primary);"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      Diff<span style="color:var(--teal-primary);">Dx</span>
+    </div>
+  </div>
+
+  <div class="nav-right-cluster">
+    <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
-  </div>
-
-  <!-- center — DiffDx badge, always truly centered -->
-  <div style="flex-shrink:0;display:flex;align-items:center;gap:7px;padding:7px 20px;border-radius:9999px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.18);box-shadow:0 0 24px rgba(16,185,129,.08);font-size:14px;font-weight:800;letter-spacing:-.02em;color:#f1f5f9;">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-    Diff<span style="color:#10b981;">Dx</span>
-  </div>
-
-  <!-- right -->
-  <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:8px;">
-    <span class="badge badge-green" style="white-space:nowrap;">Session Complete</span>
+    <span class="session-chip chip-green"><span class="live-dot" style="margin-right:6px;"></span>Session Complete</span>
     <div id="nav-auth" style="display:flex;align-items:center;gap:6px;"></div>
   </div>
 </nav>
@@ -1129,302 +1178,19 @@
 
 <script>
 const API = '';
+const sessionId = sessionStorage.getItem('sessionId');
+if (!sessionId) window.location.href = '/';
 
-// ── FRONTEND DEVELOPER MOCK MODE ──────────────────────────────────────────
-// When editing frontend UI/UX without triggering backend APIs:
-// Automatically active when visiting /report.html directly (without active session)
-// or when appending ?mock=1, ?demo=1, or ?dev=1 to the URL.
-const _urlParams = new URLSearchParams(window.location.search);
-const _storedSessionId = sessionStorage.getItem('sessionId');
-const isMockMode = _urlParams.has('mock') || _urlParams.has('demo') || _urlParams.has('dev') || !_storedSessionId || _storedSessionId === 'mock' || _storedSessionId === 'demo';
-const sessionId = _storedSessionId || 'dev-mock-session-001';
-
-if (!isMockMode && !_storedSessionId) {
-  window.location.href = '/';
+function toggleTheme() {
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  if (isDark) {
+    document.documentElement.classList.remove('dark-theme');
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.classList.add('dark-theme');
+    localStorage.setItem('theme', 'dark');
+  }
 }
-
-const MOCK_CASES = {
-  cardiology: {
-    final_diagnosis: "Acute Coronary Syndrome (Unstable Angina)",
-    total_turns: 5,
-    termination_reason: "High diagnostic certainty achieved (probability > 85%)",
-    patient: { age: 48, sex: "M", chief_complaint: "Substernal chest pressure radiating to left arm with exertional dyspnea" },
-    closing_turn: {
-      leading_diagnosis: "Acute Coronary Syndrome (Unstable Angina)",
-      differential_summary: "Clinical presentation of substernal tightness with left arm radiation, diaphoresis, and exertional worsening in a 48-year-old male with cardiovascular risk factors is strongly concerning for acute coronary syndrome. Urgent cardiology evaluation is advised.",
-      recommended_next_steps: [
-        "Proceed immediately to urgent cardiology or emergency evaluation",
-        "Obtain stat 12-lead ECG and serial cardiac troponin I/T assays",
-        "Initiate chewable Aspirin 325 mg unless contraindicated",
-        "Refrain from any strenuous exertion until cardiovascular clearance"
-      ]
-    },
-    aggregate: {
-      mean_question_quality: 4.85,
-      mean_differential_quality: 4.70,
-      mean_reasoning_quality: 4.90,
-      weakness_category_counts: {
-        "Premature Closure": 0,
-        "Over-testing": 1,
-        "Vague Phrasing": 0,
-        "Anchor Bias": 0
-      }
-    },
-    turns: [
-      {
-        turn_index: 1,
-        question_quality: 5,
-        differential_quality: 4,
-        reasoning_quality: 5,
-        critique: "Excellent targeted characterization of chest pain onset, radiation, and autonomic features.",
-        weaknesses: []
-      },
-      {
-        turn_index: 2,
-        question_quality: 5,
-        differential_quality: 5,
-        reasoning_quality: 5,
-        critique: "Appropriate stratification of cardiovascular risk factors and exertional triggers.",
-        weaknesses: []
-      },
-      {
-        turn_index: 3,
-        question_quality: 4,
-        differential_quality: 5,
-        reasoning_quality: 5,
-        critique: "Evaluated response to rest and sublingual or gastrointestinal medications.",
-        weaknesses: ["Over-testing"]
-      },
-      {
-        turn_index: 4,
-        question_quality: 5,
-        differential_quality: 5,
-        reasoning_quality: 5,
-        critique: "Explored secondary non-cardiac mimics (GERD, musculoskeletal wall pain, pleurisy).",
-        weaknesses: []
-      },
-      {
-        turn_index: 5,
-        question_quality: 5,
-        differential_quality: 5,
-        reasoning_quality: 5,
-        critique: "Synthesized diagnostic findings and formulated triage recommendations.",
-        weaknesses: []
-      }
-    ],
-    turn_history: [
-      {
-        turn_index: 1,
-        question: "Can you describe the pain in your chest? Is it a sharp pain, a pressure, burning, or tightness, and did it start suddenly?",
-        patient_answer: "It feels like a heavy squeezing band across my chest. It started about 2 hours ago while I was climbing stairs.",
-        confidence: 0.42,
-        reasoning_summary: "Substernal exertional squeezing pain raises initial suspicion for myocardial ischemia.",
-        differential: [
-          { dx: "Acute Coronary Syndrome", prob: 0.45 },
-          { dx: "Gastroesophageal Reflux Disease", prob: 0.25 },
-          { dx: "Costochondritis", prob: 0.18 },
-          { dx: "Anxiety / Panic Disorder", prob: 0.12 }
-        ]
-      },
-      {
-        turn_index: 2,
-        question: "Does the sensation radiate anywhere, such as your left arm, neck, jaw, or back, and do you feel nauseous or sweaty?",
-        patient_answer: "Yes, it aches down into my left arm and a bit into my jaw. I broke into a cold sweat.",
-        confidence: 0.68,
-        reasoning_summary: "Radiation to left arm and jaw combined with diaphoresis markedly increases post-test likelihood of ACS.",
-        differential: [
-          { dx: "Acute Coronary Syndrome", prob: 0.68 },
-          { dx: "Gastroesophageal Reflux Disease", prob: 0.16 },
-          { dx: "Aortic Dissection", prob: 0.10 },
-          { dx: "Costochondritis", prob: 0.06 }
-        ]
-      },
-      {
-        turn_index: 3,
-        question: "Do you have a history of high blood pressure, diabetes, high cholesterol, or smoking?",
-        patient_answer: "I take medication for hypertension and have smoked a pack a day for 15 years.",
-        confidence: 0.78,
-        reasoning_summary: "Significant cardiovascular risk profile (smoking + hypertension) compounds pre-test probability.",
-        differential: [
-          { dx: "Acute Coronary Syndrome", prob: 0.78 },
-          { dx: "Gastroesophageal Reflux Disease", prob: 0.12 },
-          { dx: "Costochondritis", prob: 0.06 },
-          { dx: "Pericarditis", prob: 0.04 }
-        ]
-      },
-      {
-        turn_index: 4,
-        question: "Does the pain get worse when you take a deep breath or change positions, and did antacids provide any relief?",
-        patient_answer: "No, breathing or turning doesn't change it. Antacids had zero effect.",
-        confidence: 0.84,
-        reasoning_summary: "Ruling out pleuritic, positional, and acid-peptic pain patterns leaves cardiac ischemia as primary.",
-        differential: [
-          { dx: "Acute Coronary Syndrome (Unstable Angina)", prob: 0.84 },
-          { dx: "Gastroesophageal Reflux Disease", prob: 0.09 },
-          { dx: "Costochondritis", prob: 0.04 },
-          { dx: "Pericarditis", prob: 0.03 }
-        ]
-      },
-      {
-        turn_index: 5,
-        question: "Thank you. Based on your symptoms, we are preparing your clinical assessment and cardiology referral.",
-        patient_answer: "Understood, thank you doctor.",
-        confidence: 0.86,
-        reasoning_summary: "Diagnostic threshold exceeded. Urgent referral indicated.",
-        differential: [
-          { dx: "Acute Coronary Syndrome (Unstable Angina)", prob: 0.84 },
-          { dx: "Gastroesophageal Reflux Disease", prob: 0.09 },
-          { dx: "Costochondritis", prob: 0.04 },
-          { dx: "Pericarditis", prob: 0.03 }
-        ]
-      }
-    ],
-    final_differential: [
-      { dx: "Acute Coronary Syndrome (Unstable Angina)", prob: 0.84, rationale: "Exertional substernal tightness with radiation to left arm and diaphoresis in a patient with hypertension and smoking history." },
-      { dx: "Gastroesophageal Reflux Disease (GERD)", prob: 0.09, rationale: "Retrosternal discomfort can mimic cardiac ischemia, but lack of response to antacids and arm radiation makes this secondary." },
-      { dx: "Costochondritis", prob: 0.04, rationale: "Musculoskeletal chest pain; absence of chest wall point tenderness makes this unlikely." },
-      { dx: "Pericarditis", prob: 0.03, rationale: "Lack of positional or pleuritic pain variation decreases likelihood." }
-    ]
-  },
-  neurology: {
-    final_diagnosis: "Migraine with Typical Aura",
-    total_turns: 4,
-    termination_reason: "High diagnostic certainty achieved (probability > 90%)",
-    patient: { age: 32, sex: "F", chief_complaint: "Unilateral throbbing headache preceded by shimmering zig-zag visual disturbances" },
-    closing_turn: {
-      leading_diagnosis: "Migraine with Typical Aura",
-      differential_summary: "Classic recurrent scintillating scotoma followed by unilateral pulsating headache, photophobia, and nausea in a 32-year-old female strongly matches International Headache Society criteria for Migraine with Aura.",
-      recommended_next_steps: [
-        "Consult neurology for tailored abortive (triptan) and prophylactic therapy",
-        "Keep a detailed headache diary logging triggers (sleep, caffeine, stress)",
-        "Rest in a quiet, dark environment during acute attacks",
-        "Seek emergency care if headache is sudden 'thunderclap' or accompanied by motor weakness"
-      ]
-    },
-    aggregate: {
-      mean_question_quality: 4.90,
-      mean_differential_quality: 4.80,
-      mean_reasoning_quality: 4.95,
-      weakness_category_counts: { "Premature Closure": 0, "Over-testing": 0, "Vague Phrasing": 0 }
-    },
-    turns: [
-      { turn_index: 1, question_quality: 5, differential_quality: 5, reasoning_quality: 5, critique: "Explored visual aura features and temporal relation to headache onset.", weaknesses: [] },
-      { turn_index: 2, question_quality: 5, differential_quality: 5, reasoning_quality: 5, critique: "Evaluated sensory, speech, or motor neurological deficits (red flags).", weaknesses: [] },
-      { turn_index: 3, question_quality: 5, differential_quality: 4, reasoning_quality: 5, critique: "Assessed autonomic and sensory symptoms (photophobia, phonophobia).", weaknesses: [] },
-      { turn_index: 4, question_quality: 5, differential_quality: 5, reasoning_quality: 5, critique: "Established family history and past episodic frequency.", weaknesses: [] }
-    ],
-    turn_history: [
-      {
-        turn_index: 1,
-        question: "Can you describe the visual changes before your headache started? How long did they last?",
-        patient_answer: "I saw shimmering zig-zag lights on the right side of my vision for about 25 minutes, then the headache started.",
-        confidence: 0.70,
-        reasoning_summary: "Scintillating scotoma lasting 20-30 min preceding headache is a hallmark of migraine aura.",
-        differential: [
-          { dx: "Migraine with Aura", prob: 0.72 },
-          { dx: "Transient Ischemic Attack", prob: 0.15 },
-          { dx: "Tension Headache", prob: 0.08 }
-        ]
-      },
-      {
-        turn_index: 2,
-        question: "Is the pain pulsing or throbbing, on one side, and are you sensitive to light or sound?",
-        patient_answer: "Yes, it is a severe pounding behind my left temple, and bright lights make me feel sick to my stomach.",
-        confidence: 0.88,
-        reasoning_summary: "Unilateral pulsating pain with photophobia and nausea satisfies ICHD-3 criteria.",
-        differential: [
-          { dx: "Migraine with Aura", prob: 0.89 },
-          { dx: "Tension-Type Headache", prob: 0.06 }
-        ]
-      }
-    ],
-    final_differential: [
-      { dx: "Migraine with Typical Aura", prob: 0.91, rationale: "Reversible scintillating visual aura lasting 25 minutes followed by unilateral throbbing headache with photophobia and nausea." },
-      { dx: "Tension-Type Headache", prob: 0.05, rationale: "Does not explain the prominent visual aura or unilateral pulsating character." }
-    ]
-  }
-};
-
-let MOCK_REPORT_DATA = MOCK_CASES.cardiology;
-
-const MOCK_ROUTING_DATA = {
-  routing: {
-    specialty: 'Cardiology',
-    urgency: 'urgent',
-    urgency_reason: 'Potential acute coronary syndrome warrants urgent evaluation within 24 hours.',
-    recommended_tests: ['12-lead Electrocardiogram (ECG)', 'High-sensitivity Troponin I', 'Echocardiogram']
-  },
-  doctors: [
-    {
-      id: 'doc-001',
-      name: 'Dr. Sarah Chen, MD, FACC',
-      specialty: 'Cardiologist',
-      hospital: 'Metro Heart & Vascular Institute',
-      experience_years: 15,
-      rating: 4.95,
-      available_slots: ['Today, 4:30 PM', 'Tomorrow, 10:00 AM', 'Tomorrow, 2:30 PM']
-    },
-    {
-      id: 'doc-002',
-      name: 'Dr. Vikram Patel, MD',
-      specialty: 'Interventional Cardiologist',
-      hospital: 'Apollo Cardiology Care',
-      experience_years: 18,
-      rating: 4.88,
-      available_slots: ['Tomorrow, 11:15 AM', 'Thursday, 3:00 PM']
-    }
-  ]
-};
-
-const MOCK_APPOINTMENT_DATA = {
-  id: 'mock-appt-001',
-  appointment_id: 'mock-appt-001',
-  doctor_name: 'Dr. Sarah Chen, MD, FACC',
-  doctor_summary: 'Patient presented with acute-onset retrosternal chest tightness with left arm radiation. Significant cardiovascular risk factors present. Ordered stat 12-lead ECG and cardiac biomarkers. Prescribed cardioprotective regimen and recommended immediate follow-up.',
-  test_orders: [
-    { id: 'to-1', test: '12-Lead Electrocardiogram (ECG)', category: 'imaging', priority: 'stat', notes: 'Evaluate for ST-segment elevation or T-wave inversions', results_uploaded: false },
-    { id: 'to-2', test: 'High-Sensitivity Troponin I (Serial)', category: 'blood', priority: 'stat', notes: 'Baseline and 3-hour draw to rule out acute myocardial infarction', results_uploaded: true },
-    { id: 'to-3', test: 'Comprehensive Lipid & Metabolic Panel', category: 'blood', priority: 'routine', notes: 'Assess fasting lipid fractions and renal function', results_uploaded: false }
-  ],
-  prescriptions: [
-    { drug: 'Aspirin (Chewable)', dose: '81 mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take with morning meal' },
-    { drug: 'Atorvastatin Calcium', dose: '40 mg', frequency: 'Once daily at bedtime', duration: '30 days', instructions: 'For lipid optimization and plaque stabilization' },
-    { drug: 'Nitroglycerin Sublingual Tablets', dose: '0.4 mg', frequency: 'As needed for acute chest discomfort', duration: 'PRN', instructions: 'Place 1 tablet under tongue at onset of chest pain; repeat q5min up to 3 doses if needed' }
-  ],
-  referral: {
-    specialist_name: 'Dr. Sarah Chen, MD',
-    specialty: 'Cardiology & Cardiovascular Disease',
-    reason: 'Urgent evaluation for suspected Acute Coronary Syndrome (Unstable Angina)',
-    referral_code: 'REF-CARD-2026-9042',
-    hospital: 'Metro Heart & Vascular Institute'
-  }
-};
-
-const MOCK_SUGGESTED_TESTS_DATA = {
-  necessary: true,
-  rationale: 'Pre-visit cardiovascular workup helps the consulting cardiologist evaluate myocardial perfusion and coronary risk.',
-  tests: [
-    { id: 'st-1', name: '12-Lead Resting ECG', category: 'Cardiac', urgency: 'High', description: 'Records electrical activity of the heart to identify ischemic patterns.' },
-    { id: 'st-2', name: 'High-Sensitivity Troponin I Assay', category: 'Biomarkers', urgency: 'High', description: 'Gold-standard blood biomarker for myocardial cell injury.' },
-    { id: 'st-3', name: 'Echocardiogram (Transthoracic)', category: 'Imaging', urgency: 'Medium', description: 'Ultrasound imaging to assess ventricular wall motion and ejection fraction.' },
-    { id: 'st-4', name: 'Fasting Lipid Profile', category: 'Blood', urgency: 'Routine', description: 'Measures LDL, HDL, and triglycerides for atherosclerotic risk profiling.' }
-  ]
-};
-
-const MOCK_SYMPTOM_HISTORY_DATA = [
-  {
-    primary_diagnosis: 'Essential Hypertension Check',
-    date: '14 Jan 2026',
-    doctor_name: 'Dr. Anita Rao, MD',
-    symptoms: ['Mild morning headache', 'Occasional palpitations']
-  },
-  {
-    primary_diagnosis: 'Annual Preventive Health Exam',
-    date: '02 Sep 2025',
-    doctor_name: 'Dr. Marcus Vance, MD',
-    symptoms: ['Mild fatigue', 'Elevated BMI']
-  }
-];
 
 // Modal state
 let _pendingDoctor = null;
@@ -1459,10 +1225,6 @@ async function loadSuggestedTests() {
   const el = document.getElementById('suggested-tests-section');
   if (!el) return;
   _loadSugState();
-  if (isMockMode) {
-    el.innerHTML = _buildSuggestedTestsHtml(MOCK_SUGGESTED_TESTS_DATA);
-    return;
-  }
   // Pre-load any previously uploaded files for this session
   try {
     if (getAuthToken()) {
@@ -1686,10 +1448,6 @@ function _printTestList() {
 async function loadRouting() {
   const el = document.getElementById('next-steps-section');
   if (!el) return;
-  if (isMockMode) {
-    el.innerHTML = buildNextSteps(MOCK_ROUTING_DATA);
-    return;
-  }
   try {
     const res = await fetch(`${API}/api/session/${sessionId}/routing`, { headers: { ...authHeaders() } });
     if (!res.ok) {
@@ -1708,41 +1466,6 @@ async function loadTestOrders() {
   const el = document.getElementById('test-orders-section');
   const summaryEl = document.getElementById('doctors-note-section');
   const rxEl = document.getElementById('rx-section');
-  if (isMockMode) {
-    window._reportApptId = MOCK_APPOINTMENT_DATA.appointment_id;
-    _sugApptId = MOCK_APPOINTMENT_DATA.appointment_id;
-    const sendBtn = document.getElementById('btn-send-doctor');
-    if (sendBtn) sendBtn.style.display = '';
-    if (el) el.innerHTML = buildTestOrdersBlock(MOCK_APPOINTMENT_DATA.test_orders, MOCK_APPOINTMENT_DATA.doctor_name, MOCK_APPOINTMENT_DATA.id);
-    const refEl = document.getElementById('referral-section');
-    if (refEl) refEl.innerHTML = buildReferralBlock(MOCK_APPOINTMENT_DATA.referral, MOCK_APPOINTMENT_DATA.appointment_id);
-    if (summaryEl) {
-      summaryEl.innerHTML = `
-        <div class="report-section">
-          <div class="report-section-title">Doctor's Note</div>
-          <div class="doctors-note-card">
-            <div class="doctors-note-label">From your doctor</div>
-            <div class="doctors-note-text">${escHtml(MOCK_APPOINTMENT_DATA.doctor_summary)}</div>
-          </div>
-        </div>`;
-    }
-    if (rxEl) {
-      rxEl.innerHTML = `
-        <div class="report-section">
-          <div class="report-section-title">Prescriptions</div>
-          ${MOCK_APPOINTMENT_DATA.prescriptions.map(p => `
-            <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05);">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">💊</div>
-              <div style="flex:1;">
-                <div style="font-weight:700;font-size:14px;color:var(--text);">${escHtml(p.drug || '')}</div>
-                ${p.dose ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escHtml(p.dose)}${p.frequency ? ' · ' + escHtml(p.frequency) : ''}${p.duration ? ' · ' + escHtml(p.duration) : ''}</div>` : ''}
-                ${p.instructions ? `<div style="font-size:12px;color:var(--text-dim);margin-top:3px;font-style:italic;">${escHtml(p.instructions)}</div>` : ''}
-              </div>
-            </div>`).join('')}
-        </div>`;
-    }
-    return;
-  }
   try {
     if (!getAuthToken()) return; // guest — skip
     const res = await fetch(`${API}/api/appointments`, { headers: { ...authHeaders() } });
@@ -3030,20 +2753,6 @@ let _reportData = null;
 const _origLoad = load;
 async function load() {
   const el = document.getElementById('content');
-  if (isMockMode) {
-    _reportData = MOCK_REPORT_DATA;
-    el.innerHTML = buildReport(MOCK_REPORT_DATA);
-    document.getElementById('btn-pdf')?.addEventListener('click', () => window.print());
-    document.getElementById('btn-new')?.addEventListener('click', () => {
-      window.location.href = '/report.html?mock=1';
-    });
-    loadRouting();
-    loadTestOrders();
-    loadSuggestedTests();
-    loadSymptomHistory();
-    _injectDevModeHud();
-    return;
-  }
   try {
     const res = await fetch(`${API}/api/session/${sessionId}/report`, { headers: { ...authHeaders() } });
     if (!res.ok) throw new Error(await res.text());
@@ -3183,28 +2892,6 @@ function _showReportToast(msg) {
 async function loadSymptomHistory() {
   const el = document.getElementById('symptom-history-section');
   if (!el) return;
-  if (isMockMode) {
-    el.innerHTML = `
-      <div class="report-section">
-        <div class="report-section-title" style="display:flex;align-items:center;gap:8px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
-          Past Symptom History
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          ${MOCK_SYMPTOM_HISTORY_DATA.map(e => `
-            <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                <span style="font-size:12px;font-weight:700;color:var(--text);">${escHtml(e.primary_diagnosis||'Consultation')}</span>
-                <span style="font-size:11px;color:var(--text-muted);">${e.date}</span>
-                <span style="font-size:11px;color:var(--text-muted);">· ${escHtml(e.doctor_name||'')}</span>
-              </div>
-              ${e.symptoms.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;">${e.symptoms.map(s=>`<span style="font-size:11px;padding:2px 9px;border-radius:99px;background:var(--surface-3);border:1px solid var(--border);color:var(--text-dim);">${escHtml(s)}</span>`).join('')}</div>` : ''}
-            </div>`).join('')}
-        </div>
-      </div>`;
-    el.style.display = '';
-    return;
-  }
   try {
     const res = await fetch(`${API}/api/patient/symptom-history`, { headers: authHeaders() });
     if (!res.ok) return;
@@ -3234,40 +2921,6 @@ async function loadSymptomHistory() {
       </div>`;
     el.style.display = '';
   } catch { el.style.display = 'none'; }
-}
-
-function _injectDevModeHud() {
-  if (document.getElementById('dev-mock-hud')) return;
-  const hud = document.createElement('div');
-  hud.id = 'dev-mock-hud';
-  hud.innerHTML = `
-    <div style="position:fixed;bottom:20px;right:20px;z-index:99999;background:rgba(15,23,42,0.92);border:1px solid rgba(16,185,129,0.4);border-radius:999px;padding:8px 16px;backdrop-filter:blur(20px);box-shadow:0 12px 36px rgba(0,0,0,0.5);display:flex;align-items:center;gap:10px;font-family:'Sora',sans-serif;font-size:12px;color:#f1f5f9;">
-      <span style="display:flex;align-items:center;gap:6px;font-weight:700;color:#34d399;">
-        <span style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;display:inline-block;"></span>
-        Frontend Dev Mode
-      </span>
-      <span style="color:#64748b;">|</span>
-      <span style="color:#94a3b8;font-size:11px;">Zero APIs</span>
-      <select id="dev-case-select" onchange="_switchMockCase(this.value)" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#fff;border-radius:8px;padding:3px 8px;font-size:11px;outline:none;cursor:pointer;">
-        <option value="cardiology">Cardiology Case</option>
-        <option value="neurology">Neurology Case</option>
-      </select>
-    </div>
-  `;
-  document.body.appendChild(hud);
-}
-
-function _switchMockCase(caseKey) {
-  if (!MOCK_CASES[caseKey]) return;
-  MOCK_REPORT_DATA = MOCK_CASES[caseKey];
-  _reportData = MOCK_REPORT_DATA;
-  const el = document.getElementById('content');
-  if (el) el.innerHTML = buildReport(MOCK_REPORT_DATA);
-  document.getElementById('btn-pdf')?.addEventListener('click', () => window.print());
-  loadRouting();
-  loadTestOrders();
-  loadSuggestedTests();
-  loadSymptomHistory();
 }
 
 load();

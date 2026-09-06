@@ -102,7 +102,16 @@ def _parse_pg_url(url: str) -> dict:
         port = int(port_str)
     else:
         host, port = hostport, 5432
-    return dict(host=host, port=port, dbname=dbname, user=user, password=password, sslmode="require")
+    # "prefer" (not "require"): use SSL when the server offers it (managed
+    # providers like Render's Postgres do, and did before this change too),
+    # but fall back to a plain connection when it doesn't — a local
+    # docker-compose postgres:16-alpine container has no SSL configured at
+    # all, and "require" made every legacy blob-store write/read fail with
+    # "server does not support SSL, but SSL was required." diffdx.db.engine
+    # (the SQLAlchemy path everything else uses) never forced sslmode, which
+    # is why migrations/seeding/the relational schema all worked fine
+    # against the same container while this legacy psycopg2 pool didn't.
+    return dict(host=host, port=port, dbname=dbname, user=user, password=password, sslmode="prefer")
 
 
 def _get_pg():

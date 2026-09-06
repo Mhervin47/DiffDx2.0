@@ -55,17 +55,23 @@ COPY --from=builder /app/pyproject.toml ./pyproject.toml
 # Runtime data the AI layer reads by path at call time, not just import
 # time — loop1.config reads config.yaml, loop1.doctor and
 # loop2.critic.critic read prompts/*.txt, sessions.py's _CASES_DIR reads
-# test_cases/*.json. exemplars/ is read by the live web session path via
-# select_random() only — the faiss/fastembed-backed semantic retrieval
-# functions in loop1.retrieval are never called from a real request (only
-# from offline tooling), confirmed live; requirements-web.txt correctly
-# excludes those packages.
+# test_cases/*.json, loop3.routing.map_loader reads
+# data/disease_specialty_map.json (GET /api/session/{id}/routing —
+# missed in the original pass, found live: "Disease specialty map not
+# found: /app/data/disease_specialty_map.json"). exemplars/ is read by
+# the live web session path via select_random() only — the
+# faiss/fastembed-backed semantic retrieval functions in loop1.retrieval
+# are never called from a real request (only from offline tooling),
+# confirmed live; requirements-web.txt correctly excludes those packages.
+# The rest of data/ (DDXPlus_Raw/, phase7_sessions/, phase7_critiques/,
+# ddxplus_eval_set.json) is offline eval tooling only — not copied.
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 COPY config.yaml ./config.yaml
 COPY prompts ./prompts
 COPY test_cases ./test_cases
 COPY exemplars ./exemplars
+COPY data/disease_specialty_map.json ./data/disease_specialty_map.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 # Only the one script the entrypoint needs, not the whole scripts/
 # directory — the rest is offline AI-layer tooling with its own,

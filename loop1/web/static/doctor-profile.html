@@ -1,322 +1,1201 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark-theme">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DiffDx — Doctor Profile</title>
+  <title>DiffDx — Physician Profile & Credentials</title>
+  <script>
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.remove('dark-theme');
+    } else {
+      document.documentElement.classList.add('dark-theme');
+    }
+  </script>
   <link rel="stylesheet" href="/reloader.css">
   <script src="/reloader.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="/auth.js"></script>
   <style>
-    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 580px) { .profile-grid { grid-template-columns: 1fr; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg-dark: #F1F5F9;
+      --bg-card: #FFFFFF;
+      --border-card: #CBD5E1;
+      --border: #CBD5E1;
+      --border-subtle: #E2E8F0;
+      --teal-primary: #0D9488;
+      --teal-glow: rgba(13, 148, 136, 0.16);
+      --blue-secondary: #2563EB;
+      --purple-accent: #6D28D9;
+      --amber-accent: #B45309;
+      --text: #0F172A;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --text-dim: #334155;
+      --nav-bg: rgba(255, 255, 255, 0.96);
+      --btn-nav-bg: #FFFFFF;
+      --btn-nav-border: #CBD5E1;
+      --btn-nav-text: #0F172A;
+      --card-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+      --surface-1: #FFFFFF;
+      --surface-2: #F8FAFC;
+      --surface-3: #F1F5F9;
+      --surface-4: #E2E8F0;
+      --primary: #0D9488;
+      --primary-light: #14B8A6;
+      --primary-dark: #0F766E;
+      --primary-dim: rgba(13, 148, 136, 0.12);
+      --font-heading: 'Sora', sans-serif;
+      --font-body: 'Noto Sans', sans-serif;
+      --input-bg: #FFFFFF;
+      --input-border: #CBD5E1;
+      --input-focus-border: #0D9488;
+      --input-text: #0F172A;
+      --glass-border: #CBD5E1;
+      --cover-gradient: linear-gradient(135deg, rgba(13, 148, 136, 0.16) 0%, rgba(37, 99, 235, 0.12) 100%);
+    }
+
+    html.dark-theme {
+      --bg-dark: #050D18;
+      --bg-card: #0A1525;
+      --border-card: rgba(150, 180, 210, 0.10);
+      --border: rgba(150, 180, 210, 0.12);
+      --border-subtle: rgba(150, 180, 210, 0.06);
+      --teal-primary: #19C6AD;
+      --teal-glow: rgba(25, 198, 173, 0.22);
+      --blue-secondary: #4C8FF5;
+      --purple-accent: #8174E8;
+      --amber-accent: #F59E0B;
+      --text: #EAF2FA;
+      --text-main: #EAF2FA;
+      --text-muted: #8FA2B9;
+      --text-dim: #94A3B8;
+      --nav-bg: rgba(5, 13, 24, 0.88);
+      --btn-nav-bg: rgba(255, 255, 255, 0.04);
+      --btn-nav-border: rgba(150, 180, 210, 0.10);
+      --btn-nav-text: #EAF2FA;
+      --card-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      --surface-1: #0A1525;
+      --surface-2: #0E1B2E;
+      --surface-3: #13243C;
+      --surface-4: #192F4D;
+      --primary: #19C6AD;
+      --primary-light: #34D399;
+      --primary-dark: #059669;
+      --primary-dim: rgba(25, 198, 173, 0.15);
+      --input-bg: #0C192A;
+      --input-border: rgba(150, 180, 210, 0.14);
+      --input-focus-border: #19C6AD;
+      --input-text: #EAF2FA;
+      --glass-border: rgba(150, 180, 210, 0.14);
+      --cover-gradient: linear-gradient(135deg, rgba(25, 198, 173, 0.20) 0%, rgba(76, 143, 245, 0.20) 100%);
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* Ambient Background Effects */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(143, 162, 185, 0.07) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(ellipse 85% 65% at 50% 25%, black 40%, transparent 95%);
+    }
+
+    .bg-glow-left {
+      position: fixed; top: -120px; left: -100px; width: 640px; height: 640px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--teal-glow) 0%, transparent 70%);
+      filter: blur(100px); pointer-events: none; z-index: 0;
+      animation: floatGlowLeft 22s ease-in-out infinite alternate;
+    }
+
+    .bg-glow-right {
+      position: fixed; top: 180px; right: -120px; width: 680px; height: 680px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(76, 143, 245, 0.09) 0%, transparent 70%);
+      filter: blur(110px); pointer-events: none; z-index: 0;
+      animation: floatGlowRight 24s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatGlowLeft {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(35px, 25px) scale(1.06); }
+    }
+    @keyframes floatGlowRight {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(-30px, -35px) scale(1.04); }
+    }
+
+    /* Header Nav */
+    .nav {
+      position: sticky !important; top: 0 !important; left: 0 !important; transform: none !important;
+      width: 100% !important; max-width: 100% !important; border-radius: 0 !important;
+      height: 56px !important; z-index: 100 !important;
+      background: var(--nav-bg) !important;
+      backdrop-filter: blur(24px) saturate(1.8) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(1.8) !important;
+      border: none !important;
+      border-bottom: 1px solid var(--border) !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+      padding: 0 28px !important;
+      display: flex !important; align-items: center !important; justify-content: space-between !important;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .nav-left {
+      display: flex; align-items: center; gap: 14px;
+    }
+
+    .nav-back {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 14px; border-radius: 9999px;
+      background: var(--btn-nav-bg);
+      border: 1px solid var(--btn-nav-border);
+      color: var(--text-main); font-family: var(--font-heading);
+      font-size: 12.5px; font-weight: 700; text-decoration: none;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      transition: all .2s ease;
+    }
+    .nav-back:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--surface-2);
+      transform: translateY(-1px);
+    }
+    .nav-back svg { transition: transform .15s ease; }
+    .nav-back:hover svg { transform: translateX(-2px); }
+
+    .nav-brand {
+      display: flex; align-items: center; gap: 8px; text-decoration: none;
+    }
+    .nav-brand svg {
+      color: var(--primary);
+      filter: drop-shadow(0 0 8px var(--teal-glow));
+    }
+    .nav-brand-text {
+      font-family: var(--font-heading);
+      font-size: 16px; font-weight: 800; letter-spacing: -.02em;
+      color: var(--text-main);
+    }
+    .nav-brand-text span { color: var(--primary); }
+
+    .nav-right {
+      display: flex; align-items: center; gap: 10px; margin-left: auto;
+    }
+
+    /* Theme Toggle */
+    .theme-toggle-btn {
+      width: 34px; height: 34px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: var(--btn-nav-bg);
+      border: 1px solid var(--btn-nav-border);
+      color: var(--text-dim);
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      transition: all .2s ease;
+      flex-shrink: 0;
+    }
+    .theme-toggle-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: scale(1.05);
+    }
+    html.dark-theme .sun-icon { display: block !important; }
+    html.dark-theme .moon-icon { display: none !important; }
+    html:not(.dark-theme) .sun-icon { display: none !important; }
+    html:not(.dark-theme) .moon-icon { display: block !important; }
+
+    /* Page Layout — Executive Split Grid */
+    .profile-page-wrapper {
+      /*max-width: 1200px;*/
+      margin: 0 auto;
+      padding: 32px 28px 90px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .profile-layout-grid {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+    @media (max-width: 980px) {
+      .profile-layout-grid { grid-template-columns: 1fr; gap: 24px; }
+      .profile-page-wrapper { padding: 20px 18px 80px; }
+    }
+
+    /* Left Sidebar: Physician Identity Card & Quick Stats */
+    .profile-sidebar {
+      position: sticky;
+      top: 76px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    @media (max-width: 980px) {
+      .profile-sidebar { position: static; }
+    }
+
+    .provider-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .provider-cover {
+      height: 90px;
+      background: var(--cover-gradient);
+      position: relative;
+      border-bottom: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+    .provider-cover-pattern {
+      position: absolute; inset: 0; opacity: 0.15;
+      background-image: radial-gradient(var(--primary) 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+
+    .provider-body {
+      padding: 0 24px 24px;
+      position: relative;
+    }
+
+    .avatar-wrapper {
+      position: relative;
+      margin-top: -42px;
+      margin-bottom: 14px;
+      display: inline-block;
+    }
+    .avatar-large {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal-primary), var(--blue-secondary));
+      color: #FFFFFF; font-size: 26px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-family: var(--font-heading);
+      box-shadow: 0 6px 20px var(--teal-glow);
+      border: 4px solid var(--bg-card);
+    }
+    .avatar-verified-badge {
+      position: absolute; bottom: 2px; right: 2px;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--primary); color: #FFFFFF;
+      border: 2px solid var(--bg-card);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    .provider-name {
+      font-family: var(--font-heading);
+      font-size: 20px; font-weight: 800; letter-spacing: -.02em;
+      color: var(--text-main); margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .provider-specialty-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 9999px;
+      background: var(--primary-dim);
+      border: 1px solid rgba(13, 148, 136, 0.28);
+      color: #0F766E; font-size: 12px; font-weight: 700;
+      font-family: var(--font-heading);
+      margin-bottom: 18px;
+    }
+    html.dark-theme .provider-specialty-pill {
+      border-color: rgba(25, 198, 173, 0.25);
+      color: var(--primary);
+    }
+    .psp-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--primary);
+    }
+
+    /* Profile Strength Meter */
+    .strength-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+    }
+    .strength-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .strength-title {
+      font-family: var(--font-heading);
+      font-size: 11.5px; font-weight: 700; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--text-dim);
+    }
+    .strength-score {
+      font-family: var(--font-heading);
+      font-size: 13px; font-weight: 800; color: #0F766E;
+    }
+    html.dark-theme .strength-score {
+      color: var(--primary);
+    }
+    .strength-track {
+      width: 100%; height: 6px; border-radius: 99px;
+      background: var(--surface-4); overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .strength-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--teal-primary), var(--blue-secondary));
+      width: 85%; transition: width 0.4s ease;
+      box-shadow: 0 0 10px var(--teal-glow);
+    }
+    .strength-hint {
+      font-size: 12px; color: var(--text-dim); line-height: 1.45; font-weight: 500;
+    }
+
+    /* Trust & Highlights List */
+    .trust-list {
+      display: flex; flex-direction: column; gap: 10px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 16px;
+    }
+    .trust-item {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 12.5px; font-weight: 600; color: var(--text-main);
+      font-family: var(--font-body);
+    }
+    .trust-item svg {
+      color: #0F766E; flex-shrink: 0;
+    }
+    html.dark-theme .trust-item svg {
+      color: var(--primary);
+    }
+
+    /* Right Main Content */
+    .profile-main {
+      min-width: 0;
+    }
+
+    .main-header {
+      margin-bottom: 24px;
+    }
+    .main-kicker {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 4px 12px; border-radius: 9999px;
+      background: var(--primary-dim);
+      border: 1px solid rgba(13, 148, 136, 0.28);
+      color: #0F766E; font-size: 11px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      font-family: var(--font-heading);
+      margin-bottom: 10px;
+    }
+    html.dark-theme .main-kicker {
+      border-color: rgba(25, 198, 173, 0.25);
+      color: var(--primary);
+    }
+    .kicker-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 6px var(--primary);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .page-title {
+      font-family: var(--font-heading);
+      font-size: 28px; font-weight: 800; letter-spacing: -.02em;
+      color: var(--text-main); margin-bottom: 6px;
+    }
+    .page-subtitle {
+      font-size: 14px; color: var(--text-dim); line-height: 1.55;
+    }
+
+    /* Incomplete Alert Banner */
+    .incomplete-banner {
+      background: rgba(245, 158, 11, 0.09);
+      border: 1px solid rgba(217, 119, 6, 0.38);
+      border-radius: 16px; padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex; align-items: flex-start; gap: 14px;
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.06);
+    }
+    .ib-icon {
+      color: var(--amber-accent); flex-shrink: 0; margin-top: 2px;
+    }
+    .ib-content { flex: 1; min-width: 0; }
+    .ib-title {
+      font-family: var(--font-heading);
+      font-size: 13.5px; font-weight: 800; color: var(--amber-accent);
+      margin-bottom: 2px;
+    }
+    .ib-text {
+      font-size: 13px; color: var(--text-main); line-height: 1.45; font-weight: 500;
+    }
+
+    /* Form Cards */
     .profile-section {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 20px 22px; margin-bottom: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      padding: 26px 28px;
+      margin-bottom: 22px;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
     }
-    .profile-section-title {
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--text-muted);
-      margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
+    .profile-section:hover {
+      border-color: rgba(25, 198, 173, 0.28);
     }
-    .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .form-group label { font-size: 12px; font-weight: 600; color: var(--text-dim); }
-    .form-group small { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
-    .form-control {
-      background: var(--surface-3); border: 1px solid var(--border);
-      border-radius: var(--radius); color: var(--text);
-      font-family: var(--font); font-size: 14px;
-      padding: 9px 12px; width: 100%;
-      transition: border-color .15s; outline: none;
-      -webkit-appearance: none; appearance: none;
+    .profile-section-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 22px; padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-subtle);
     }
-    .form-control:focus { border-color: var(--primary); }
-    .form-control[readonly] { color: var(--text-muted); cursor: default; background: var(--surface-2); }
-    .form-control option { background: var(--surface-3); }
-    textarea.form-control { resize: vertical; min-height: 80px; }
+    .ps-icon-wrap {
+      width: 44px; height: 44px; border-radius: 12px;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid var(--border-card);
+      background: var(--surface-2);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .profile-section:hover .ps-icon-wrap {
+      transform: scale(1.04);
+      box-shadow: 0 6px 16px var(--teal-glow);
+    }
+    .ps-icon-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 11px;
+    }
+    html.dark-theme .ps-icon-wrap {
+      border-color: rgba(150, 180, 210, 0.16);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    .ps-title-wrap { flex: 1; min-width: 0; }
+    .ps-title {
+      font-family: var(--font-heading);
+      font-size: 14.5px; font-weight: 700; letter-spacing: -.01em;
+      color: var(--text-main); margin-bottom: 2px;
+    }
+    .ps-desc {
+      font-size: 12.5px; color: var(--text-dim);
+    }
+
+    /* Form Grid */
+    .profile-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+    }
+    @media (max-width: 680px) {
+      .profile-grid { grid-template-columns: 1fr; }
+    }
+
+    .form-group {
+      display: flex; flex-direction: column; gap: 7px;
+    }
+    .form-group label {
+      font-family: var(--font-heading);
+      font-size: 11.5px; font-weight: 700; letter-spacing: .04em;
+      color: var(--text-main); text-transform: uppercase;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .read-only-tag {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 5px;
+      background: #E2E8F0; color: #1E293B;
+      border: 1px solid #CBD5E1;
+      letter-spacing: .05em;
+    }
+    html.dark-theme .read-only-tag {
+      background: var(--surface-3);
+      color: var(--text-muted);
+      border: 1px solid rgba(150, 180, 210, 0.15);
+    }
+
+    .input-field-wrap {
+      position: relative; width: 100%;
+      display: flex; align-items: center;
+    }
+    .input-field-icon {
+      position: absolute; left: 14px;
+      color: #475569; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.2s ease;
+    }
+    html.dark-theme .input-field-icon {
+      color: var(--text-muted);
+    }
+
+    input[type="text"].form-control,
+    input[type="email"].form-control,
+    input[type="number"].form-control,
+    input[type="tel"].form-control,
+    input.form-control,
+    select.form-control,
+    textarea.form-control,
+    .form-control {
+      width: 100% !important;
+      box-sizing: border-box !important;
+      background: var(--input-bg) !important;
+      border: 1.5px solid var(--input-border) !important;
+      border-radius: 11px !important;
+      color: var(--input-text) !important;
+      font-family: var(--font-body) !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      padding: 11px 14px 11px 40px !important;
+      outline: none !important;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+      transition: all 0.2s ease !important;
+      -webkit-appearance: none !important;
+      appearance: none !important;
+    }
+    .form-control.no-icon,
+    textarea.form-control {
+      padding-left: 14px !important;
+    }
+    input[type="text"].form-control:focus,
+    input[type="email"].form-control:focus,
+    input[type="number"].form-control:focus,
+    input[type="tel"].form-control:focus,
+    input.form-control:focus,
+    select.form-control:focus,
+    textarea.form-control:focus,
+    .form-control:focus {
+      border-color: var(--input-focus-border) !important;
+      box-shadow: 0 0 0 3px var(--primary-dim) !important;
+      background: var(--bg-card) !important;
+      color: var(--input-text) !important;
+    }
+    .input-field-wrap:focus-within .input-field-icon {
+      color: var(--primary);
+    }
+    input.form-control::placeholder,
+    input.phone-num::placeholder,
+    input.cert-add-input::placeholder,
+    textarea.form-control::placeholder,
+    .form-control::placeholder {
+      color: #64748B !important;
+      opacity: 1 !important;
+      font-weight: 400 !important;
+    }
+    html.dark-theme input.form-control::placeholder,
+    html.dark-theme input.phone-num::placeholder,
+    html.dark-theme input.cert-add-input::placeholder,
+    html.dark-theme textarea.form-control::placeholder,
+    html.dark-theme .form-control::placeholder {
+      color: #8FA2B9 !important;
+      opacity: 0.75 !important;
+    }
+    input.form-control[readonly] {
+      opacity: 1 !important;
+      cursor: not-allowed !important;
+      background: #F1F5F9 !important;
+      border: 1.5px solid #CBD5E1 !important;
+      color: #334155 !important;
+      font-weight: 600 !important;
+    }
+    html.dark-theme input.form-control[readonly] {
+      background: var(--surface-2) !important;
+      border-color: var(--border-subtle) !important;
+      color: var(--text-muted) !important;
+    }
+    .form-control option {
+      background: var(--bg-card); color: var(--text-main);
+    }
+    textarea.form-control {
+      resize: vertical; min-height: 90px; line-height: 1.55;
+      padding-left: 14px !important;
+    }
 
     select.form-control {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234d647e'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 12px center;
-      padding-right: 32px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23334155' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 14px center !important;
+      padding-right: 36px !important;
+      cursor: pointer !important;
+    }
+    html.dark-theme select.form-control {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238fa2b9' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
     }
 
-    .phone-row { display: flex; }
-    .phone-cc {
-      flex: 0 0 110px; width: 110px;
-      background: var(--surface-3); border: 1px solid var(--border);
-      border-right: none; border-radius: var(--radius) 0 0 var(--radius);
-      color: var(--text); font-family: var(--font); font-size: 13px;
-      padding: 9px 8px; outline: none; cursor: pointer;
-      -webkit-appearance: none; appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234d647e'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 8px center;
-      padding-right: 24px;
+    /* Phone Input Row */
+    .phone-row {
+      display: flex; width: 100%;
     }
-    .phone-cc:focus { border-color: var(--primary); z-index: 1; position: relative; }
-    .phone-num {
-      flex: 1; min-width: 0;
-      background: var(--surface-3); border: 1px solid var(--border);
-      border-radius: 0 var(--radius) var(--radius) 0;
-      color: var(--text); font-family: var(--font); font-size: 14px;
-      padding: 9px 12px; outline: none;
+    select.phone-cc {
+      flex: 0 0 115px !important;
+      width: 115px !important;
+      background: var(--input-bg) !important;
+      border: 1.5px solid var(--input-border) !important;
+      border-right: none !important;
+      border-radius: 11px 0 0 11px !important;
+      color: var(--input-text) !important;
+      font-family: var(--font-body) !important;
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      padding: 11px 12px !important;
+      outline: none !important;
+      cursor: pointer !important;
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%23334155' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 8px center !important;
+      padding-right: 24px !important;
+      transition: border-color .2s ease !important;
     }
-    .phone-num:focus { border-color: var(--primary); z-index: 1; position: relative; }
-    .phone-num::placeholder { color: var(--text-muted); }
-    .phone-cc option { background: var(--surface-3); }
-    .field-error { font-size: 11px; color: var(--danger); margin-top: 3px; display: none; }
+    html.dark-theme select.phone-cc {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%238fa2b9' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    }
+    select.phone-cc:focus {
+      border-color: var(--input-focus-border) !important;
+      z-index: 2; position: relative;
+      box-shadow: 0 0 0 3px var(--primary-dim) !important;
+    }
+    select.phone-cc option {
+      background: var(--bg-card); color: var(--text-main);
+    }
+    input[type="tel"].phone-num,
+    input.phone-num {
+      flex: 1 !important;
+      min-width: 0 !important;
+      background: var(--input-bg) !important;
+      border: 1.5px solid var(--input-border) !important;
+      border-radius: 0 11px 11px 0 !important;
+      color: var(--input-text) !important;
+      font-family: var(--font-body) !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      padding: 11px 14px !important;
+      outline: none !important;
+      transition: all .2s ease !important;
+    }
+    input[type="tel"].phone-num:focus,
+    input.phone-num:focus {
+      border-color: var(--input-focus-border) !important;
+      z-index: 1; position: relative;
+      box-shadow: 0 0 0 3px var(--primary-dim) !important;
+      background: var(--bg-card) !important;
+    }
+
+    .field-error {
+      font-size: 11.5px; font-weight: 600; color: #DC2626; margin-top: 4px; display: none;
+    }
+    html.dark-theme .field-error { color: #F87171; }
     .field-error.show { display: block; }
 
-    /* Avatar */
-    .avatar-block { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
-    .avatar-large {
-      width: 60px; height: 60px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary-dim), var(--primary));
-      color: #fff; font-size: 22px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .avatar-info { flex: 1; }
-    .avatar-name { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
-    .avatar-since { font-size: 12px; color: var(--text-muted); }
-
-    /* Certification chips */
-    .cert-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-    .cert-chip {
-      display: flex; align-items: center; gap: 5px;
-      background: var(--surface-3); border: 1px solid var(--border);
-      border-radius: 99px; padding: 3px 10px 3px 12px;
-      font-size: 12px; color: var(--text-dim);
-    }
-    .cert-chip-x {
-      background: none; border: none; cursor: pointer; color: var(--text-muted);
-      line-height: 1; padding: 0; display: flex; align-items: center;
-      transition: color .12s;
-    }
-    .cert-chip-x:hover { color: var(--danger); }
-    .cert-add-row { display: flex; gap: 7px; }
-    .cert-add-input {
-      flex: 1; background: var(--surface-3); border: 1px solid var(--border);
-      border-radius: var(--radius); color: var(--text); font-family: var(--font);
-      font-size: 13px; padding: 7px 12px; outline: none;
-    }
-    .cert-add-input:focus { border-color: var(--primary); }
-    .cert-add-btn {
-      background: none; border: 1px solid var(--border); border-radius: var(--radius);
-      color: var(--text-muted); cursor: pointer; font-size: 12px; font-weight: 600;
-      padding: 7px 14px; font-family: var(--font); white-space: nowrap;
-      transition: border-color .12s, color .12s;
-    }
-    .cert-add-btn:hover { border-color: var(--primary); color: var(--primary); }
-
-    /* Save bar */
-    .save-bar {
-      display: flex; align-items: center; justify-content: flex-end; gap: 10px;
-      padding-top: 4px; margin-bottom: 32px;
-    }
-    .save-status { font-size: 13px; color: var(--success); opacity: 0; transition: opacity .3s; margin-right: auto; }
-    .save-status.show { opacity: 1; }
-
-    /* Collapsible education section */
+    /* Collapsible Education Section */
     .section-toggle {
       background: none; border: none; cursor: pointer; width: 100%;
-      display: flex; align-items: center; gap: 8px;
-      font-size: 11px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--text-muted);
-      padding: 0; font-family: var(--font); margin-bottom: 0;
+      display: flex; align-items: center; gap: 12px;
+      padding: 0; font-family: var(--font-heading);
+      text-align: left;
     }
-    .section-toggle svg.chevron { margin-left: auto; transition: transform .2s; }
-    .section-toggle.open svg.chevron { transform: rotate(180deg); }
-    .section-body { display: none; margin-top: 14px; }
+    .section-toggle .ps-title {
+      font-size: 14.5px; font-weight: 700; letter-spacing: -.01em;
+      color: var(--text-main); margin-bottom: 0;
+    }
+    .optional-tag {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 9999px;
+      background: #E2E8F0; color: #334155;
+      border: 1px solid #CBD5E1;
+      letter-spacing: .05em; margin-left: 8px;
+    }
+    html.dark-theme .optional-tag {
+      background: var(--surface-3);
+      color: var(--text-muted);
+      border: 1px solid rgba(150, 180, 210, 0.15);
+    }
+    .section-toggle svg.chevron {
+      margin-left: auto; color: var(--text-dim);
+      transition: transform .25s ease, color .2s ease;
+    }
+    .section-toggle:hover svg.chevron { color: var(--primary); }
+    .section-toggle.open svg.chevron { transform: rotate(180deg); color: var(--primary); }
+
+    .section-body { display: none; margin-top: 20px; }
     .section-body.open { display: block; }
 
-    /* Incomplete banner */
-    .incomplete-banner {
-      background: rgba(255,185,95,.08); border: 1px solid rgba(255,185,95,.25);
-      border-radius: var(--radius); padding: 10px 14px;
-      font-size: 13px; color: var(--warning);
-      display: flex; align-items: center; gap: 8px; margin-bottom: 18px;
+    /* Certification Chips */
+    .cert-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .cert-chip {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(13, 148, 136, 0.12);
+      border: 1px solid rgba(13, 148, 136, 0.35);
+      border-radius: 9999px; padding: 5px 12px 5px 14px;
+      font-size: 12.5px; font-weight: 700; color: #0F766E;
+      font-family: var(--font-heading);
+      transition: all .15s ease;
+    }
+    html.dark-theme .cert-chip {
+      background: var(--primary-dim);
+      border-color: rgba(25, 198, 173, 0.25);
+      color: var(--primary);
+    }
+    .cert-chip-x {
+      background: none; border: none; cursor: pointer; color: var(--text-dim);
+      line-height: 1; padding: 0; display: flex; align-items: center;
+      transition: color .15s ease;
+    }
+    .cert-chip-x:hover { color: #DC2626; }
+
+    input[type="text"].cert-add-input,
+    input.cert-add-input {
+      flex: 1 !important;
+      background: var(--input-bg) !important;
+      border: 1.5px solid var(--input-border) !important;
+      border-radius: 11px !important;
+      color: var(--input-text) !important;
+      font-family: var(--font-body) !important;
+      font-size: 13.5px !important;
+      font-weight: 600 !important;
+      padding: 10px 14px !important;
+      outline: none !important;
+      transition: all .2s ease !important;
+    }
+    input[type="text"].cert-add-input:focus,
+    input.cert-add-input:focus {
+      border-color: var(--input-focus-border) !important;
+      box-shadow: 0 0 0 3px var(--primary-dim) !important;
+      background: var(--bg-card) !important;
+    }
+    .cert-add-btn {
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 11px; color: #0F766E;
+      cursor: pointer; font-size: 12.5px; font-weight: 700;
+      padding: 10px 18px; font-family: var(--font-heading);
+      white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+      transition: all .15s ease;
+    }
+    html.dark-theme .cert-add-btn {
+      background: var(--surface-2);
+      border-color: var(--border);
+      color: var(--primary);
+    }
+    .cert-add-btn:hover {
+      background: var(--primary-dim);
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    /* Save Action Bar */
+    .save-bar {
+      display: flex; align-items: center; justify-content: flex-end; gap: 16px;
+      margin-top: 10px; margin-bottom: 40px;
+      padding: 18px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 18px;
+      box-shadow: var(--card-shadow);
+    }
+    .save-status {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 13.5px; font-weight: 700; color: #047857;
+      opacity: 0; transition: opacity .3s ease; margin-right: auto;
+      font-family: var(--font-heading);
+    }
+    html.dark-theme .save-status { color: #34D399; }
+    .save-status.show { opacity: 1; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--teal-primary), var(--primary-dark));
+      color: #FFFFFF !important;
+      border: none; border-radius: 9999px;
+      padding: 12px 28px;
+      font-family: var(--font-heading);
+      font-size: 14px; font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 18px var(--teal-glow);
+      transition: all .2s ease;
+      letter-spacing: -.01em;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 26px var(--teal-glow);
+      filter: brightness(1.06);
+    }
+    .btn-primary:disabled {
+      opacity: 0.6; cursor: not-allowed; transform: none;
+    }
+
+    /* Thinking / Loading Row */
+    .thinking-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 28px; font-size: 14px; color: var(--text-dim);
+      font-family: var(--font-heading);
+      font-weight: 600;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 18px;
+    }
+    .spinner {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2.5px solid var(--border-subtle);
+      border-top-color: var(--primary);
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
 
+<div class="bg-grid"></div>
+<div class="bg-glow-left"></div>
+<div class="bg-glow-right"></div>
+
+<!-- Top Navigation Bar -->
 <nav class="nav">
-  <button class="nav-back" onclick="window.location.replace('/doctor-portal.html')">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-    Portal
-  </button>
-  <div class="nav-brand" style="margin-left:8px;">
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 8px rgba(16,185,129,.5))">
-      <defs>
-        <linearGradient id="dp2-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-        <linearGradient id="dp2-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#34d399"/></linearGradient>
-        <linearGradient id="dp2-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-      </defs>
-      <circle cx="14" cy="14" r="12.5" stroke="url(#dp2-ring)" stroke-width="1.25" fill="rgba(16,185,129,.08)"/>
-      <line x1="6" y1="14" x2="13" y2="14" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-      <path d="M13 14 L19 8.5" stroke="url(#dp2-ft)" stroke-width="2" stroke-linecap="round"/>
-      <path d="M13 14 L19 19.5" stroke="url(#dp2-fb)" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="20" cy="8.5" r="2" fill="#34d399"/>
-      <circle cx="20" cy="19.5" r="2" fill="#a855f7"/>
-    </svg>
-    <span style="font-family:'Sora',sans-serif;font-size:15px;font-weight:800;letter-spacing:-.03em;color:#f1f5f9;">Diff<span style="background:linear-gradient(90deg,#10b981,#34d399);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">/Dx</span></span>
+  <div class="nav-left">
+    <button class="nav-back" onclick="window.location.replace('/doctor-portal.html')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Portal</span>
+    </button>
+    <a href="/doctor-portal.html" class="nav-brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+      <div class="nav-brand-text">Diff<span>/Dx</span></div>
+    </a>
   </div>
-  <div class="nav-spacer"></div>
-  <div id="nav-auth" style="display:flex;align-items:center;gap:6px;margin-right:8px;"></div>
+
+  <div class="nav-right">
+    <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <div id="nav-auth" style="display:flex;align-items:center;gap:6px;"></div>
+  </div>
 </nav>
 
-<div class="page" style="max-width:720px;">
-  <div style="margin-bottom:24px;">
-    <div class="section-title" style="margin-bottom:4px;">Doctor Profile</div>
-    <div style="font-size:13px;color:var(--text-muted);">Manage your professional details and clinic information</div>
+<!-- Page Layout Wrapper -->
+<div class="profile-page-wrapper">
+  <div class="profile-layout-grid">
+
+    <!-- Left Column: Physician Identity & Live Preview Card -->
+    <aside class="profile-sidebar">
+      <div class="provider-card">
+        <div class="provider-cover">
+          <div class="provider-cover-pattern"></div>
+        </div>
+        <div class="provider-body">
+          <div class="avatar-wrapper">
+            <div class="avatar-large" id="avatar-initials">?</div>
+            <div class="avatar-verified-badge" title="Verified Physician">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="provider-name" id="display-name">—</div>
+          <div class="provider-specialty-pill">
+            <span class="psp-dot"></span>
+            <span id="display-specialty">Doctor</span>
+          </div>
+
+          <!-- Profile Strength Meter -->
+          <div class="strength-box">
+            <div class="strength-header">
+              <span class="strength-title">Profile Strength</span>
+              <span class="strength-score" id="profile-strength-val">85%</span>
+            </div>
+            <div class="strength-track">
+              <div class="strength-fill" id="profile-strength-bar"></div>
+            </div>
+            <div class="strength-hint">Complete clinic details &amp; phone to ensure patient booking visibility.</div>
+          </div>
+
+          <!-- Trust Badges List -->
+          <div class="trust-list">
+            <div class="trust-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Board Certified Physician</span>
+            </div>
+            <div class="trust-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              <span>Clinical AI Assisted</span>
+            </div>
+            <div class="trust-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Verified Direct Scheduling</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Column: Settings & Forms Workspace -->
+    <main class="profile-main">
+      <div class="main-header">
+        <h1 class="page-title">Manage Your Profile</h1>
+        <p class="page-subtitle">Configure your clinical specialty, hospital affiliations, and contact details for patient booking and consultation.</p>
+      </div>
+
+      <!-- Incomplete Warning Alert -->
+      <div id="incomplete-banner" class="incomplete-banner" style="display:none;">
+        <div class="ib-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="ib-content">
+          <div class="ib-title">Profile Incomplete</div>
+          <div class="ib-text">Please complete your phone number, specialty, and clinic name so patients can find and trust you during booking.</div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="profile-loading" class="thinking-row">
+        <div class="spinner"></div>
+        <span>Loading physician profile…</span>
+      </div>
+
+      <form id="profile-form" style="display:none;" onsubmit="saveProfile(event)">
+
+        <!-- Section 1: Account Credentials -->
+        <div class="profile-section" id="section-account">
+          <div class="profile-section-header">
+            <div class="ps-icon-wrap">
+              <img src="/sec_account_icon.jpg" class="ps-icon-img" alt="Account Credentials" loading="lazy">
+            </div>
+            <div class="ps-title-wrap">
+              <div class="ps-title">Account Credentials</div>
+              <div class="ps-desc">Primary identification and system authentication details.</div>
+            </div>
+          </div>
+
+          <div class="profile-grid">
+            <div class="form-group">
+              <label for="field-name">Full Name</label>
+              <div class="input-field-wrap">
+                <span class="input-field-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <input class="form-control" type="text" id="field-name" placeholder="Dr. Full Name" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="field-email">Email Address <span class="read-only-tag">System Locked</span></label>
+              <div class="input-field-wrap">
+                <span class="input-field-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                </span>
+                <input class="form-control" type="email" id="field-email" readonly tabindex="-1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Clinical Practice Details -->
+        <div class="profile-section" id="section-practice">
+          <div class="profile-section-header">
+            <div class="ps-icon-wrap">
+              <img src="/sec_practice_icon.jpg" class="ps-icon-img" alt="Clinical Practice Details" loading="lazy">
+            </div>
+            <div class="ps-title-wrap">
+              <div class="ps-title">Clinical Practice Details</div>
+              <div class="ps-desc">Specialty, hospital affiliations, contact number, and booking fees.</div>
+            </div>
+          </div>
+
+          <div class="profile-grid">
+            <div class="form-group">
+              <label for="field-specialty">Primary Specialty</label>
+              <select class="form-control no-icon" id="field-specialty">
+                <option value="">Select specialty</option>
+                <option>Cardiology</option><option>Neurology</option><option>Orthopedics</option>
+                <option>Dermatology</option><option>Gastroenterology</option><option>Pulmonology</option>
+                <option>Endocrinology</option><option>Nephrology</option><option>Oncology</option>
+                <option>Rheumatology</option><option>Urology</option><option>Gynecology</option>
+                <option>Ophthalmology</option><option>Psychiatry</option><option>Pediatrics</option>
+                <option>General Practice</option><option>Internal Medicine</option><option>ENT</option>
+                <option>Emergency Medicine</option><option>Anesthesiology</option><option>Radiology</option>
+                <option>Pathology</option><option>Surgery</option><option>Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="field-hospital">Hospital / Clinic Name</label>
+              <div class="input-field-wrap">
+                <span class="input-field-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 7h1"/><path d="M9 11h1"/><path d="M9 15h1"/><path d="M14 7h1"/><path d="M14 11h1"/><path d="M14 15h1"/></svg>
+                </span>
+                <input class="form-control" type="text" id="field-hospital" placeholder="e.g. City Heart Hospital">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="field-mobile">Mobile Number</label>
+              <div class="phone-row">
+                <select class="phone-cc" id="field-mobile-cc"></select>
+                <input class="phone-num" type="tel" id="field-mobile" placeholder="10-digit number" maxlength="10" inputmode="numeric">
+              </div>
+              <span class="field-error" id="mobile-err">Enter exactly 10 digits</span>
+            </div>
+
+            <div class="form-group">
+              <label for="field-experience">Years of Experience</label>
+              <div class="input-field-wrap">
+                <span class="input-field-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                <input class="form-control" type="number" id="field-experience" min="0" max="60" placeholder="e.g. 12">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="field-license">Medical License Number</label>
+              <div class="input-field-wrap">
+                <span class="input-field-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </span>
+                <input class="form-control" type="text" id="field-license" placeholder="e.g. MCI-2024-12345">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="field-fee">Consultation Fee (Optional)</label>
+              <div class="input-field-wrap">
+                <span class="input-field-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </span>
+                <input class="form-control" type="text" id="field-fee" placeholder="e.g. ₹500">
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-grid" style="margin-top:18px;">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label for="field-bio">Short Professional Bio</label>
+              <textarea class="form-control no-icon" id="field-bio" placeholder="Provide a concise clinical summary visible to patients during booking and consultation…" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Education & Qualifications (Collapsible) -->
+        <div class="profile-section" id="section-education">
+          <button type="button" class="section-toggle" id="edu-toggle" onclick="toggleEdu()">
+            <div class="ps-icon-wrap">
+              <img src="/sec_education_icon.jpg" class="ps-icon-img" alt="Education & Qualifications" loading="lazy">
+            </div>
+            <div class="ps-title-wrap">
+              <div class="ps-title" style="display:flex;align-items:center;">
+                <span>Education &amp; Qualifications</span>
+                <span class="optional-tag">Optional</span>
+              </div>
+              <div class="ps-desc">Medical degrees, residency training, and professional achievements.</div>
+            </div>
+            <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+
+          <div class="section-body" id="edu-body">
+            <div class="profile-grid">
+              <div class="form-group">
+                <label for="field-school">Medical School / University</label>
+                <div class="input-field-wrap">
+                  <span class="input-field-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                  </span>
+                  <input class="form-control" type="text" id="field-school" placeholder="e.g. AIIMS New Delhi">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="field-grad-year">Graduation Year</label>
+                <div class="input-field-wrap">
+                  <span class="input-field-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  </span>
+                  <input class="form-control" type="number" id="field-grad-year" min="1960" max="2030" placeholder="e.g. 2010">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="field-residency">Residency / Fellowship</label>
+                <div class="input-field-wrap">
+                  <span class="input-field-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  </span>
+                  <input class="form-control" type="text" id="field-residency" placeholder="e.g. Cardiology Fellowship, AIIMS">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="field-pg-degree">Post-graduate Degree</label>
+                <div class="input-field-wrap">
+                  <span class="input-field-icon">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  </span>
+                  <input class="form-control" type="text" id="field-pg-degree" placeholder="e.g. MD, DM, DNB, FRCS">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top:20px;">
+              <label>Certifications &amp; Achievements</label>
+              <div class="cert-chips" id="cert-chips"></div>
+              <div class="cert-add-row">
+                <input class="cert-add-input" type="text" id="cert-input" placeholder="Add a fellowship or certification and press Enter"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();addCert();}">
+                <button type="button" class="cert-add-btn" onclick="addCert()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>Add</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sticky / Docked Save Bar -->
+        <div class="save-bar">
+          <span class="save-status" id="save-status">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Profile saved successfully
+          </span>
+          <button type="submit" class="btn-primary" id="save-profile-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Changes
+          </button>
+        </div>
+
+      </form>
+    </main>
+
   </div>
-
-  <div id="incomplete-banner" class="incomplete-banner" style="display:none;">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    Complete your profile so patients can find and trust you during booking.
-  </div>
-
-  <div id="profile-loading" class="thinking-row"><div class="spinner"></div> Loading profile…</div>
-
-  <form id="profile-form" style="display:none;" onsubmit="saveProfile(event)">
-
-    <!-- Account -->
-    <div class="profile-section">
-      <div class="avatar-block">
-        <div class="avatar-large" id="avatar-initials">?</div>
-        <div class="avatar-info">
-          <div class="avatar-name" id="display-name">—</div>
-          <div class="avatar-since" id="display-specialty">—</div>
-        </div>
-      </div>
-      <div class="profile-section-title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Account
-      </div>
-      <div class="profile-grid">
-        <div class="form-group">
-          <label>Full Name</label>
-          <input class="form-control" type="text" id="field-name" placeholder="Your full name" required>
-        </div>
-        <div class="form-group">
-          <label>Email Address</label>
-          <input class="form-control" type="email" id="field-email" readonly tabindex="-1">
-        </div>
-      </div>
-    </div>
-
-    <!-- Professional Details -->
-    <div class="profile-section">
-      <div class="profile-section-title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-        Professional Details
-      </div>
-      <div class="profile-grid">
-        <div class="form-group">
-          <label>Specialty</label>
-          <select class="form-control" id="field-specialty">
-            <option value="">Select specialty</option>
-            <option>Cardiology</option><option>Neurology</option><option>Orthopedics</option>
-            <option>Dermatology</option><option>Gastroenterology</option><option>Pulmonology</option>
-            <option>Endocrinology</option><option>Nephrology</option><option>Oncology</option>
-            <option>Rheumatology</option><option>Urology</option><option>Gynecology</option>
-            <option>Ophthalmology</option><option>Psychiatry</option><option>Pediatrics</option>
-            <option>General Practice</option><option>Internal Medicine</option><option>ENT</option>
-            <option>Emergency Medicine</option><option>Anesthesiology</option><option>Radiology</option>
-            <option>Pathology</option><option>Surgery</option><option>Other</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Hospital / Clinic Name</label>
-          <input class="form-control" type="text" id="field-hospital" placeholder="e.g. City Heart Hospital">
-        </div>
-        <div class="form-group">
-          <label>Mobile Number</label>
-          <div class="phone-row">
-            <select class="phone-cc" id="field-mobile-cc"></select>
-            <input class="phone-num" type="tel" id="field-mobile" placeholder="10-digit number" maxlength="10" inputmode="numeric">
-          </div>
-          <span class="field-error" id="mobile-err">Enter exactly 10 digits</span>
-        </div>
-        <div class="form-group">
-          <label>Years of Experience</label>
-          <input class="form-control" type="number" id="field-experience" min="0" max="60" placeholder="e.g. 12">
-        </div>
-        <div class="form-group">
-          <label>Medical License Number</label>
-          <input class="form-control" type="text" id="field-license" placeholder="e.g. MCI-2024-12345">
-        </div>
-        <div class="form-group">
-          <label>Consultation Fee (optional)</label>
-          <input class="form-control" type="text" id="field-fee" placeholder="e.g. ₹500">
-        </div>
-      </div>
-      <div class="profile-grid" style="margin-top:14px;">
-        <div class="form-group" style="grid-column:1/-1;">
-          <label>Short Bio</label>
-          <textarea class="form-control" id="field-bio" placeholder="Brief professional summary visible to patients…" rows="3"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- Education — collapsible optional section -->
-    <div class="profile-section">
-      <button type="button" class="section-toggle" id="edu-toggle" onclick="toggleEdu()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-        Education &amp; Qualifications
-        <span style="font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text-muted);margin-left:6px;">(optional)</span>
-        <svg class="chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div class="section-body" id="edu-body">
-        <div class="profile-grid">
-          <div class="form-group">
-            <label>Medical School / University</label>
-            <input class="form-control" type="text" id="field-school" placeholder="e.g. AIIMS New Delhi">
-          </div>
-          <div class="form-group">
-            <label>Graduation Year</label>
-            <input class="form-control" type="number" id="field-grad-year" min="1960" max="2030" placeholder="e.g. 2010">
-          </div>
-          <div class="form-group">
-            <label>Residency / Fellowship</label>
-            <input class="form-control" type="text" id="field-residency" placeholder="e.g. Cardiology Fellowship, AIIMS">
-          </div>
-          <div class="form-group">
-            <label>Post-graduate Degree</label>
-            <input class="form-control" type="text" id="field-pg-degree" placeholder="e.g. MD, DM, DNB, FRCS">
-          </div>
-        </div>
-        <div class="form-group" style="margin-top:14px;">
-          <label>Certifications &amp; Achievements</label>
-          <div class="cert-chips" id="cert-chips"></div>
-          <div class="cert-add-row">
-            <input class="cert-add-input" type="text" id="cert-input" placeholder="Add a certification and press Enter"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();addCert();}">
-            <button type="button" class="cert-add-btn" onclick="addCert()">Add</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="save-bar">
-      <span class="save-status" id="save-status">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px;vertical-align:middle;"><polyline points="20 6 9 17 4 12"/></svg>
-        Profile saved
-      </span>
-      <button type="submit" class="btn btn-primary">Save Changes</button>
-    </div>
-
-  </form>
 </div>
 
 <script>
 const API = '';
 let _certs = [];
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark-theme');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
 
 const _COUNTRY_CODES = [
   { code: 'IN', dial: '+91', name: 'India' },
@@ -359,7 +1238,7 @@ function _renderCerts() {
   document.getElementById('cert-chips').innerHTML = _certs.map((c, i) =>
     `<span class="cert-chip">${escHtml(c)}
       <button type="button" class="cert-chip-x" onclick="removeCert(${i})" title="Remove">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </span>`
   ).join('');
@@ -381,6 +1260,20 @@ function removeCert(i) {
 
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateStrengthScore() {
+  const fields = ['field-name', 'field-specialty', 'field-hospital', 'field-mobile', 'field-license', 'field-experience', 'field-bio'];
+  let filled = 0;
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value && el.value.trim().length > 0) filled++;
+  });
+  const pct = Math.max(30, Math.min(100, Math.round((filled / fields.length) * 100)));
+  const bar = document.getElementById('profile-strength-bar');
+  const txt = document.getElementById('profile-strength-val');
+  if (bar) bar.style.width = pct + '%';
+  if (txt) txt.textContent = pct + '%';
 }
 
 async function init() {
@@ -438,6 +1331,8 @@ async function init() {
     const incomplete = !prof.mobile || !doc.specialty || !prof.hospital;
     document.getElementById('incomplete-banner').style.display = incomplete ? '' : 'none';
 
+    updateStrengthScore();
+
     document.getElementById('profile-loading').style.display = 'none';
     document.getElementById('profile-form').style.display    = '';
   } catch (e) {
@@ -445,10 +1340,30 @@ async function init() {
   }
 }
 
-// Digit-only enforcement for phone
+// Live interactive preview updates & digit-only enforcement for phone
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('field-mobile')?.addEventListener('input', function() {
     this.value = this.value.replace(/\D/g, '').slice(0, 10);
+    updateStrengthScore();
+  });
+
+  document.getElementById('field-name')?.addEventListener('input', function() {
+    const val = this.value.trim() || 'Dr. Physician';
+    const dn = document.getElementById('display-name');
+    if (dn) dn.textContent = val;
+    const ai = document.getElementById('avatar-initials');
+    if (ai) ai.textContent = val.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    updateStrengthScore();
+  });
+
+  document.getElementById('field-specialty')?.addEventListener('change', function() {
+    const ds = document.getElementById('display-specialty');
+    if (ds) ds.textContent = this.value || 'Doctor';
+    updateStrengthScore();
+  });
+
+  ['field-hospital', 'field-license', 'field-experience', 'field-bio'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', updateStrengthScore);
   });
 });
 
@@ -512,6 +1427,8 @@ async function saveProfile(e) {
     // Hide incomplete banner if now complete
     if (payload.mobile && payload.specialty && payload.hospital)
       document.getElementById('incomplete-banner').style.display = 'none';
+
+    updateStrengthScore();
   } catch (err) {
     alert('Save failed: ' + err.message);
   } finally {

@@ -156,7 +156,7 @@ function initAuthNav() {
   if (user) {
     if (user.role === 'doctor') {
       el.innerHTML = `
-        <a href="/doctor-portal.html" style="position:relative;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);color:var(--text-muted);transition:all .15s;" title="Pending Refill Requests" id="nav-refill-btn">
+        <a href="/doctor-portal.html" class="nav-icon-btn" title="Pending Refill Requests" id="nav-refill-btn">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
           <span id="nav-refill-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#000;font-size:9px;font-weight:800;border-radius:99px;padding:1px 5px;line-height:1.6;min-width:16px;text-align:center;"></span>
         </a>
@@ -184,7 +184,7 @@ function initAuthNav() {
         <a href="/my-sessions.html" class="btn btn-ghost btn-sm" style="font-size:12px;padding:5px 10px;" id="nav-sessions-link">
           My Sessions
         </a>
-        <a href="/notifications.html" style="position:relative;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);color:var(--text-muted);transition:all .15s;" title="Notifications" id="nav-notif-btn">
+        <a href="/notifications.html" class="nav-icon-btn" title="Notifications" id="nav-notif-btn">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
           <span id="nav-notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#00b4d8;color:#000;font-size:9px;font-weight:800;border-radius:99px;padding:1px 5px;line-height:1.6;min-width:16px;text-align:center;"></span>
         </a>

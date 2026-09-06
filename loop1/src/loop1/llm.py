@@ -153,7 +153,15 @@ def _call_llm_raw(model: str, messages: list[dict[str, str]], **kwargs: Any) -> 
         raise RuntimeError(f"API error {response.status_code}: {response.text[:400]}")
 
     data = response.json()
-    msg = data["choices"][0]["message"]
+    choices = data.get("choices")
+    if not choices:
+        # Some free-tier/OpenRouter models occasionally return HTTP 200 with
+        # a malformed or content-filtered body that has no "choices" at all
+        # (rather than a proper error status) — same retry-then-fall-through
+        # treatment as the empty-content case below, instead of a raw
+        # KeyError leaking all the way up to the caller.
+        raise _RetryableHTTPError(f"No 'choices' in response: {response.text[:300]}")
+    msg = choices[0]["message"]
     # Reasoning models (e.g. gpt-oss-120b) may return content=None with reasoning in a
     # separate field when max_tokens is too low to finish the thinking phase.
     content: str = msg.get("content") or msg.get("reasoning") or ""

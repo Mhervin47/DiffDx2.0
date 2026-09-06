@@ -1129,8 +1129,302 @@
 
 <script>
 const API = '';
-const sessionId = sessionStorage.getItem('sessionId');
-if (!sessionId) window.location.href = '/';
+
+// ── FRONTEND DEVELOPER MOCK MODE ──────────────────────────────────────────
+// When editing frontend UI/UX without triggering backend APIs:
+// Automatically active when visiting /report.html directly (without active session)
+// or when appending ?mock=1, ?demo=1, or ?dev=1 to the URL.
+const _urlParams = new URLSearchParams(window.location.search);
+const _storedSessionId = sessionStorage.getItem('sessionId');
+const isMockMode = _urlParams.has('mock') || _urlParams.has('demo') || _urlParams.has('dev') || !_storedSessionId || _storedSessionId === 'mock' || _storedSessionId === 'demo';
+const sessionId = _storedSessionId || 'dev-mock-session-001';
+
+if (!isMockMode && !_storedSessionId) {
+  window.location.href = '/';
+}
+
+const MOCK_CASES = {
+  cardiology: {
+    final_diagnosis: "Acute Coronary Syndrome (Unstable Angina)",
+    total_turns: 5,
+    termination_reason: "High diagnostic certainty achieved (probability > 85%)",
+    patient: { age: 48, sex: "M", chief_complaint: "Substernal chest pressure radiating to left arm with exertional dyspnea" },
+    closing_turn: {
+      leading_diagnosis: "Acute Coronary Syndrome (Unstable Angina)",
+      differential_summary: "Clinical presentation of substernal tightness with left arm radiation, diaphoresis, and exertional worsening in a 48-year-old male with cardiovascular risk factors is strongly concerning for acute coronary syndrome. Urgent cardiology evaluation is advised.",
+      recommended_next_steps: [
+        "Proceed immediately to urgent cardiology or emergency evaluation",
+        "Obtain stat 12-lead ECG and serial cardiac troponin I/T assays",
+        "Initiate chewable Aspirin 325 mg unless contraindicated",
+        "Refrain from any strenuous exertion until cardiovascular clearance"
+      ]
+    },
+    aggregate: {
+      mean_question_quality: 4.85,
+      mean_differential_quality: 4.70,
+      mean_reasoning_quality: 4.90,
+      weakness_category_counts: {
+        "Premature Closure": 0,
+        "Over-testing": 1,
+        "Vague Phrasing": 0,
+        "Anchor Bias": 0
+      }
+    },
+    turns: [
+      {
+        turn_index: 1,
+        question_quality: 5,
+        differential_quality: 4,
+        reasoning_quality: 5,
+        critique: "Excellent targeted characterization of chest pain onset, radiation, and autonomic features.",
+        weaknesses: []
+      },
+      {
+        turn_index: 2,
+        question_quality: 5,
+        differential_quality: 5,
+        reasoning_quality: 5,
+        critique: "Appropriate stratification of cardiovascular risk factors and exertional triggers.",
+        weaknesses: []
+      },
+      {
+        turn_index: 3,
+        question_quality: 4,
+        differential_quality: 5,
+        reasoning_quality: 5,
+        critique: "Evaluated response to rest and sublingual or gastrointestinal medications.",
+        weaknesses: ["Over-testing"]
+      },
+      {
+        turn_index: 4,
+        question_quality: 5,
+        differential_quality: 5,
+        reasoning_quality: 5,
+        critique: "Explored secondary non-cardiac mimics (GERD, musculoskeletal wall pain, pleurisy).",
+        weaknesses: []
+      },
+      {
+        turn_index: 5,
+        question_quality: 5,
+        differential_quality: 5,
+        reasoning_quality: 5,
+        critique: "Synthesized diagnostic findings and formulated triage recommendations.",
+        weaknesses: []
+      }
+    ],
+    turn_history: [
+      {
+        turn_index: 1,
+        question: "Can you describe the pain in your chest? Is it a sharp pain, a pressure, burning, or tightness, and did it start suddenly?",
+        patient_answer: "It feels like a heavy squeezing band across my chest. It started about 2 hours ago while I was climbing stairs.",
+        confidence: 0.42,
+        reasoning_summary: "Substernal exertional squeezing pain raises initial suspicion for myocardial ischemia.",
+        differential: [
+          { dx: "Acute Coronary Syndrome", prob: 0.45 },
+          { dx: "Gastroesophageal Reflux Disease", prob: 0.25 },
+          { dx: "Costochondritis", prob: 0.18 },
+          { dx: "Anxiety / Panic Disorder", prob: 0.12 }
+        ]
+      },
+      {
+        turn_index: 2,
+        question: "Does the sensation radiate anywhere, such as your left arm, neck, jaw, or back, and do you feel nauseous or sweaty?",
+        patient_answer: "Yes, it aches down into my left arm and a bit into my jaw. I broke into a cold sweat.",
+        confidence: 0.68,
+        reasoning_summary: "Radiation to left arm and jaw combined with diaphoresis markedly increases post-test likelihood of ACS.",
+        differential: [
+          { dx: "Acute Coronary Syndrome", prob: 0.68 },
+          { dx: "Gastroesophageal Reflux Disease", prob: 0.16 },
+          { dx: "Aortic Dissection", prob: 0.10 },
+          { dx: "Costochondritis", prob: 0.06 }
+        ]
+      },
+      {
+        turn_index: 3,
+        question: "Do you have a history of high blood pressure, diabetes, high cholesterol, or smoking?",
+        patient_answer: "I take medication for hypertension and have smoked a pack a day for 15 years.",
+        confidence: 0.78,
+        reasoning_summary: "Significant cardiovascular risk profile (smoking + hypertension) compounds pre-test probability.",
+        differential: [
+          { dx: "Acute Coronary Syndrome", prob: 0.78 },
+          { dx: "Gastroesophageal Reflux Disease", prob: 0.12 },
+          { dx: "Costochondritis", prob: 0.06 },
+          { dx: "Pericarditis", prob: 0.04 }
+        ]
+      },
+      {
+        turn_index: 4,
+        question: "Does the pain get worse when you take a deep breath or change positions, and did antacids provide any relief?",
+        patient_answer: "No, breathing or turning doesn't change it. Antacids had zero effect.",
+        confidence: 0.84,
+        reasoning_summary: "Ruling out pleuritic, positional, and acid-peptic pain patterns leaves cardiac ischemia as primary.",
+        differential: [
+          { dx: "Acute Coronary Syndrome (Unstable Angina)", prob: 0.84 },
+          { dx: "Gastroesophageal Reflux Disease", prob: 0.09 },
+          { dx: "Costochondritis", prob: 0.04 },
+          { dx: "Pericarditis", prob: 0.03 }
+        ]
+      },
+      {
+        turn_index: 5,
+        question: "Thank you. Based on your symptoms, we are preparing your clinical assessment and cardiology referral.",
+        patient_answer: "Understood, thank you doctor.",
+        confidence: 0.86,
+        reasoning_summary: "Diagnostic threshold exceeded. Urgent referral indicated.",
+        differential: [
+          { dx: "Acute Coronary Syndrome (Unstable Angina)", prob: 0.84 },
+          { dx: "Gastroesophageal Reflux Disease", prob: 0.09 },
+          { dx: "Costochondritis", prob: 0.04 },
+          { dx: "Pericarditis", prob: 0.03 }
+        ]
+      }
+    ],
+    final_differential: [
+      { dx: "Acute Coronary Syndrome (Unstable Angina)", prob: 0.84, rationale: "Exertional substernal tightness with radiation to left arm and diaphoresis in a patient with hypertension and smoking history." },
+      { dx: "Gastroesophageal Reflux Disease (GERD)", prob: 0.09, rationale: "Retrosternal discomfort can mimic cardiac ischemia, but lack of response to antacids and arm radiation makes this secondary." },
+      { dx: "Costochondritis", prob: 0.04, rationale: "Musculoskeletal chest pain; absence of chest wall point tenderness makes this unlikely." },
+      { dx: "Pericarditis", prob: 0.03, rationale: "Lack of positional or pleuritic pain variation decreases likelihood." }
+    ]
+  },
+  neurology: {
+    final_diagnosis: "Migraine with Typical Aura",
+    total_turns: 4,
+    termination_reason: "High diagnostic certainty achieved (probability > 90%)",
+    patient: { age: 32, sex: "F", chief_complaint: "Unilateral throbbing headache preceded by shimmering zig-zag visual disturbances" },
+    closing_turn: {
+      leading_diagnosis: "Migraine with Typical Aura",
+      differential_summary: "Classic recurrent scintillating scotoma followed by unilateral pulsating headache, photophobia, and nausea in a 32-year-old female strongly matches International Headache Society criteria for Migraine with Aura.",
+      recommended_next_steps: [
+        "Consult neurology for tailored abortive (triptan) and prophylactic therapy",
+        "Keep a detailed headache diary logging triggers (sleep, caffeine, stress)",
+        "Rest in a quiet, dark environment during acute attacks",
+        "Seek emergency care if headache is sudden 'thunderclap' or accompanied by motor weakness"
+      ]
+    },
+    aggregate: {
+      mean_question_quality: 4.90,
+      mean_differential_quality: 4.80,
+      mean_reasoning_quality: 4.95,
+      weakness_category_counts: { "Premature Closure": 0, "Over-testing": 0, "Vague Phrasing": 0 }
+    },
+    turns: [
+      { turn_index: 1, question_quality: 5, differential_quality: 5, reasoning_quality: 5, critique: "Explored visual aura features and temporal relation to headache onset.", weaknesses: [] },
+      { turn_index: 2, question_quality: 5, differential_quality: 5, reasoning_quality: 5, critique: "Evaluated sensory, speech, or motor neurological deficits (red flags).", weaknesses: [] },
+      { turn_index: 3, question_quality: 5, differential_quality: 4, reasoning_quality: 5, critique: "Assessed autonomic and sensory symptoms (photophobia, phonophobia).", weaknesses: [] },
+      { turn_index: 4, question_quality: 5, differential_quality: 5, reasoning_quality: 5, critique: "Established family history and past episodic frequency.", weaknesses: [] }
+    ],
+    turn_history: [
+      {
+        turn_index: 1,
+        question: "Can you describe the visual changes before your headache started? How long did they last?",
+        patient_answer: "I saw shimmering zig-zag lights on the right side of my vision for about 25 minutes, then the headache started.",
+        confidence: 0.70,
+        reasoning_summary: "Scintillating scotoma lasting 20-30 min preceding headache is a hallmark of migraine aura.",
+        differential: [
+          { dx: "Migraine with Aura", prob: 0.72 },
+          { dx: "Transient Ischemic Attack", prob: 0.15 },
+          { dx: "Tension Headache", prob: 0.08 }
+        ]
+      },
+      {
+        turn_index: 2,
+        question: "Is the pain pulsing or throbbing, on one side, and are you sensitive to light or sound?",
+        patient_answer: "Yes, it is a severe pounding behind my left temple, and bright lights make me feel sick to my stomach.",
+        confidence: 0.88,
+        reasoning_summary: "Unilateral pulsating pain with photophobia and nausea satisfies ICHD-3 criteria.",
+        differential: [
+          { dx: "Migraine with Aura", prob: 0.89 },
+          { dx: "Tension-Type Headache", prob: 0.06 }
+        ]
+      }
+    ],
+    final_differential: [
+      { dx: "Migraine with Typical Aura", prob: 0.91, rationale: "Reversible scintillating visual aura lasting 25 minutes followed by unilateral throbbing headache with photophobia and nausea." },
+      { dx: "Tension-Type Headache", prob: 0.05, rationale: "Does not explain the prominent visual aura or unilateral pulsating character." }
+    ]
+  }
+};
+
+let MOCK_REPORT_DATA = MOCK_CASES.cardiology;
+
+const MOCK_ROUTING_DATA = {
+  routing: {
+    specialty: 'Cardiology',
+    urgency: 'urgent',
+    urgency_reason: 'Potential acute coronary syndrome warrants urgent evaluation within 24 hours.',
+    recommended_tests: ['12-lead Electrocardiogram (ECG)', 'High-sensitivity Troponin I', 'Echocardiogram']
+  },
+  doctors: [
+    {
+      id: 'doc-001',
+      name: 'Dr. Sarah Chen, MD, FACC',
+      specialty: 'Cardiologist',
+      hospital: 'Metro Heart & Vascular Institute',
+      experience_years: 15,
+      rating: 4.95,
+      available_slots: ['Today, 4:30 PM', 'Tomorrow, 10:00 AM', 'Tomorrow, 2:30 PM']
+    },
+    {
+      id: 'doc-002',
+      name: 'Dr. Vikram Patel, MD',
+      specialty: 'Interventional Cardiologist',
+      hospital: 'Apollo Cardiology Care',
+      experience_years: 18,
+      rating: 4.88,
+      available_slots: ['Tomorrow, 11:15 AM', 'Thursday, 3:00 PM']
+    }
+  ]
+};
+
+const MOCK_APPOINTMENT_DATA = {
+  id: 'mock-appt-001',
+  appointment_id: 'mock-appt-001',
+  doctor_name: 'Dr. Sarah Chen, MD, FACC',
+  doctor_summary: 'Patient presented with acute-onset retrosternal chest tightness with left arm radiation. Significant cardiovascular risk factors present. Ordered stat 12-lead ECG and cardiac biomarkers. Prescribed cardioprotective regimen and recommended immediate follow-up.',
+  test_orders: [
+    { id: 'to-1', test: '12-Lead Electrocardiogram (ECG)', category: 'imaging', priority: 'stat', notes: 'Evaluate for ST-segment elevation or T-wave inversions', results_uploaded: false },
+    { id: 'to-2', test: 'High-Sensitivity Troponin I (Serial)', category: 'blood', priority: 'stat', notes: 'Baseline and 3-hour draw to rule out acute myocardial infarction', results_uploaded: true },
+    { id: 'to-3', test: 'Comprehensive Lipid & Metabolic Panel', category: 'blood', priority: 'routine', notes: 'Assess fasting lipid fractions and renal function', results_uploaded: false }
+  ],
+  prescriptions: [
+    { drug: 'Aspirin (Chewable)', dose: '81 mg', frequency: 'Once daily', duration: '30 days', instructions: 'Take with morning meal' },
+    { drug: 'Atorvastatin Calcium', dose: '40 mg', frequency: 'Once daily at bedtime', duration: '30 days', instructions: 'For lipid optimization and plaque stabilization' },
+    { drug: 'Nitroglycerin Sublingual Tablets', dose: '0.4 mg', frequency: 'As needed for acute chest discomfort', duration: 'PRN', instructions: 'Place 1 tablet under tongue at onset of chest pain; repeat q5min up to 3 doses if needed' }
+  ],
+  referral: {
+    specialist_name: 'Dr. Sarah Chen, MD',
+    specialty: 'Cardiology & Cardiovascular Disease',
+    reason: 'Urgent evaluation for suspected Acute Coronary Syndrome (Unstable Angina)',
+    referral_code: 'REF-CARD-2026-9042',
+    hospital: 'Metro Heart & Vascular Institute'
+  }
+};
+
+const MOCK_SUGGESTED_TESTS_DATA = {
+  necessary: true,
+  rationale: 'Pre-visit cardiovascular workup helps the consulting cardiologist evaluate myocardial perfusion and coronary risk.',
+  tests: [
+    { id: 'st-1', name: '12-Lead Resting ECG', category: 'Cardiac', urgency: 'High', description: 'Records electrical activity of the heart to identify ischemic patterns.' },
+    { id: 'st-2', name: 'High-Sensitivity Troponin I Assay', category: 'Biomarkers', urgency: 'High', description: 'Gold-standard blood biomarker for myocardial cell injury.' },
+    { id: 'st-3', name: 'Echocardiogram (Transthoracic)', category: 'Imaging', urgency: 'Medium', description: 'Ultrasound imaging to assess ventricular wall motion and ejection fraction.' },
+    { id: 'st-4', name: 'Fasting Lipid Profile', category: 'Blood', urgency: 'Routine', description: 'Measures LDL, HDL, and triglycerides for atherosclerotic risk profiling.' }
+  ]
+};
+
+const MOCK_SYMPTOM_HISTORY_DATA = [
+  {
+    primary_diagnosis: 'Essential Hypertension Check',
+    date: '14 Jan 2026',
+    doctor_name: 'Dr. Anita Rao, MD',
+    symptoms: ['Mild morning headache', 'Occasional palpitations']
+  },
+  {
+    primary_diagnosis: 'Annual Preventive Health Exam',
+    date: '02 Sep 2025',
+    doctor_name: 'Dr. Marcus Vance, MD',
+    symptoms: ['Mild fatigue', 'Elevated BMI']
+  }
+];
 
 // Modal state
 let _pendingDoctor = null;
@@ -1165,6 +1459,10 @@ async function loadSuggestedTests() {
   const el = document.getElementById('suggested-tests-section');
   if (!el) return;
   _loadSugState();
+  if (isMockMode) {
+    el.innerHTML = _buildSuggestedTestsHtml(MOCK_SUGGESTED_TESTS_DATA);
+    return;
+  }
   // Pre-load any previously uploaded files for this session
   try {
     if (getAuthToken()) {
@@ -1388,6 +1686,10 @@ function _printTestList() {
 async function loadRouting() {
   const el = document.getElementById('next-steps-section');
   if (!el) return;
+  if (isMockMode) {
+    el.innerHTML = buildNextSteps(MOCK_ROUTING_DATA);
+    return;
+  }
   try {
     const res = await fetch(`${API}/api/session/${sessionId}/routing`, { headers: { ...authHeaders() } });
     if (!res.ok) {
@@ -1406,6 +1708,41 @@ async function loadTestOrders() {
   const el = document.getElementById('test-orders-section');
   const summaryEl = document.getElementById('doctors-note-section');
   const rxEl = document.getElementById('rx-section');
+  if (isMockMode) {
+    window._reportApptId = MOCK_APPOINTMENT_DATA.appointment_id;
+    _sugApptId = MOCK_APPOINTMENT_DATA.appointment_id;
+    const sendBtn = document.getElementById('btn-send-doctor');
+    if (sendBtn) sendBtn.style.display = '';
+    if (el) el.innerHTML = buildTestOrdersBlock(MOCK_APPOINTMENT_DATA.test_orders, MOCK_APPOINTMENT_DATA.doctor_name, MOCK_APPOINTMENT_DATA.id);
+    const refEl = document.getElementById('referral-section');
+    if (refEl) refEl.innerHTML = buildReferralBlock(MOCK_APPOINTMENT_DATA.referral, MOCK_APPOINTMENT_DATA.appointment_id);
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="report-section">
+          <div class="report-section-title">Doctor's Note</div>
+          <div class="doctors-note-card">
+            <div class="doctors-note-label">From your doctor</div>
+            <div class="doctors-note-text">${escHtml(MOCK_APPOINTMENT_DATA.doctor_summary)}</div>
+          </div>
+        </div>`;
+    }
+    if (rxEl) {
+      rxEl.innerHTML = `
+        <div class="report-section">
+          <div class="report-section-title">Prescriptions</div>
+          ${MOCK_APPOINTMENT_DATA.prescriptions.map(p => `
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+              <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">💊</div>
+              <div style="flex:1;">
+                <div style="font-weight:700;font-size:14px;color:var(--text);">${escHtml(p.drug || '')}</div>
+                ${p.dose ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escHtml(p.dose)}${p.frequency ? ' · ' + escHtml(p.frequency) : ''}${p.duration ? ' · ' + escHtml(p.duration) : ''}</div>` : ''}
+                ${p.instructions ? `<div style="font-size:12px;color:var(--text-dim);margin-top:3px;font-style:italic;">${escHtml(p.instructions)}</div>` : ''}
+              </div>
+            </div>`).join('')}
+        </div>`;
+    }
+    return;
+  }
   try {
     if (!getAuthToken()) return; // guest — skip
     const res = await fetch(`${API}/api/appointments`, { headers: { ...authHeaders() } });
@@ -2693,6 +3030,20 @@ let _reportData = null;
 const _origLoad = load;
 async function load() {
   const el = document.getElementById('content');
+  if (isMockMode) {
+    _reportData = MOCK_REPORT_DATA;
+    el.innerHTML = buildReport(MOCK_REPORT_DATA);
+    document.getElementById('btn-pdf')?.addEventListener('click', () => window.print());
+    document.getElementById('btn-new')?.addEventListener('click', () => {
+      window.location.href = '/report.html?mock=1';
+    });
+    loadRouting();
+    loadTestOrders();
+    loadSuggestedTests();
+    loadSymptomHistory();
+    _injectDevModeHud();
+    return;
+  }
   try {
     const res = await fetch(`${API}/api/session/${sessionId}/report`, { headers: { ...authHeaders() } });
     if (!res.ok) throw new Error(await res.text());
@@ -2832,6 +3183,28 @@ function _showReportToast(msg) {
 async function loadSymptomHistory() {
   const el = document.getElementById('symptom-history-section');
   if (!el) return;
+  if (isMockMode) {
+    el.innerHTML = `
+      <div class="report-section">
+        <div class="report-section-title" style="display:flex;align-items:center;gap:8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+          Past Symptom History
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${MOCK_SYMPTOM_HISTORY_DATA.map(e => `
+            <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style="font-size:12px;font-weight:700;color:var(--text);">${escHtml(e.primary_diagnosis||'Consultation')}</span>
+                <span style="font-size:11px;color:var(--text-muted);">${e.date}</span>
+                <span style="font-size:11px;color:var(--text-muted);">· ${escHtml(e.doctor_name||'')}</span>
+              </div>
+              ${e.symptoms.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;">${e.symptoms.map(s=>`<span style="font-size:11px;padding:2px 9px;border-radius:99px;background:var(--surface-3);border:1px solid var(--border);color:var(--text-dim);">${escHtml(s)}</span>`).join('')}</div>` : ''}
+            </div>`).join('')}
+        </div>
+      </div>`;
+    el.style.display = '';
+    return;
+  }
   try {
     const res = await fetch(`${API}/api/patient/symptom-history`, { headers: authHeaders() });
     if (!res.ok) return;
@@ -2861,6 +3234,40 @@ async function loadSymptomHistory() {
       </div>`;
     el.style.display = '';
   } catch { el.style.display = 'none'; }
+}
+
+function _injectDevModeHud() {
+  if (document.getElementById('dev-mock-hud')) return;
+  const hud = document.createElement('div');
+  hud.id = 'dev-mock-hud';
+  hud.innerHTML = `
+    <div style="position:fixed;bottom:20px;right:20px;z-index:99999;background:rgba(15,23,42,0.92);border:1px solid rgba(16,185,129,0.4);border-radius:999px;padding:8px 16px;backdrop-filter:blur(20px);box-shadow:0 12px 36px rgba(0,0,0,0.5);display:flex;align-items:center;gap:10px;font-family:'Sora',sans-serif;font-size:12px;color:#f1f5f9;">
+      <span style="display:flex;align-items:center;gap:6px;font-weight:700;color:#34d399;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;display:inline-block;"></span>
+        Frontend Dev Mode
+      </span>
+      <span style="color:#64748b;">|</span>
+      <span style="color:#94a3b8;font-size:11px;">Zero APIs</span>
+      <select id="dev-case-select" onchange="_switchMockCase(this.value)" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#fff;border-radius:8px;padding:3px 8px;font-size:11px;outline:none;cursor:pointer;">
+        <option value="cardiology">Cardiology Case</option>
+        <option value="neurology">Neurology Case</option>
+      </select>
+    </div>
+  `;
+  document.body.appendChild(hud);
+}
+
+function _switchMockCase(caseKey) {
+  if (!MOCK_CASES[caseKey]) return;
+  MOCK_REPORT_DATA = MOCK_CASES[caseKey];
+  _reportData = MOCK_REPORT_DATA;
+  const el = document.getElementById('content');
+  if (el) el.innerHTML = buildReport(MOCK_REPORT_DATA);
+  document.getElementById('btn-pdf')?.addEventListener('click', () => window.print());
+  loadRouting();
+  loadTestOrders();
+  loadSuggestedTests();
+  loadSymptomHistory();
 }
 
 load();

@@ -322,9 +322,9 @@ All tunable parameters live in `config.yaml`. The web app reads this at startup.
 
 ```yaml
 models:
-  doctor:          groq/openai/gpt-oss-120b   # Actor LLM
-  compressor:      groq/openai/gpt-oss-120b   # Context compression
-  profile_updater: groq/openai/gpt-oss-120b   # Profile delta extraction
+  doctor:          openrouter/nvidia/nemotron-3-super-120b-a12b:free   # Actor LLM
+  compressor:      openrouter/nvidia/nemotron-3-super-120b-a12b:free   # Context compression
+  profile_updater: openrouter/nvidia/nemotron-3-super-120b-a12b:free   # Profile delta extraction
   embedder:        sentence-transformers/all-MiniLM-L6-v2  # 384-dim local
 
 prompt_versions:

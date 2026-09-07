@@ -208,7 +208,7 @@ OPENROUTER_API_KEY=    # Optional. First fallback on 429.
 CEREBRAS_API_KEY=      # Optional. Second fallback.
 GEMINI_API_KEY=        # Optional. Third fallback.
 CRITIC_MODEL=          # Optional. Override critic model.
-                       # Default: groq/llama-3.3-70b-versatile
+                       # Default: groq/openai/gpt-oss-120b
 DATABASE_URL=          # Optional. Postgres URL for production.
                        # Default: SQLite at web/data/diffdx.db
 REDIS_URL=             # Optional. Live diagnostic-session state.
@@ -322,9 +322,9 @@ All tunable parameters live in `config.yaml`. The web app reads this at startup.
 
 ```yaml
 models:
-  doctor:          groq/llama-3.3-70b-versatile   # Actor LLM
-  compressor:      groq/llama-3.3-70b-versatile   # Context compression
-  profile_updater: groq/llama-3.3-70b-versatile   # Profile delta extraction
+  doctor:          groq/openai/gpt-oss-120b   # Actor LLM
+  compressor:      groq/openai/gpt-oss-120b   # Context compression
+  profile_updater: groq/openai/gpt-oss-120b   # Profile delta extraction
   embedder:        sentence-transformers/all-MiniLM-L6-v2  # 384-dim local
 
 prompt_versions:
@@ -540,7 +540,7 @@ All LLM calls go through a single module. No other code imports an LLM client di
 
 **Fallback chain** (triggered on 429, no blocking sleep):
 ```
-groq/llama-3.3-70b-versatile
+groq/openai/gpt-oss-120b
   → groq/meta-llama/llama-4-scout-17b-16e-instruct
   → openrouter/[free models]
   → cerebras/[models]
@@ -642,7 +642,7 @@ critique = critique_turn(turn_event, session_events, session_id)
 
 **TurnCritique fields**: `question_quality_score`, `differential_quality_score`, `reasoning_quality_score` (all 0.0–1.0), `confidence_calibration` ("well-calibrated"/"overconfident"/"underconfident"), `weakness_category`, `would_have_asked`, `rationale`.
 
-**Critic model**: Configurable via `CRITIC_MODEL` env var. Default: `groq/llama-3.3-70b-versatile`. Must be a different model from the doctor to avoid self-evaluation bias.
+**Critic model**: Configurable via `CRITIC_MODEL` env var. Default: `groq/openai/gpt-oss-120b`. Must be a different model from the doctor to avoid self-evaluation bias.
 
 ### DDXPlus Patient Simulator (`patient_simulator.py`)
 

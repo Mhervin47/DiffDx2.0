@@ -171,7 +171,7 @@ If no tests needed: set necessary=false and tests=[].
 
     try:
         from loop1.llm import call_llm
-        model = os.environ.get("CRITIC_MODEL", "groq/llama-3.3-70b-versatile")
+        model = os.environ.get("CRITIC_MODEL", "groq/openai/gpt-oss-120b")
         raw = await asyncio.wait_for(
             asyncio.get_event_loop().run_in_executor(
                 None,

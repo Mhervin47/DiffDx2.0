@@ -32,7 +32,7 @@ try:
 except ImportError:
     pass
 
-os.environ.setdefault("CRITIC_MODEL", "groq/llama-3.3-70b-versatile")
+os.environ.setdefault("CRITIC_MODEL", "groq/openai/gpt-oss-120b")
 
 import json
 import logging

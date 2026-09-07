@@ -106,6 +106,12 @@ def _call_llm_raw(model: str, messages: list[dict[str, str]], **kwargs: Any) -> 
         base_url = _GEMINI_BASE
         api_key = _gemini_api_key()
         model_name = model.removeprefix("gemini/")
+        # Gemini 2.5 models "think" before answering by default, burning the
+        # max_tokens budget on hidden reasoning and leaving content empty —
+        # this app wants a fast structured-JSON answer, not a reasoning
+        # trace, so turn thinking off. (2.5 Pro doesn't support "none";
+        # Flash/Flash-Lite, what this app actually uses, do.)
+        defaults.setdefault("reasoning_effort", "none")
     elif model.startswith("openrouter/"):
         base_url = _OPENROUTER_BASE
         api_key = _openrouter_api_key()

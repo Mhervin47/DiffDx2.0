@@ -190,17 +190,27 @@ def _parse_reset_seconds(msg: str) -> float:
 
 
 def _call_with_fallback(model: str, messages: list[dict[str, str]], **kwargs: Any) -> tuple[str, int]:
-    """Try model then immediately walk fallbacks on 429 — no blocking sleeps."""
+    """Try model then walk fallbacks on 429 or exhausted same-model retries."""
     prefix = _provider_prefix(model)
     all_models = [model] + _FALLBACK_CHAIN.get(prefix, [])
+    last_err: Exception | None = None
     for m in all_models:
         try:
             return _call_llm_raw(m, messages, **kwargs)
         except _RateLimitError as e:
+            last_err = e
             _log.warning("429 on %s — trying next fallback. (%s)", m, str(e)[:80])
             continue
+        except _RetryableHTTPError as e:
+            # _call_llm_raw already retried this model 3x internally and gave up —
+            # a persistently overloaded/erroring provider shouldn't fail the whole
+            # turn when other models in the chain are healthy.
+            last_err = e
+            _log.warning("%s exhausted retries — trying next fallback. (%s)", m, str(e)[:80])
+            continue
     raise RuntimeError(
-        "All models are currently rate-limited. Please wait a moment and try again."
+        f"All models are currently rate-limited or unavailable. Please wait a moment and try again. "
+        f"(last error: {str(last_err)[:200]})"
     )
 
 

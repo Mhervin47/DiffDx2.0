@@ -18,6 +18,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      # Bind-mount static frontend files so local edits (HTML/CSS/JS)
+      # show up on the next request without a rebuild — served straight
+      # off disk by StaticFiles (see src/diffdx/main.py), no caching
+      # layer in front of it. Backend (src/) is NOT mounted here: a
+      # Python change still needs a rebuild, since it's compiled into
+      # the image and the process itself would need a restart anyway.
+      - ./loop1/web/static:/app/web/static
     env_file:
       - ./loop1/.env
     environment:

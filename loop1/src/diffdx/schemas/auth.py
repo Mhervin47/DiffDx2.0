@@ -16,6 +16,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class VerifyOtpRequest(BaseModel):
+    email: str
+    code: str
+
+
+class ResendOtpRequest(BaseModel):
+    email: str
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

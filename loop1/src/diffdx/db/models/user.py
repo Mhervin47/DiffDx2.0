@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Index, String, func
+from sqlalchemy import Boolean, Enum, ForeignKey, Index, Integer, String, func, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from diffdx.db.base import Base
@@ -22,6 +22,11 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(UserRole, nullable=False, server_default="patient")
+    # Doctors are always seeded (scripts/seed_doctors.py), never self-registered,
+    # so they default verified. Patient self-registration explicitly passes
+    # False and clears it via the OTP flow (diffdx.otp) before the account
+    # can log in — see UserRepository.create_patient's email_verified param.
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
@@ -31,6 +36,7 @@ class User(Base):
     patient: Mapped["Patient | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
     doctor: Mapped["Doctor | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    email_otp: Mapped["EmailOtp | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
 
     __table_args__ = (
         # Case-insensitive uniqueness on email — Postgres uses a functional

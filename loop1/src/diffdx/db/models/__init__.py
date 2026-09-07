@@ -28,9 +28,11 @@ from diffdx.db.models.scheduling import (
     Waitlist,
 )
 from diffdx.db.models.user import Dependent, Doctor, Patient, RefreshToken, User
+from diffdx.db.models.verification import EmailOtp
 
 __all__ = [
     "User",
+    "EmailOtp",
     "Patient",
     "Doctor",
     "Dependent",

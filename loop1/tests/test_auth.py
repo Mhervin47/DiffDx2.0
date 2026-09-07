@@ -92,13 +92,61 @@ def _unique_email() -> str:
     return f"auth.test.{uuid.uuid4()}@example.com"
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _capture_otp_emails():
+    """Register no longer emails a real inbox in tests — it calls
+    diffdx.otp.send_otp_email, imported by name into diffdx.routers.auth,
+    so that's the reference to patch. Captures {email: code} instead of
+    actually sending, so tests can complete the verify-otp step without
+    needing a real RESEND_API_KEY/SMTP_HOST configured."""
+    import diffdx.routers.auth as auth_module
+
+    captured: dict[str, str] = {}
+
+    def _fake_send(to_email: str, name: str, code: str) -> bool:
+        captured[to_email.lower()] = code
+        return True
+
+    orig = auth_module.send_otp_email
+    auth_module.send_otp_email = _fake_send
+    yield captured
+    auth_module.send_otp_email = orig
+
+
+def _register_and_verify(client, otp_emails, name, email, password):
+    """Full register -> verify-otp round trip, returning verify-otp's
+    response (the one that actually carries tokens now — register itself
+    only confirms an OTP was sent)."""
+    reg = client.post("/api/auth/register", json={"name": name, "email": email, "password": password})
+    assert reg.status_code == 200, reg.text
+    reg_data = reg.json()
+    assert reg_data["verification_required"] is True
+    assert reg_data["email"] == email.lower()
+
+    code = otp_emails[email.lower()]
+    return client.post("/api/auth/verify-otp", json={"email": email, "code": code})
+
+
 # ---------------------------------------------------------------------------
 # Register / login issue a JWT access + refresh pair
 # ---------------------------------------------------------------------------
 
-def test_register_issues_access_and_refresh_tokens(client):
+def test_register_does_not_issue_tokens_until_verified(client, _capture_otp_emails):
     email = _unique_email()
     res = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data == {"verification_required": True, "email": email.lower()}
+
+    # Not verified yet — login must be refused, not silently allowed.
+    login = client.post("/api/auth/login", json={"email": email, "password": "testpass123"})
+    assert login.status_code == 403
+    assert login.json()["detail"]["verification_required"] is True
+
+
+def test_verify_otp_issues_access_and_refresh_tokens(client, _capture_otp_emails):
+    email = _unique_email()
+    res = _register_and_verify(client, _capture_otp_emails, "Auth Test", email, "testpass123")
     assert res.status_code == 200, res.text
     data = res.json()
     assert data["access_token"] and data["refresh_token"]
@@ -116,18 +164,38 @@ def test_register_issues_access_and_refresh_tokens(client):
     assert {"exp", "iat", "jti"} <= claims.keys()
 
 
-def test_login_issues_fresh_token_pair(client):
+def test_verify_otp_wrong_code_rejected_and_decrements_attempts(client, _capture_otp_emails):
     email = _unique_email()
     client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    res = client.post("/api/auth/verify-otp", json={"email": email, "code": "000000"})
+    assert res.status_code == 400
+    # The real code still works afterward — one bad guess doesn't burn the code itself.
+    code = _capture_otp_emails[email.lower()]
+    res2 = client.post("/api/auth/verify-otp", json={"email": email, "code": code})
+    assert res2.status_code == 200, res2.text
+
+
+def test_resend_otp_issues_a_working_new_code(client, _capture_otp_emails):
+    email = _unique_email()
+    client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    client.post("/api/auth/resend-otp", json={"email": email})
+    code = _capture_otp_emails[email.lower()]
+    res = client.post("/api/auth/verify-otp", json={"email": email, "code": code})
+    assert res.status_code == 200, res.text
+
+
+def test_login_issues_fresh_token_pair(client, _capture_otp_emails):
+    email = _unique_email()
+    _register_and_verify(client, _capture_otp_emails, "Auth Test", email, "testpass123")
     res = client.post("/api/auth/login", json={"email": email, "password": "testpass123"})
     assert res.status_code == 200, res.text
     data = res.json()
     assert data["access_token"] and data["refresh_token"]
 
 
-def test_login_wrong_password_rejected(client):
+def test_login_wrong_password_rejected(client, _capture_otp_emails):
     email = _unique_email()
-    client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    _register_and_verify(client, _capture_otp_emails, "Auth Test", email, "testpass123")
     res = client.post("/api/auth/login", json={"email": email, "password": "wrongpassword"})
     assert res.status_code == 401
 
@@ -136,13 +204,13 @@ def test_login_wrong_password_rejected(client):
 # Restarting the server does not log users out (statelessness)
 # ---------------------------------------------------------------------------
 
-def test_access_token_verifies_with_no_server_state(client):
+def test_access_token_verifies_with_no_server_state(client, _capture_otp_emails):
     """Simulates "restart" by decoding the token in total isolation from
     anything the request that issued it left behind — the in-memory
     _TOKENS dict this replaced is gone; there is no per-process state left
     to lose on restart."""
     email = _unique_email()
-    res = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    res = _register_and_verify(client, _capture_otp_emails, "Auth Test", email, "testpass123")
     access_token = res.json()["access_token"]
 
     from diffdx.auth_tokens import decode_access_token
@@ -175,9 +243,9 @@ def test_expired_access_token_is_rejected(client, monkeypatch):
     assert res.status_code == 401
 
 
-def test_refresh_with_valid_token_issues_new_working_pair(client):
+def test_refresh_with_valid_token_issues_new_working_pair(client, _capture_otp_emails):
     email = _unique_email()
-    reg = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    reg = _register_and_verify(client, _capture_otp_emails, "Auth Test", email, "testpass123")
     old_refresh = reg.json()["refresh_token"]
 
     res = client.post("/api/auth/refresh", json={"refresh_token": old_refresh})
@@ -195,12 +263,12 @@ def test_refresh_with_valid_token_issues_new_working_pair(client):
 # Revoked refresh token → 401, and cannot be reused
 # ---------------------------------------------------------------------------
 
-def test_refresh_token_rotation_rejects_reuse(client):
+def test_refresh_token_rotation_rejects_reuse(client, _capture_otp_emails):
     """Using a refresh token revokes it (rotation) — using it again (e.g.
     a stolen, already-used token replayed by an attacker) must 401, not
     silently succeed a second time."""
     email = _unique_email()
-    reg = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    reg = _register_and_verify(client, _capture_otp_emails, "Auth Test", email, "testpass123")
     refresh_token = reg.json()["refresh_token"]
 
     first = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
@@ -210,9 +278,9 @@ def test_refresh_token_rotation_rejects_reuse(client):
     assert second.status_code == 401
 
 
-def test_logout_revokes_refresh_token(client):
+def test_logout_revokes_refresh_token(client, _capture_otp_emails):
     email = _unique_email()
-    reg = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    reg = _register_and_verify(client, _capture_otp_emails, "Auth Test", email, "testpass123")
     refresh_token = reg.json()["refresh_token"]
 
     logout = client.post("/api/auth/logout", json={"refresh_token": refresh_token})
@@ -231,9 +299,9 @@ def test_refresh_with_unknown_token_is_401(client):
 # RBAC: patient token on any /api/doctor/* route → 403
 # ---------------------------------------------------------------------------
 
-def test_patient_token_on_doctor_route_is_403(client):
+def test_patient_token_on_doctor_route_is_403(client, _capture_otp_emails):
     email = _unique_email()
-    reg = client.post("/api/auth/register", json={"name": "Auth Test", "email": email, "password": "testpass123"})
+    reg = _register_and_verify(client, _capture_otp_emails, "Auth Test", email, "testpass123")
     access_token = reg.json()["access_token"]
 
     res = client.get("/api/doctor/appointments", headers={"Authorization": f"Bearer {access_token}"})

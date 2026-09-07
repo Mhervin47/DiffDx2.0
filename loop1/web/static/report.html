@@ -1159,6 +1159,19 @@
       <button class="auth-submit" id="auth-reg-btn" onclick="doAuthRegister()">Create Account &amp; Book</button>
       <div class="auth-divider">Already have an account? <a href="#" onclick="switchAuthTab('login');return false;">Sign in</a></div>
     </div>
+
+    <!-- OTP verification form -->
+    <div id="auth-form-otp" class="auth-form" style="display:none;">
+      <div class="auth-modal-sub" style="margin-bottom:14px;">We emailed a 6-digit code to <strong id="auth-otp-email-display"></strong>.</div>
+      <div class="auth-field">
+        <label class="auth-label">Verification Code</label>
+        <input class="auth-input" type="text" id="auth-otp-code" placeholder="123456" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
+          onkeydown="if(event.key==='Enter') doAuthVerifyOtp()">
+      </div>
+      <div class="auth-error" id="auth-otp-error"></div>
+      <button class="auth-submit" id="auth-otp-btn" onclick="doAuthVerifyOtp()">Verify &amp; Book</button>
+      <div class="auth-divider">Didn't get it? <a href="#" onclick="doAuthResendOtp();return false;">Resend code</a></div>
+    </div>
   </div>
 </div>
 
@@ -1776,6 +1789,7 @@ function _showSlotModal(doctor, preselectedSlot) {
 function openAuthModal() {
   document.getElementById('auth-login-error').textContent = '';
   document.getElementById('auth-reg-error').textContent = '';
+  switchAuthTab('login');
   document.getElementById('auth-modal').classList.remove('hidden');
   setTimeout(() => document.getElementById('auth-login-email').focus(), 80);
 }
@@ -1784,11 +1798,24 @@ function closeAuthModal() {
   document.getElementById('auth-modal').classList.add('hidden');
 }
 
+function showAuthOtpForm(email) {
+  document.getElementById('auth-tab-login').classList.remove('active');
+  document.getElementById('auth-tab-register').classList.remove('active');
+  document.getElementById('auth-form-login').style.display = 'none';
+  document.getElementById('auth-form-register').style.display = 'none';
+  document.getElementById('auth-form-otp').style.display = '';
+  document.getElementById('auth-otp-email-display').textContent = email;
+  document.getElementById('auth-form-otp').dataset.email = email;
+  document.getElementById('auth-otp-error').textContent = '';
+  setTimeout(() => document.getElementById('auth-otp-code').focus(), 60);
+}
+
 function switchAuthTab(tab) {
   document.getElementById('auth-tab-login').classList.toggle('active', tab === 'login');
   document.getElementById('auth-tab-register').classList.toggle('active', tab === 'register');
   document.getElementById('auth-form-login').style.display = tab === 'login' ? '' : 'none';
   document.getElementById('auth-form-register').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('auth-form-otp').style.display = 'none';
   const focusId = tab === 'login' ? 'auth-login-email' : 'auth-reg-name';
   setTimeout(() => document.getElementById(focusId).focus(), 60);
 }
@@ -1808,7 +1835,14 @@ async function doAuthLogin() {
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Login failed.');
+    if (!res.ok) {
+      const detail = data.detail;
+      if (detail && typeof detail === 'object' && detail.verification_required) {
+        showAuthOtpForm(detail.email || email);
+        return;
+      }
+      throw new Error((typeof detail === 'string' && detail) || 'Login failed.');
+    }
     setAuth(data.access_token, data.refresh_token, data.user);
     closeAuthModal();
     updateNavAuth();
@@ -1838,6 +1872,30 @@ async function doAuthRegister() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Registration failed.');
+    showAuthOtpForm(data.email || email);
+  } catch (e) {
+    errEl.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Account & Book';
+  }
+}
+
+async function doAuthVerifyOtp() {
+  const email = document.getElementById('auth-form-otp').dataset.email;
+  const code = document.getElementById('auth-otp-code').value.trim();
+  const errEl = document.getElementById('auth-otp-error');
+  const btn = document.getElementById('auth-otp-btn');
+  errEl.textContent = '';
+  if (!code) { errEl.textContent = 'Enter the code we emailed you.'; return; }
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  try {
+    const res = await fetch(`${API}/api/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Verification failed.');
     setAuth(data.access_token, data.refresh_token, data.user);
     closeAuthModal();
     updateNavAuth();
@@ -1845,7 +1903,24 @@ async function doAuthRegister() {
   } catch (e) {
     errEl.textContent = e.message;
   } finally {
-    btn.disabled = false; btn.textContent = 'Create Account & Book';
+    btn.disabled = false; btn.textContent = 'Verify & Book';
+  }
+}
+
+async function doAuthResendOtp() {
+  const email = document.getElementById('auth-form-otp').dataset.email;
+  const errEl = document.getElementById('auth-otp-error');
+  errEl.textContent = '';
+  try {
+    await fetch(`${API}/api/auth/resend-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    errEl.style.color = '';
+    errEl.textContent = 'A new code has been sent.';
+  } catch (e) {
+    errEl.textContent = e.message;
   }
 }
 

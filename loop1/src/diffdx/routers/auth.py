@@ -29,9 +29,19 @@ from diffdx.auth_tokens import (
     refresh_token_expiry,
 )
 from diffdx.db.engine import get_session
+from diffdx.db.models.user import User
 from diffdx.dependencies import get_current_user
+from diffdx.otp import (
+    MAX_ATTEMPTS,
+    code_matches,
+    expiry,
+    generate_code,
+    hash_code,
+    is_expired,
+    send_otp_email,
+)
 from diffdx.rate_limit import limiter
-from diffdx.repositories.users import RefreshTokenRepository, UserRepository
+from diffdx.repositories.users import EmailOtpRepository, RefreshTokenRepository, UserRepository
 from diffdx.schemas.auth import (
     DependentRequest,
     LoginRequest,
@@ -39,6 +49,8 @@ from diffdx.schemas.auth import (
     ProfileUpdateRequest,
     RefreshRequest,
     RegisterRequest,
+    ResendOtpRequest,
+    VerifyOtpRequest,
 )
 from diffdx.legacy_store import (
     _add_session_to_user,
@@ -83,25 +95,96 @@ def _issue_token_pair(db: Session, user: dict) -> tuple[str, str]:
 @limiter.limit("5/minute")
 async def register(request: Request, req: RegisterRequest, db: Session = Depends(get_session)):
 
-    if UserRepository(db).get_by_email(req.email) is not None:
+    existing = UserRepository(db).get_by_email(req.email)
+    if existing is not None and existing.email_verified:
         raise HTTPException(status_code=409, detail="Email already registered.")
     if len(req.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
     if not req.name.strip():
         raise HTTPException(status_code=400, detail="Name is required.")
-    dto = UserRepository(db).create_patient(
-        name=req.name.strip(),
-        email=req.email.lower().strip(),
-        password_hash=_hash_password(req.password),
-    )
-    user = _compose_user_dict(db, dto)
+
+    if existing is not None:
+        # Unverified account from a previous, abandoned registration attempt
+        # with the same email — update it in place and resend a fresh code
+        # rather than 409ing on an account that was never actually usable.
+        UserRepository(db).update_patient(existing.id, name=req.name.strip())
+        # Reset the password too, in case this is genuinely the account
+        # owner retrying — not the original registration's password holder.
+        user_row = db.get(User, existing.id)
+        user_row.password_hash = _hash_password(req.password)
+        user_id = existing.id
+    else:
+        dto = UserRepository(db).create_patient(
+            name=req.name.strip(),
+            email=req.email.lower().strip(),
+            password_hash=_hash_password(req.password),
+            email_verified=False,
+        )
+        user_id = dto.id
+
+    code = generate_code()
+    EmailOtpRepository(db).upsert(user_id=user_id, code_hash=hash_code(code), expires_at=expiry())
+    db.commit()
+    send_otp_email(req.email.lower().strip(), req.name.strip(), code)
+    log_audit_event(actor=None, action="register", resource_type="user", resource_id=str(user_id), ip_address=_client_ip(request))
+    return {"verification_required": True, "email": req.email.lower().strip()}
+
+
+@router.post("/verify-otp")
+@limiter.limit("10/minute")
+async def verify_otp(request: Request, req: VerifyOtpRequest, db: Session = Depends(get_session)):
+    dto = UserRepository(db).get_by_email(req.email)
+    if dto is None:
+        raise HTTPException(status_code=404, detail="No pending registration for this email.")
+    if dto.email_verified:
+        raise HTTPException(status_code=400, detail="Email already verified — log in instead.")
+
+    otp_repo = EmailOtpRepository(db)
+    otp = otp_repo.get(dto.id)
+    if otp is None:
+        raise HTTPException(status_code=400, detail="No verification code pending. Request a new one.")
+    if is_expired(otp.expires_at):
+        otp_repo.delete(dto.id)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Code expired. Request a new one.")
+    if otp.attempts >= MAX_ATTEMPTS:
+        otp_repo.delete(dto.id)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Too many incorrect attempts. Request a new code.")
+    if not code_matches(req.code.strip(), otp.code_hash):
+        attempts = otp_repo.increment_attempts(dto.id)
+        db.commit()
+        remaining = max(0, MAX_ATTEMPTS - attempts)
+        raise HTTPException(status_code=400, detail=f"Incorrect code. {remaining} attempt(s) left.")
+
+    UserRepository(db).mark_email_verified(dto.id)
+    otp_repo.delete(dto.id)
+    db.commit()
+
+    verified_dto = UserRepository(db).get_by_id(dto.id)
+    user = _compose_user_dict(db, verified_dto)
     access_token, refresh_token = _issue_token_pair(db, user)
-    log_audit_event(actor=user, action="register", resource_type="user", resource_id=user["id"], ip_address=_client_ip(request))
+    log_audit_event(actor=user, action="email_verified", resource_type="user", resource_id=user["id"], ip_address=_client_ip(request))
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": "patient"},
     }
+
+
+@router.post("/resend-otp")
+@limiter.limit("3/minute")
+async def resend_otp(request: Request, req: ResendOtpRequest, db: Session = Depends(get_session)):
+    dto = UserRepository(db).get_by_email(req.email)
+    # Deliberately vague on whether the account exists — avoids leaking
+    # registered-email information to an unauthenticated caller.
+    if dto is None or dto.email_verified:
+        return {"sent": True}
+    code = generate_code()
+    EmailOtpRepository(db).upsert(user_id=dto.id, code_hash=hash_code(code), expires_at=expiry())
+    db.commit()
+    send_otp_email(dto.email, dto.name, code)
+    return {"sent": True}
 
 
 @router.post("/login")
@@ -115,6 +198,11 @@ async def login(request: Request, req: LoginRequest, db: Session = Depends(get_s
             resource_id=req.email.lower().strip(), ip_address=_client_ip(request),
         )
         raise HTTPException(status_code=401, detail="Invalid email or password.")
+    if not dto.email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail={"message": "Please verify your email before logging in.", "verification_required": True, "email": dto.email},
+        )
     matched = _compose_user_dict(db, dto)
     access_token, refresh_token = _issue_token_pair(db, matched)
     log_audit_event(actor=matched, action="login", resource_type="user", resource_id=matched["id"], ip_address=_client_ip(request))

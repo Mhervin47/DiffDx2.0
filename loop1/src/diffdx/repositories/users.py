@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from diffdx.db.models.user import Dependent, Doctor, Patient, RefreshToken, User
+from diffdx.db.models.verification import EmailOtp
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +19,7 @@ class UserDTO:
     password_hash: str
     role: str
     created_at: datetime
+    email_verified: bool = True
     # Patient-only fields (None for doctors)
     mobile: str | None = None
     age: int | None = None
@@ -58,6 +60,7 @@ def _to_user_dto(user: User) -> UserDTO:
         password_hash=user.password_hash,
         role=user.role,
         created_at=user.created_at,
+        email_verified=user.email_verified,
         mobile=patient.mobile if patient else None,
         age=patient.age if patient else None,
         blood_type=patient.blood_type if patient else None,
@@ -119,6 +122,7 @@ class UserRepository:
         id: uuid.UUID | None = None,
         created_at: datetime | None = None,
         patient_fields: dict | None = None,
+        email_verified: bool = True,
     ) -> UserDTO:
         user = User(
             id=id or uuid.uuid4(),
@@ -126,6 +130,7 @@ class UserRepository:
             email=email.lower().strip(),
             password_hash=password_hash,
             role="patient",
+            email_verified=email_verified,
         )
         if created_at is not None:
             user.created_at = created_at
@@ -154,6 +159,7 @@ class UserRepository:
             email=email.lower().strip(),
             password_hash=password_hash,
             role="doctor",
+            email_verified=True,
         )
         if created_at is not None:
             user.created_at = created_at
@@ -275,6 +281,12 @@ class UserRepository:
         self._session.merge(User(id=id, name=name, email=email.lower().strip(), password_hash=password_hash, role=role))
         self._session.flush()
 
+    def mark_email_verified(self, user_id: uuid.UUID) -> None:
+        user = self._session.get(User, user_id)
+        if user is not None:
+            user.email_verified = True
+            self._session.flush()
+
 
 @dataclass(frozen=True, slots=True)
 class RefreshTokenDTO:
@@ -326,4 +338,40 @@ class RefreshTokenRepository:
         now = datetime.now(timezone.utc)
         for rt in self._session.execute(stmt).scalars():
             rt.revoked_at = now
+
+
+class EmailOtpRepository:
+    """One pending code per user — issuing a new one (register/resend)
+    overwrites whatever was there, so an old, already-sent code stops
+    being valid the moment a new one is requested."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def upsert(self, *, user_id: uuid.UUID, code_hash: str, expires_at: datetime) -> None:
+        existing = self._session.get(EmailOtp, user_id)
+        if existing is None:
+            self._session.add(EmailOtp(user_id=user_id, code_hash=code_hash, expires_at=expires_at, attempts=0))
+        else:
+            existing.code_hash = code_hash
+            existing.expires_at = expires_at
+            existing.attempts = 0
+        self._session.flush()
+
+    def get(self, user_id: uuid.UUID) -> EmailOtp | None:
+        return self._session.get(EmailOtp, user_id)
+
+    def increment_attempts(self, user_id: uuid.UUID) -> int:
+        otp = self._session.get(EmailOtp, user_id)
+        if otp is None:
+            return 0
+        otp.attempts += 1
+        self._session.flush()
+        return otp.attempts
+
+    def delete(self, user_id: uuid.UUID) -> None:
+        otp = self._session.get(EmailOtp, user_id)
+        if otp is not None:
+            self._session.delete(otp)
+            self._session.flush()
         self._session.flush()

@@ -208,7 +208,7 @@ OPENROUTER_API_KEY=    # Optional. First fallback on 429.
 CEREBRAS_API_KEY=      # Optional. Second fallback.
 GEMINI_API_KEY=        # Optional. Third fallback.
 CRITIC_MODEL=          # Optional. Override critic model.
-                       # Default: openrouter/google/gemma-4-31b-it:free
+                       # Default: groq/llama-3.3-70b-versatile
 DATABASE_URL=          # Optional. Postgres URL for production.
                        # Default: SQLite at web/data/diffdx.db
 REDIS_URL=             # Optional. Live diagnostic-session state.
@@ -642,7 +642,7 @@ critique = critique_turn(turn_event, session_events, session_id)
 
 **TurnCritique fields**: `question_quality_score`, `differential_quality_score`, `reasoning_quality_score` (all 0.0–1.0), `confidence_calibration` ("well-calibrated"/"overconfident"/"underconfident"), `weakness_category`, `would_have_asked`, `rationale`.
 
-**Critic model**: Configurable via `CRITIC_MODEL` env var. Default: `openrouter/google/gemma-4-31b-it:free`. Must be a different model from the doctor to avoid self-evaluation bias.
+**Critic model**: Configurable via `CRITIC_MODEL` env var. Default: `groq/llama-3.3-70b-versatile`. Must be a different model from the doctor to avoid self-evaluation bias.
 
 ### DDXPlus Patient Simulator (`patient_simulator.py`)
 

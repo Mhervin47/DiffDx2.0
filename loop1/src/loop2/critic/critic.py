@@ -16,7 +16,7 @@ _log = logging.getLogger(__name__)
 
 _PROMPT_PATH = Path(__file__).parent.parent.parent.parent / "prompts" / "critic_turn_v0_1.txt"
 
-_DEFAULT_CRITIC_MODEL = "openrouter/google/gemma-4-31b-it:free"
+_DEFAULT_CRITIC_MODEL = "groq/llama-3.3-70b-versatile"
 _MAX_RETRIES = 3
 
 

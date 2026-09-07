@@ -4,7 +4,7 @@ logging:
   session_dir: logs/sessions
 models:
   compressor: openrouter/nvidia/nemotron-3-super-120b-a12b:free
-  doctor: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+  doctor: groq/llama-3.1-8b-instant
   embedder: sentence-transformers/all-MiniLM-L6-v2
   profile_updater: openrouter/nvidia/nemotron-3-super-120b-a12b:free
 prompt_versions:

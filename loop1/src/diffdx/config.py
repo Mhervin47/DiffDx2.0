@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     cerebras_api_key: str | None = Field(default=None, alias="CEREBRAS_API_KEY")
     gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
     critic_model: str = Field(
-        default="openrouter/google/gemma-4-31b-it:free", alias="CRITIC_MODEL"
+        default="groq/llama-3.3-70b-versatile", alias="CRITIC_MODEL"
     )
 
     # Optional — database. Falls back to local SQLite if unset.

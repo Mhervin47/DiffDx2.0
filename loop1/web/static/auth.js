@@ -156,10 +156,6 @@ function initAuthNav() {
   if (user) {
     if (user.role === 'doctor') {
       el.innerHTML = `
-        <a href="/doctor-portal.html" class="nav-icon-btn" title="Pending Refill Requests" id="nav-refill-btn">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-          <span id="nav-refill-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#f59e0b;color:#000;font-size:9px;font-weight:800;border-radius:99px;padding:1px 5px;line-height:1.6;min-width:16px;text-align:center;"></span>
-        </a>
         <div class="nav-user-menu" id="nav-user-menu">
           <button class="nav-user-btn" onclick="_toggleUserMenu(event)" aria-expanded="false">
             <span class="nav-user-avatar">${_escHtml(user.name.charAt(0).toUpperCase())}</span>
@@ -171,6 +167,8 @@ function initAuthNav() {
               <div style="font-weight:600;font-size:13px;">${_escHtml(user.name)}</div>
               <div style="font-size:11px;color:var(--text-muted);">${_escHtml(user.email || '')}</div>
             </div>
+            <a class="nav-user-dropdown-item" href="/doctor-overview.html">Overview</a>
+            <a class="nav-user-dropdown-item" href="/doctor-portal.html">Patient Queue</a>
             <a class="nav-user-dropdown-item" href="/doctor-profile.html">My Profile</a>
             <a class="nav-user-dropdown-item" href="/doctor-analytics.html">Analytics</a>
             <a class="nav-user-dropdown-item" href="/messages.html">Messages <span id="nav-msg-badge" style="display:none;margin-left:auto;background:#ef4444;color:#fff;font-size:9px;font-weight:800;border-radius:99px;padding:1px 6px;"></span></a>
@@ -178,7 +176,6 @@ function initAuthNav() {
           </div>
         </div>
       `;
-      _loadDoctorRefillBadge();
     } else {
       el.innerHTML = `
         <a href="/my-sessions.html" class="btn btn-ghost btn-sm" style="font-size:12px;padding:5px 10px;" id="nav-sessions-link">

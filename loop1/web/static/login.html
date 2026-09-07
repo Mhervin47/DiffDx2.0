@@ -1255,7 +1255,7 @@
 <script>
 if (typeof getAuthToken === 'function' && getAuthToken()) {
   const _u = typeof getAuthUser === 'function' ? getAuthUser() : null;
-  window.location.replace(_u?.role === 'doctor' ? '/doctor-portal.html' : '/');
+  window.location.replace(_u?.role === 'doctor' ? '/doctor-overview.html' : '/');
 }
 
 const _redirect = new URLSearchParams(location.search).get('next') || '/patient-info';
@@ -1312,7 +1312,7 @@ async function doSignIn() {
     const data = await res.json();
     if (!res.ok) { showAlert('signin-error', data.detail || 'Sign in failed.'); return; }
     if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
-    window.location.replace(data.user?.role === 'doctor' ? '/doctor-portal.html' : _redirect);
+    window.location.replace(data.user?.role === 'doctor' ? '/doctor-overview.html' : _redirect);
   } catch (e) { showAlert('signin-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Sign In'; }
 }
@@ -1330,7 +1330,7 @@ async function doDocSignIn() {
     if (!res.ok) { showAlert('doc-error', data.detail || 'Sign in failed.'); return; }
     if (data.user?.role !== 'doctor') { showAlert('doc-error', 'This account does not have doctor access.'); return; }
     if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
-    window.location.replace('/doctor-portal.html');
+    window.location.replace('/doctor-overview.html');
   } catch (e) { showAlert('doc-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Sign In to Portal'; }
 }

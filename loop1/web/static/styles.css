@@ -246,17 +246,18 @@ html.dark-theme .nav-user-btn svg {
 }
 
 .nav-user-avatar {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--teal-primary, #0d9488), var(--blue-secondary, #2563eb));
-  color: #ffffff !important; font-size: 12px; font-weight: 800;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #0fa88d 0%, #2879d8 100%);
+  color: #ffffff !important; font-size: 13px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; font-family: var(--font-headline, var(--font));
-  box-shadow: 0 2px 8px var(--teal-glow, rgba(13, 148, 136, 0.25));
+  box-shadow: 0 2px 10px rgba(15, 168, 141, 0.35);
 }
 .dark-theme .nav-user-avatar,
 html.dark-theme .nav-user-avatar {
-  background: linear-gradient(135deg, var(--teal-primary, #19c6ad), var(--blue-secondary, #4c8ff5));
-  box-shadow: 0 2px 10px var(--teal-glow, rgba(25, 198, 173, 0.3));
+  background: linear-gradient(135deg, #19c6ad 0%, #4c8ff5 100%);
+  color: #ffffff !important;
+  box-shadow: 0 2px 12px rgba(25, 198, 173, 0.4);
 }
 .nav-user-name {
   font-size: 13px; font-weight: 700; white-space: nowrap;

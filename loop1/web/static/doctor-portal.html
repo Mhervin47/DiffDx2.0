@@ -2340,19 +2340,26 @@
       color: var(--primary) !important;
     }
     .nav-user-avatar {
-      width: 28px !important;
-      height: 28px !important;
-      border-radius: 50% !important;
-      background: linear-gradient(135deg, var(--teal-primary), var(--blue-secondary)) !important;
-      color: #FFFFFF !important;
-      font-size: 12px !important;
-      font-weight: 800 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      flex-shrink: 0 !important;
-      font-family: var(--font-heading) !important;
-      box-shadow: 0 2px 8px var(--teal-glow) !important;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0fa88d 0%, #2879d8 100%);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      font-family: var(--font-heading);
+      box-shadow: 0 2px 10px rgba(15, 168, 141, 0.35);
+      flex-shrink: 0;
+    }
+
+    .dark-theme .nav-user-avatar,
+    html.dark-theme .nav-user-avatar {
+      background: linear-gradient(135deg, #19c6ad 0%, #4c8ff5 100%);
+      color: #ffffff;
+      box-shadow: 0 2px 12px rgba(25, 198, 173, 0.4);
     }
     .nav-user-name {
       font-size: 13px !important;

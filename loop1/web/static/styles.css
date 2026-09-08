@@ -392,16 +392,16 @@ html.dark-theme .nav-user-dropdown-item--danger:hover {
 #nav-refill-btn svg,
 #nav-notif-btn svg,
 .nav-icon-btn svg,
-.nav-refresh-btn svg,
-#theme-toggle svg {
+.nav-refresh-btn svg {
   display: block !important;
   flex-shrink: 0 !important;
   width: 16px !important;
   height: 16px !important;
   font-size: initial !important;
 }
-/* Theme toggle: size only — do NOT force display (sun/moon are toggled via display:none) */
-.theme-toggle-btn svg {
+/* Theme toggle (both class + id): size only — do NOT force display (sun/moon toggled via display:none) */
+.theme-toggle-btn svg,
+#theme-toggle svg {
   flex-shrink: 0 !important;
   width: 16px !important;
   height: 16px !important;

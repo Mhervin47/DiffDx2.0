@@ -2238,6 +2238,14 @@
       transition: all .2s ease;
       flex-shrink: 0;
     }
+    /* Nav icon SVG size lock */
+    .theme-toggle-btn svg, .nav-refresh-btn svg,
+    #nav-notif-btn svg, #nav-refill-btn svg, .nav-icon-btn svg, #theme-toggle svg {
+      display: block !important;
+      flex-shrink: 0 !important;
+      width: 16px !important;
+      height: 16px !important;
+    }
     html.dark-theme .nav-refresh-btn {
       background: rgba(13, 20, 38, 0.45) !important;
       border-color: rgba(255, 255, 255, 0.1) !important;

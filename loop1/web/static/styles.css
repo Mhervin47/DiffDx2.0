@@ -380,10 +380,26 @@ html.dark-theme .nav-user-dropdown-item--danger:hover {
   transition: all .2s ease !important;
   flex-shrink: 0 !important;
   position: relative;
-  text-decoration: none;
+  text-decoration: none !important;
   box-sizing: border-box !important;
   padding: 0 !important;
   cursor: pointer !important;
+  line-height: 1 !important;
+  font-size: 0 !important;
+  overflow: visible !important;
+  vertical-align: middle !important;
+}
+#nav-refill-btn svg,
+#nav-notif-btn svg,
+.nav-icon-btn svg,
+.nav-refresh-btn svg,
+.theme-toggle-btn svg,
+#theme-toggle svg {
+  display: block !important;
+  flex-shrink: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  font-size: initial !important;
 }
 #nav-refill-btn:hover,
 #nav-notif-btn:hover,

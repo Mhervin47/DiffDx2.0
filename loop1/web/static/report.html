@@ -233,6 +233,14 @@
       display: inline-flex !important; align-items: center !important; justify-content: center !important;
       transition: all 0.2s ease; outline: none; flex-shrink: 0;
     }
+    /* Nav icon SVG size lock */
+    .theme-toggle-btn svg, .nav-refresh-btn svg,
+    #nav-notif-btn svg, #nav-refill-btn svg, .nav-icon-btn svg, #theme-toggle svg {
+      display: block !important;
+      flex-shrink: 0 !important;
+      width: 16px !important;
+      height: 16px !important;
+    }
     .theme-toggle-btn:hover {
       border-color: var(--teal-primary);
       color: var(--teal-primary);

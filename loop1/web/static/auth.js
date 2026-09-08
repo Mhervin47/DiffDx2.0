@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', initAuthNav);
 /** Auto-inject ambient gradient background on pages that don't already have one */
 function _injectAmbientBg() {
   if (document.getElementById('_ambient-bg')) return;
-  if (document.querySelector('.bg-blobs, .blob-scene')) return; // already has background
+  if (document.querySelector('.bg-blobs, .blob-scene, .bg-grid, .bg-glow-left')) return; // already has background
 
   const bg = document.createElement('div');
   bg.id = '_ambient-bg';

@@ -728,19 +728,22 @@
 
     /* Custom Dropdown Select */
     select.fi {
-      appearance: none;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230D9488' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
-      background-size: 16px 16px;
-      padding-right: 38px;
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      -moz-appearance: none !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230D9488' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 14px center !important;
+      background-size: 16px 16px !important;
+      padding-right: 38px !important;
       cursor: pointer;
     }
 
     html.dark-theme select.fi {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2319C6AD' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2319C6AD' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 14px center !important;
+      background-size: 16px 16px !important;
     }
 
     /* Textarea */
@@ -1439,33 +1442,11 @@
       <div class="lo-brand">
         Diff<span class="lo-brand-accent">Dx</span>
       </div>
-      <div class="lo-engine-tag">
-        <span class="lo-pulse-dot"></span>
-        <span>AI Diagnostic Neural Engine</span>
-      </div>
-
       <!-- Real-Time Telemetry ECG Waveform -->
       <div class="lo-ecg-container">
         <svg class="lo-ecg-svg" viewBox="0 0 300 40">
           <path d="M 0 20 L 70 20 L 80 12 L 90 28 L 100 20 L 115 20 L 125 4 L 135 36 L 145 10 L 155 24 L 165 20 L 190 20 L 200 14 L 210 24 L 220 20 L 300 20" />
         </svg>
-      </div>
-
-      <!-- Sleek Shimmer Progress Bar -->
-      <div class="lo-bar-track">
-        <div class="lo-bar-fill"></div>
-      </div>
-
-      <!-- Timer & Cancel Controls -->
-      <div class="lo-control-row">
-        <div class="lo-elapsed-badge">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span id="history-loader-elapsed">Elapsed: 00:00</span>
-        </div>
-        <button id="history-loader-cancel" class="lo-cancel-btn" type="button">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          <span>Cancel</span>
-        </button>
       </div>
 
       <!-- Dynamic Stage & Clinical Quote -->

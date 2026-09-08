@@ -788,7 +788,7 @@ html.dark-theme .patient-tab.active,
 input[type="text"], input[type="email"], input[type="number"],
 input[type="password"], input[type="tel"], select, textarea {
   font-family: var(--font);
-  background: rgba(255,255,255,.05);
+  background-color: rgba(255,255,255,.05);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
@@ -808,7 +808,7 @@ html.dark-theme select,
 html.dark-theme textarea,
 .bs-search, .fd-search {
   color: var(--text-main, #EAF2FA);
-  background: var(--input-bg, #0C192A);
+  background-color: var(--input-bg, #0C192A);
   border-color: var(--border-card, rgba(150, 180, 210, 0.14));
 }
 html:not(.dark-theme) input[type="text"],
@@ -819,26 +819,26 @@ html:not(.dark-theme) input[type="tel"],
 html:not(.dark-theme) select,
 html:not(.dark-theme) textarea {
   color: var(--text-main, #0F172A);
-  background: var(--input-bg, #FFFFFF);
+  background-color: var(--input-bg, #FFFFFF);
   border-color: var(--input-border, #CBD5E1);
 }
 input:focus, select:focus, textarea:focus {
   border-color: rgba(16,185,129,.5);
   box-shadow: 0 0 0 3px rgba(16,185,129,.12);
-  background: rgba(255,255,255,.07);
+  background-color: rgba(255,255,255,.07);
 }
 html.dark-theme input:focus,
 html.dark-theme select:focus,
 html.dark-theme textarea:focus,
 .bs-search:focus, .fd-search:focus {
-  background: #0E1B2E;
+  background-color: #0E1B2E;
   border-color: #19C6AD;
   box-shadow: 0 0 0 3px rgba(25, 198, 173, 0.15);
 }
 html:not(.dark-theme) input:focus,
 html:not(.dark-theme) select:focus,
 html:not(.dark-theme) textarea:focus {
-  background: #FFFFFF;
+  background-color: #FFFFFF;
   border-color: var(--primary, #0D9488);
   box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
 }

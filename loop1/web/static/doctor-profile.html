@@ -77,7 +77,7 @@
       --btn-nav-bg: rgba(255, 255, 255, 0.04);
       --btn-nav-border: rgba(150, 180, 210, 0.10);
       --btn-nav-text: #EAF2FA;
-      --card-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      --card-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65);
       --surface-1: #0A1525;
       --surface-2: #0E1B2E;
       --surface-3: #13243C;
@@ -86,12 +86,12 @@
       --primary-light: #34D399;
       --primary-dark: #059669;
       --primary-dim: rgba(25, 198, 173, 0.15);
-      --input-bg: #0C192A;
-      --input-border: rgba(150, 180, 210, 0.14);
+      --input-bg: #07101D;
+      --input-border: rgba(150, 180, 210, 0.12);
       --input-focus-border: #19C6AD;
       --input-text: #EAF2FA;
       --glass-border: rgba(150, 180, 210, 0.14);
-      --cover-gradient: linear-gradient(135deg, rgba(25, 198, 173, 0.20) 0%, rgba(76, 143, 245, 0.20) 100%);
+      --cover-gradient: linear-gradient(135deg, rgba(25, 198, 173, 0.08) 0%, rgba(76, 143, 245, 0.08) 100%);
     }
 
     body {
@@ -393,14 +393,14 @@
     }
 
     .provider-cover {
-      height: 90px;
+      height: 80px;
       background: var(--cover-gradient);
       position: relative;
       border-bottom: 1px solid var(--border-subtle);
       overflow: hidden;
     }
     .provider-cover-pattern {
-      position: absolute; inset: 0; opacity: 0.15;
+      position: absolute; inset: 0; opacity: 0.04;
       background-image: radial-gradient(var(--primary) 1px, transparent 1px);
       background-size: 16px 16px;
     }
@@ -587,10 +587,27 @@
       padding: 26px 28px;
       margin-bottom: 22px;
       box-shadow: var(--card-shadow);
-      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
     .profile-section:hover {
       border-color: rgba(25, 198, 173, 0.28);
+    }
+
+    /* Strict Dark-Theme Profile Card Overrides (Deep Sleek Navy Solid Surfaces) */
+    html.dark-theme .provider-card,
+    html.dark-theme .profile-section,
+    html.dark-theme .modal-card,
+    html.dark-theme .save-bar,
+    html.dark-theme .thinking-row {
+      background: #0A1525 !important;
+      border: 1px solid rgba(150, 180, 210, 0.10) !important;
+      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65) !important;
+    }
+
+    html.dark-theme .incomplete-banner {
+      background: rgba(245, 158, 11, 0.05) !important;
+      border: 1px solid rgba(245, 158, 11, 0.22) !important;
+      box-shadow: none !important;
     }
 
     .profile-section-header {

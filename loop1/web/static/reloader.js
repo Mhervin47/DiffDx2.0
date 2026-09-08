@@ -60,14 +60,32 @@
 
     overlay.innerHTML = `
       <div class="reloader-card">
-        <!-- Concentric Heartbeat Rings & Medical Cross -->
+        <!-- Concentric Rings & Original DiffDx Logo -->
         <div class="reloader-emblem-wrap">
           <div class="reloader-pulse-ring"></div>
           <div class="reloader-pulse-ring reloader-pulse-ring-2"></div>
           <div class="reloader-emblem-core">
-            <svg class="reloader-emblem-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v20M2 12h20"></path>
-              <circle cx="12" cy="12" r="3" fill="currentColor" fill-opacity="0.25"></circle>
+            <svg class="reloader-original-logo" width="60" height="60" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="rel-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0fa88d"/>
+                  <stop offset="100%" stop-color="#2879d8"/>
+                </linearGradient>
+                <linearGradient id="rel-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0fa88d"/>
+                  <stop offset="100%" stop-color="#14b8a6"/>
+                </linearGradient>
+                <linearGradient id="rel-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0fa88d"/>
+                  <stop offset="100%" stop-color="#2879d8"/>
+                </linearGradient>
+              </defs>
+              <circle cx="14" cy="14" r="12.5" stroke="url(#rel-ring)" stroke-width="1.3" fill="rgba(15,168,141,.08)"/>
+              <line x1="6" y1="14" x2="13" y2="14" stroke="#0fa88d" stroke-width="2" stroke-linecap="round"/>
+              <path d="M13 14 L19 8.5" stroke="url(#rel-ft)" stroke-width="2" stroke-linecap="round"/>
+              <path d="M13 14 L19 19.5" stroke="url(#rel-fb)" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="20" cy="8.5" r="2" fill="#14b8a6"/>
+              <circle cx="20" cy="19.5" r="2" fill="#2879d8"/>
             </svg>
           </div>
         </div>

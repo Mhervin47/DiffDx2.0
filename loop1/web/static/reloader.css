@@ -186,7 +186,7 @@
 
 .reloader-pulse-ring {
   position: absolute;
-  inset: -12px;
+  inset: -8px;
   border-radius: 50%;
   border-width: 1.5px;
   border-style: solid;
@@ -200,25 +200,20 @@
 
 .reloader-emblem-core {
   position: relative;
-  width: 68px;
-  height: 68px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(6, 182, 212, 0.18) 100%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  animation: reloader-heartbeat 2s ease-in-out infinite;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+  animation: reloader-heartbeat 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 16px rgba(15, 168, 141, 0.45));
 }
 
-.reloader-emblem-icon {
-  width: 34px;
-  height: 34px;
-  color: #10b981;
-}
-#diffdx-page-reloader.reloader-light .reloader-emblem-icon {
-  color: #059669;
+.reloader-original-logo {
+  width: 60px;
+  height: 60px;
+  display: block;
 }
 
 /* Brand Title */

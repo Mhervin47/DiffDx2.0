@@ -197,6 +197,16 @@ def _start_reminder_scheduler():
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
+    # Auto-apply pending migrations to keep SQLite / Postgres in sync with models
+    try:
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config(str(_repo_root / "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", str(_repo_root / "alembic"))
+        command.upgrade(alembic_cfg, "head")
+    except Exception as e:
+        _log.warning("Alembic auto-upgrade skipped or failed: %s", e)
+
     # Doctor seeding moved to scripts/seed_doctors.py (TASK4_SPLIT_ROUTERS.md
     # §2: seeding on every boot is a race in a multi-replica deployment) —
     # run it once against a fresh database instead; wired into

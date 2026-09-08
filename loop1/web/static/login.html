@@ -230,12 +230,18 @@
 
     /* Theme Toggle */
     .theme-toggle-btn {
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 50% !important;
+      box-sizing: border-box !important;
+      padding: 0 !important;
       background: var(--option-bg);
       border: 1px solid var(--border);
       color: var(--text-soft);
@@ -1268,10 +1274,10 @@
 <script>
 if (typeof getAuthToken === 'function' && getAuthToken()) {
   const _u = typeof getAuthUser === 'function' ? getAuthUser() : null;
-  window.location.replace(_u?.role === 'doctor' ? '/doctor-overview.html' : '/');
+  window.location.replace(_u?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html');
 }
 
-const _redirect = new URLSearchParams(location.search).get('next') || '/patient-info';
+const _redirect = new URLSearchParams(location.search).get('next') || '/patient-overview.html';
 
 function selectRole(role) {
   const picker = document.getElementById('role-picker');
@@ -1342,7 +1348,9 @@ async function doSignIn() {
       return;
     }
     if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
-    window.location.replace(data.user?.role === 'doctor' ? '/doctor-overview.html' : _redirect);
+    const nextParam = new URLSearchParams(location.search).get('next');
+    const dest = (nextParam && nextParam !== '/' && nextParam !== '/index.html') ? nextParam : (data.user?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html');
+    window.location.replace(dest);
   } catch (e) { showAlert('signin-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Sign In'; }
 }
@@ -1395,7 +1403,9 @@ async function doVerifyOtp() {
     const data = await res.json();
     if (!res.ok) { showAlert('otp-error', data.detail || 'Verification failed.'); return; }
     if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
-    window.location.href = _redirect;
+    const nextParam = new URLSearchParams(location.search).get('next');
+    const dest = (nextParam && nextParam !== '/' && nextParam !== '/index.html') ? nextParam : (data.user?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html');
+    window.location.replace(dest);
   } catch (e) { showAlert('otp-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Verify & Continue'; }
 }

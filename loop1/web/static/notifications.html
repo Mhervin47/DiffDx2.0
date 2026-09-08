@@ -1,65 +1,365 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark-theme">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DiffDx — Notifications</title>
+  <script>
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.remove('dark-theme');
+    } else {
+      document.documentElement.classList.add('dark-theme');
+    }
+  </script>
   <link rel="stylesheet" href="/reloader.css">
   <script src="/reloader.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Manrope:wght@500;600;700;800&family=Sora:wght@400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="/auth.js"></script>
-  <script src="/notif-toggle.js"></script>
-  <script src="/patient-nav.js"></script>
   <style>
-    /* notifications.html uses standard .page + patient-page-header */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .notif-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    :root {
+      --bg-dark: #F1F5F9;
+      --bg-card: #FFFFFF;
+      --border-card: #CBD5E1;
+      --border: #CBD5E1;
+      --border-subtle: #E2E8F0;
+      --teal-primary: #0D9488;
+      --teal-glow: rgba(13, 148, 136, 0.16);
+      --blue-secondary: #2563EB;
+      --purple-accent: #6D28D9;
+      --amber-accent: #B45309;
+      --text: #0F172A;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --text-dim: #334155;
+      --topbar-bg: rgba(255, 255, 255, 0.96);
+      --topbar-border: rgba(215, 228, 233, 0.75);
+      --card-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+      --surface-1: #FFFFFF;
+      --surface-2: #F8FAFC;
+      --surface-3: #F1F5F9;
+      --surface-4: #E2E8F0;
+      --primary: #0D9488;
+      --primary-light: #14B8A6;
+      --primary-dim: rgba(13, 148, 136, 0.12);
+      --font-heading: 'Sora', sans-serif;
+      --font-body: 'Noto Sans', sans-serif;
+    }
+
+    html.dark-theme {
+      --bg-dark: #050D18;
+      --bg-card: #0A1525;
+      --border-card: rgba(150, 180, 210, 0.10);
+      --border: rgba(150, 180, 210, 0.12);
+      --border-subtle: rgba(150, 180, 210, 0.06);
+      --teal-primary: #19C6AD;
+      --teal-glow: rgba(25, 198, 173, 0.22);
+      --blue-secondary: #4C8FF5;
+      --purple-accent: #8174E8;
+      --amber-accent: #F59E0B;
+      --text: #EAF2FA;
+      --text-main: #EAF2FA;
+      --text-muted: #8FA2B9;
+      --text-dim: #94A3B8;
+      --topbar-bg: rgba(5, 13, 24, 0.88);
+      --topbar-border: rgba(255, 255, 255, 0.08);
+      --card-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      --surface-1: #0A1525;
+      --surface-2: #0E1B2E;
+      --surface-3: #13243C;
+      --surface-4: #192F4D;
+      --primary: #19C6AD;
+      --primary-light: #34D399;
+      --primary-dim: rgba(25, 198, 173, 0.15);
+    }
+
+    body {
+      background: var(--bg-dark) !important;
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* Ambient Background Effects */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(143, 162, 185, 0.07) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(ellipse 85% 65% at 50% 25%, black 40%, transparent 95%);
+    }
+
+    .bg-glow-left {
+      position: fixed; top: -120px; left: -100px; width: 640px; height: 640px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--teal-glow) 0%, transparent 70%);
+      filter: blur(100px); pointer-events: none; z-index: 0;
+      animation: floatGlowLeft 22s ease-in-out infinite alternate;
+    }
+
+    .bg-glow-right {
+      position: fixed; top: 300px; right: -120px; width: 680px; height: 680px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(76, 143, 245, 0.12) 0%, transparent 70%);
+      filter: blur(120px); pointer-events: none; z-index: 0;
+      animation: floatGlowRight 26s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatGlowLeft {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, 30px) scale(1.05); }
+    }
+    @keyframes floatGlowRight {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(-30px, -35px) scale(1.04); }
+    }
+
+    /* Executive Topbar Navigation */
+    .nav {
+      position: sticky !important; top: 0 !important; left: 0 !important; right: 0 !important;
+      transform: none !important;
+      width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      display: flex !important; align-items: center !important; justify-content: space-between !important;
+      padding: 0 38px !important; height: 72px !important; min-height: 72px !important; flex-shrink: 0 !important;
+      z-index: 100 !important;
+      background: var(--topbar-bg) !important;
+      border: none !important;
+      border-bottom: 1px solid var(--border-card) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      box-sizing: border-box !important;
+    }
+    html.dark-theme .nav {
+      background: rgba(9, 13, 22, 0.88) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .brand-section {
+      display: flex; align-items: center; gap: 28px;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 11px; text-decoration: none;
+      transition: transform 0.2s ease;
+    }
+    .brand:hover { transform: translateY(-0.5px); }
+    .brand-icon {
+      filter: drop-shadow(0 0 8px rgba(15, 168, 141, 0.35));
+      transition: transform 0.2s ease, filter 0.2s ease;
+      width: 32px !important; height: 32px !important; flex-shrink: 0 !important;
+    }
+    .brand:hover .brand-icon {
+      transform: scale(1.05); filter: drop-shadow(0 0 12px rgba(15, 168, 141, 0.55));
+    }
+    .brand-name {
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 20px !important; font-weight: 800; letter-spacing: -0.035em;
+      color: var(--text-main); line-height: 1;
+    }
+    .brand-accent {
+      background: linear-gradient(100deg, var(--teal-primary) 0%, var(--blue-secondary) 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* Left-Aligned Patient Navigation Tabs */
+    .patient-nav-tabs {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      background: #ffffff !important;
+      padding: 4px 6px !important;
+      border-radius: 999px !important;
+      border: 1px solid #dfe9ed !important;
+      box-shadow: 0 4px 16px rgba(27, 67, 84, 0.06) !important;
+      margin: 0 !important;
+    }
+    html.dark-theme .patient-nav-tabs {
+      background: rgba(13, 20, 38, 0.45) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .patient-nav-tab {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 7px !important;
+      padding: 6px 14px !important;
+      border-radius: 999px !important;
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 12.5px !important;
+      font-weight: 700 !important;
+      line-height: 1 !important;
+      color: #31445f !important;
+      transition: all 0.2s ease !important;
+      text-decoration: none !important;
+      white-space: nowrap !important;
+      box-sizing: border-box !important;
+    }
+    html.dark-theme .patient-nav-tab {
+      color: #cbd5e1 !important;
+    }
+    .patient-nav-tab:hover {
+      color: var(--teal-primary) !important;
+      background: rgba(15, 168, 141, 0.08) !important;
+    }
+    html.dark-theme .patient-nav-tab:hover {
+      color: #14b8a6 !important;
+      background: rgba(20, 184, 166, 0.12) !important;
+    }
+    .patient-nav-tab.active {
+      background: var(--teal-primary) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 10px rgba(15, 168, 141, 0.28) !important;
+    }
+    html.dark-theme .patient-nav-tab.active {
+      background: #14b8a6 !important;
+      color: #03141f !important;
+      box-shadow: 0 2px 14px rgba(20, 184, 166, 0.35) !important;
+    }
+    .patient-nav-tab svg {
+      width: 14px !important; height: 14px !important; flex-shrink: 0 !important;
+    }
+
+    .nav-right {
+      display: flex; align-items: center; gap: 12px; margin-left: auto;
+    }
+
+    .theme-toggle-btn,
+    #theme-toggle,
+    #nav-notif-btn,
+    .nav-icon-btn,
+    .nav-refresh-btn,
+    #nav-refill-btn {
+      width: 38px !important; height: 38px !important;
+      min-width: 38px !important; min-height: 38px !important;
+      max-width: 38px !important; max-height: 38px !important;
+      display: inline-flex !important; align-items: center !important; justify-content: center !important;
+      border-radius: 50% !important;
+      background: var(--surface-1) !important;
+      border: 1px solid var(--border-card) !important;
+      color: var(--text-dim) !important;
+      cursor: pointer !important;
+      box-shadow: var(--card-shadow) !important;
+      transition: all .2s ease !important;
+      flex-shrink: 0 !important;
+      box-sizing: border-box !important;
+      padding: 0 !important;
+      text-decoration: none !important;
+    }
+    html.dark-theme .theme-toggle-btn,
+    html.dark-theme #theme-toggle,
+    html.dark-theme #nav-notif-btn,
+    html.dark-theme .nav-icon-btn,
+    html.dark-theme .nav-refresh-btn,
+    html.dark-theme #nav-refill-btn {
+      background: rgba(13, 20, 38, 0.45) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      color: #cbd5e1 !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+    .theme-toggle-btn:hover,
+    #theme-toggle:hover,
+    #nav-notif-btn:hover,
+    .nav-icon-btn:hover,
+    .nav-refresh-btn:hover,
+    #nav-refill-btn:hover {
+      border-color: var(--teal-primary) !important;
+      color: var(--teal-primary) !important;
+      transform: scale(1.06) !important;
+    }
+    html.dark-theme .sun-icon { display: block !important; }
+    html.dark-theme .moon-icon { display: none !important; }
+    html:not(.dark-theme) .sun-icon { display: none !important; }
+    html:not(.dark-theme) .moon-icon { display: block !important; }
+
+    /* Page Layout Container */
+    .notifications-page-wrapper {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 36px 28px 100px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .patient-page-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .patient-page-title {
+      font-family: var(--font-heading);
+      font-size: 30px; font-weight: 800; letter-spacing: -.025em;
+      color: var(--text-main); margin-bottom: 6px;
+    }
+    .patient-page-sub {
+      font-size: 14.5px; color: var(--text-muted); line-height: 1.5;
+    }
+
+    /* Notification Filters */
+    .notif-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
     .notif-filter {
-      padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 700;
-      border: 1px solid rgba(255,255,255,.1); color: var(--text-muted);
-      background: rgba(255,255,255,.03); cursor: pointer; transition: all .15s;
+      padding: 7px 16px; border-radius: 99px; font-size: 12.5px; font-weight: 700;
+      border: 1px solid var(--border-card); color: var(--text-muted);
+      background: var(--surface-2); cursor: pointer; transition: all .18s;
+      font-family: var(--font-heading);
     }
-    .notif-filter:hover { border-color: rgba(0,180,216,.3); color: var(--text); }
+    .notif-filter:hover { border-color: var(--teal-primary); color: var(--text-main); }
     .notif-filter.active {
-      background: rgba(0,180,216,.12); color: var(--primary);
-      border-color: rgba(0,180,216,.4);
+      background: var(--primary-dim); color: var(--teal-primary);
+      border-color: var(--teal-primary);
+      box-shadow: 0 0 16px var(--teal-glow);
     }
 
-    .notif-list { display: flex; flex-direction: column; gap: 10px; }
+    /* Notification List & Cards */
+    .notif-list { display: flex; flex-direction: column; gap: 12px; }
 
     .notif-card {
-      display: flex; align-items: flex-start; gap: 14px;
-      padding: 14px 16px; border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.07);
-      background: rgba(255,255,255,.025);
-      transition: border-color .15s, background .15s;
+      display: flex; align-items: flex-start; gap: 16px;
+      padding: 18px 20px; border-radius: 16px;
+      border: 1px solid var(--border-card);
+      background: var(--bg-card);
+      box-shadow: var(--card-shadow);
+      transition: border-color .18s, background .18s, transform .15s, box-shadow .18s;
       text-decoration: none; color: inherit;
       position: relative;
     }
-    .notif-card:hover { border-color: rgba(0,180,216,.3); background: rgba(0,180,216,.04); }
-    .notif-card.unread { border-left: 3px solid var(--primary); padding-left: 14px; }
-    .notif-card.unread .notif-icon { box-shadow: 0 0 0 3px rgba(0,180,216,.15); }
+    .notif-card:hover {
+      border-color: var(--teal-primary);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+    }
+    html.dark-theme .notif-card:hover {
+      box-shadow: 0 14px 36px rgba(0,0,0,0.4);
+      border-color: rgba(25, 198, 173, 0.4);
+    }
+    .notif-card.unread { border-left: 4px solid var(--teal-primary); }
+    .notif-card.unread .notif-icon { box-shadow: 0 0 0 3px var(--teal-glow); }
     .notif-card .notif-dismiss { opacity: 0; transition: opacity .15s; }
     .notif-card:hover .notif-dismiss { opacity: 1; }
 
     .notif-icon {
-      width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
     }
-    .notif-icon svg { width: 18px; height: 18px; }
-    .ni-test     { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.2); color:#f59e0b; }
-    .ni-referral { background: rgba(0,180,216,.1);  border: 1px solid rgba(0,180,216,.2);  color:#00b4d8; }
-    .ni-rx       { background: rgba(139,92,246,.1); border: 1px solid rgba(139,92,246,.2); color:#8b5cf6; }
-    .ni-appt     { background: rgba(78,222,163,.1); border: 1px solid rgba(78,222,163,.2); color:#4edea3; }
-    .ni-message  { background: rgba(255,107,107,.1);border: 1px solid rgba(255,107,107,.2);color:#ff6b6b; }
-    .ni-results  { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.2); color:#10b981; }
+    .notif-icon svg { width: 20px; height: 20px; }
+    .ni-test     { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.25); color:#f59e0b; }
+    .ni-referral { background: rgba(13,148,136,.12); border: 1px solid rgba(13,148,136,.25); color:var(--teal-primary); }
+    .ni-rx       { background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.25); color:#8b5cf6; }
+    .ni-appt     { background: rgba(78,222,163,.12); border: 1px solid rgba(78,222,163,.25); color:#10b981; }
+    .ni-message  { background: rgba(239,68,68,.12);  border: 1px solid rgba(239,68,68,.25); color:#ef4444; }
+    .ni-results  { background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.25); color:#10b981; }
 
     .notif-body { flex: 1; min-width: 0; }
-    .notif-heading { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
-    .notif-detail  { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-    .notif-time    { font-size: 11px; color: var(--text-muted); flex-shrink: 0; margin-top: 2px; white-space: nowrap; }
+    .notif-heading { font-family: var(--font-heading); font-size: 14.5px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+    .notif-detail  { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+    .notif-time    { font-size: 11.5px; color: var(--text-muted); flex-shrink: 0; margin-top: 2px; white-space: nowrap; font-weight: 600; }
     .notif-badge   {
       display: inline-block; font-size: 10px; font-weight: 700;
       padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: middle;
@@ -68,60 +368,113 @@
     .notif-empty {
       text-align: center; padding: 60px 20px;
       color: var(--text-muted); font-size: 14px;
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 20px; box-shadow: var(--card-shadow);
     }
     .notif-empty svg { margin-bottom: 12px; opacity: .35; }
 
     .mark-all-btn {
-      font-size: 12px; color: var(--primary); background: none; border: none;
-      cursor: pointer; padding: 0; font-weight: 600;
+      font-size: 12.5px; color: var(--teal-primary); background: none; border: none;
+      cursor: pointer; padding: 0; font-weight: 700; font-family: var(--font-heading);
     }
     .mark-all-btn:hover { text-decoration: underline; }
 
     .notif-dismiss {
-      flex-shrink: 0; width: 26px; height: 26px; border-radius: 7px;
-      border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.03);
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px;
+      border: 1px solid var(--border-card); background: var(--surface-2);
       color: var(--text-muted); display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: all .15s; font-size: 13px; line-height: 1;
+      cursor: pointer; transition: all .15s; font-size: 14px; line-height: 1;
       margin-left: 8px; text-decoration: none;
     }
     .notif-dismiss:hover { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); color: #ef4444; }
 
     .notif-toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: var(--surface-2); border: 1px solid rgba(0,180,216,.3); border-radius: 10px;
-      padding: 10px 18px; font-size: 13px; color: var(--text); font-weight: 600;
-      box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 9999;
+      background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 12px;
+      padding: 12px 22px; font-size: 13.5px; color: var(--text-main); font-weight: 600;
+      box-shadow: 0 12px 36px rgba(0,0,0,.35); z-index: 9999;
       opacity: 0; transition: opacity .2s; pointer-events: none;
     }
-    .notif-toast.show { opacity: 1; }
   </style>
 </head>
 <body>
+
+<!-- Ambient Grid & Glow Effects -->
+<div class="bg-grid"></div>
+<div class="bg-glow-left"></div>
+<div class="bg-glow-right"></div>
+
+<!-- Top Executive Navigation Bar -->
 <nav class="nav">
-  <div class="nav-brand">
-    <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px rgba(16,185,129,.5))">
-      <defs>
-        <linearGradient id="nf-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-        <linearGradient id="nf-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#34d399"/></linearGradient>
-        <linearGradient id="nf-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-      </defs>
-      <circle cx="14" cy="14" r="12.5" stroke="url(#nf-ring)" stroke-width="1.25" fill="rgba(16,185,129,.08)"/>
-      <line x1="6" y1="14" x2="13" y2="14" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-      <path d="M13 14 L19 8.5" stroke="url(#nf-ft)" stroke-width="2" stroke-linecap="round"/>
-      <path d="M13 14 L19 19.5" stroke="url(#nf-fb)" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="20" cy="8.5" r="2" fill="#34d399"/>
-      <circle cx="20" cy="19.5" r="2" fill="#a855f7"/>
-    </svg>
-    <span style="font-family:'Sora',sans-serif;font-size:15px;font-weight:800;letter-spacing:-.03em;color:#f1f5f9;">Diff<span style="background:linear-gradient(90deg,#10b981,#34d399);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">/Dx</span></span>
+  <div class="brand-section">
+    <a href="/patient-overview.html" class="brand" title="DiffDx Overview">
+      <svg class="brand-icon" width="32" height="32" viewBox="0 0 28 28" fill="none">
+        <defs>
+          <linearGradient id="nf-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0fa88d" />
+            <stop offset="100%" stop-color="#2879d8" />
+          </linearGradient>
+          <linearGradient id="nf-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0fa88d" />
+            <stop offset="100%" stop-color="#14b8a6" />
+          </linearGradient>
+          <linearGradient id="nf-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0fa88d" />
+            <stop offset="100%" stop-color="#2879d8" />
+          </linearGradient>
+        </defs>
+        <circle cx="14" cy="14" r="12.5" stroke="url(#nf-ring)" stroke-width="1.3" fill="rgba(15,168,141,.08)" />
+        <line x1="6" y1="14" x2="13" y2="14" stroke="#0fa88d" stroke-width="2" stroke-linecap="round" />
+        <path d="M13 14 L19 8.5" stroke="url(#nf-ft)" stroke-width="2" stroke-linecap="round" />
+        <path d="M13 14 L19 19.5" stroke="url(#nf-fb)" stroke-width="2" stroke-linecap="round" />
+        <circle cx="20" cy="8.5" r="2" fill="#14b8a6" />
+        <circle cx="20" cy="19.5" r="2" fill="#2879d8" />
+      </svg>
+      <span class="brand-name">Diff<span class="brand-accent">/Dx</span></span>
+    </a>
+
+    <!-- Left-Aligned Patient Navigation Tabs -->
+    <div class="patient-nav-tabs patient-topbar-tabs" id="patient-nav-tabs">
+      <a href="/patient-overview.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Overview</span>
+      </a>
+      <a href="/my-sessions.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Sessions</span>
+      </a>
+      <a href="/messages.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Messages</span>
+      </a>
+      <a href="/book-slot.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Book</span>
+      </a>
+      <a href="/health-history.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+        <span>History</span>
+      </a>
+      <a href="/my-profile.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Profile</span>
+      </a>
+    </div>
   </div>
-  <div class="nav-spacer"></div>
-  <div id="nav-auth" style="display:flex;align-items:center;gap:6px;"></div>
+
+  <div class="nav-right">
+    <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <div id="nav-auth" style="display:flex;align-items:center;gap:8px;"></div>
+  </div>
 </nav>
 
-<div class="page" style="max-width:840px;">
+<main class="notifications-page-wrapper">
   <div class="patient-page-header">
     <div>
-      <div class="patient-page-title">Notifications</div>
+      <h1 class="patient-page-title">Notifications</h1>
       <div class="patient-page-sub" id="notif-sub">Loading…</div>
     </div>
     <button class="mark-all-btn" onclick="markAllSeen()">Clear all</button>
@@ -144,7 +497,7 @@
       <div>Loading…</div>
     </div>
   </div>
-</div>
+</main>
 <div class="notif-toast" id="notif-toast"></div>
 
 <script>

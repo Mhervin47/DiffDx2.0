@@ -218,11 +218,19 @@
 
     /* Theme Toggle Button */
     .theme-toggle-btn {
-      width: 36px; height: 36px; border-radius: 50%;
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
+      border-radius: 50% !important;
+      box-sizing: border-box !important;
+      padding: 0 !important;
       background: var(--bg-card);
       border: 1px solid var(--border-card);
       color: var(--text-main); cursor: pointer;
-      display: inline-flex; align-items: center; justify-content: center;
+      display: inline-flex !important; align-items: center !important; justify-content: center !important;
       transition: all 0.2s ease; outline: none; flex-shrink: 0;
     }
     .theme-toggle-btn:hover {

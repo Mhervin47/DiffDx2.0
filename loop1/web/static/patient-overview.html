@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DiffDx — Patient Health Overview & Clinical AI</title>
+
+  <script>
+    (function () {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark-theme');
+      } else {
+        document.documentElement.classList.remove('dark-theme');
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="/reloader.css">
+  <script src="/reloader.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Manrope:wght@500;600;700;800&family=Noto+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <script src="/auth.js"></script>
+
+  <style>
+    /* =========================================================
+       RESET & BASE DESIGN SYSTEM
+    ========================================================= */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --navy: #10233f;
+      --navy-soft: #31445f;
+      --muted: #6b7c93;
+
+      --teal: #0fa88d;
+      --teal-dark: #07816e;
+      --teal-light: #dff8f2;
+
+      --blue: #2879d8;
+      --blue-light: #eaf3ff;
+
+      --purple: #7667d9;
+      --purple-light: #f0eeff;
+
+      --white: #ffffff;
+      --surface: #f8fbfc;
+      --surface-2: #f2f7f8;
+
+      --border: #dfe9ed;
+      --border-soft: #e9f0f3;
+
+      --shadow-sm: 0 4px 16px rgba(27, 67, 84, 0.06);
+      --shadow-md: 0 18px 50px rgba(24, 67, 86, 0.10);
+      --shadow-lg: 0 30px 80px rgba(26, 71, 91, 0.13);
+
+      --font: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-heading: "Manrope", sans-serif;
+      --font-hindi: 'Noto Sans', sans-serif;
+
+      /* THEME VARIABLES - LIGHT */
+      --body-bg: radial-gradient(circle at 8% 18%, rgba(15, 168, 141, 0.055), transparent 28%),
+                 radial-gradient(circle at 92% 28%, rgba(40, 121, 216, 0.055), transparent 30%),
+                 linear-gradient(180deg, #ffffff 0%, #fbfdfd 48%, #f6fafb 100%);
+      --text-color: var(--navy);
+      --text-soft: var(--navy-soft);
+      --card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 253, 0.94));
+      --card-border: rgba(205, 224, 230, 0.95);
+      --feature-bg: rgba(255, 255, 255, 0.88);
+      --option-bg: #ffffff;
+      --option-border: #e7eef1;
+      --topbar-bg: rgba(255, 255, 255, 0.88);
+      --topbar-border: rgba(215, 228, 233, 0.75);
+      --marquee-bg: rgba(255, 255, 255, 0.92);
+      --glass: rgba(0, 0, 0, 0.04);
+      --glass-border: rgba(0, 0, 0, 0.08);
+    }
+
+    .dark-theme {
+      --navy: #f1f5f9;
+      --navy-soft: #cbd5e1;
+      --muted: #94a3b8;
+
+      --teal: #14b8a6;
+      --teal-dark: #0d9488;
+      --teal-light: rgba(20, 184, 166, 0.15);
+
+      --blue: #3b82f6;
+      --blue-light: rgba(59, 130, 246, 0.15);
+
+      --purple: #8b5cf6;
+      --purple-light: rgba(139, 92, 246, 0.15);
+
+      --white: #0f172a;
+      --border: rgba(255, 255, 255, 0.1);
+      --border-soft: rgba(255, 255, 255, 0.06);
+
+      --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 18px 50px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.6);
+
+      --body-bg: radial-gradient(circle at 8% 18%, rgba(20, 184, 166, 0.09), transparent 35%),
+                 radial-gradient(circle at 92% 28%, rgba(59, 130, 246, 0.09), transparent 35%),
+                 linear-gradient(180deg, #090d16 0%, #0d1220 50%, #080b13 100%);
+      --text-color: #f1f5f9;
+      --text-soft: #cbd5e1;
+      --card-bg: rgba(13, 20, 38, 0.75);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --feature-bg: rgba(13, 20, 38, 0.55);
+      --option-bg: rgba(13, 20, 38, 0.45);
+      --option-border: rgba(255, 255, 255, 0.08);
+      --topbar-bg: rgba(9, 13, 22, 0.88);
+      --topbar-border: rgba(255, 255, 255, 0.08);
+      --marquee-bg: rgba(9, 13, 22, 0.92);
+      --glass: rgba(255, 255, 255, 0.06);
+      --glass-border: rgba(255, 255, 255, 0.12);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100vh;
+      overflow-x: hidden;
+      font-family: var(--font);
+      color: var(--text-color);
+      background: var(--body-bg);
+      transition: background 0.3s ease, color 0.3s ease;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button, a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Ambient lighting */
+    .background-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(2px);
+    }
+
+    .orb-one {
+      width: 540px;
+      height: 540px;
+      top: -150px;
+      left: -130px;
+      background: radial-gradient(circle, rgba(15, 168, 141, 0.12) 0%, rgba(15, 168, 141, 0) 70%);
+      animation: pulse-soft 9s infinite ease-in-out alternate;
+    }
+
+    .orb-two {
+      width: 600px;
+      height: 600px;
+      top: 15%;
+      right: -160px;
+      background: radial-gradient(circle, rgba(40, 121, 216, 0.10) 0%, rgba(40, 121, 216, 0) 70%);
+      animation: pulse-soft 12s infinite ease-in-out alternate-reverse;
+    }
+
+    .orb-three {
+      width: 480px;
+      height: 480px;
+      bottom: -100px;
+      left: 30%;
+      background: radial-gradient(circle, rgba(118, 103, 217, 0.08) 0%, rgba(118, 103, 217, 0) 70%);
+      animation: pulse-soft 11s infinite ease-in-out alternate;
+    }
+
+    @keyframes pulse-soft {
+      0% { transform: scale(1) translate(0, 0); opacity: 0.7; }
+      100% { transform: scale(1.1) translate(25px, 20px); opacity: 1; }
+    }
+
+    /* TOPBAR */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4vw;
+      background: var(--topbar-bg);
+      border-bottom: 1px solid var(--topbar-border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: all 0.3s ease;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      transition: transform 0.2s ease;
+    }
+
+    .brand:hover {
+      transform: translateY(-1px);
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-color);
+    }
+
+    .brand-accent {
+      color: var(--teal);
+    }
+
+    /* Patient navigation tabs */
+    .patient-topbar-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--option-bg, var(--surface-2));
+      padding: 4px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .patient-topbar-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-family: var(--font-heading);
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-soft, var(--muted));
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .patient-topbar-tab:hover {
+      color: var(--teal);
+      background: rgba(15, 168, 141, 0.08);
+    }
+
+    .patient-topbar-tab.active {
+      background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 10px rgba(15, 168, 141, 0.3);
+    }
+
+    .dark-theme .patient-topbar-tab.active {
+      background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 10px rgba(15, 168, 141, 0.3);
+    }
+
+    @media (max-width: 1100px) {
+      .patient-topbar-tabs span { display: none; }
+      .patient-topbar-tab { padding: 7px; }
+    }
+    @media (max-width: 820px) {
+      .patient-topbar-tabs { display: none; }
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-toggle-btn,
+    #theme-toggle,
+    .nav-icon-btn,
+    #nav-notif-btn,
+    .nav-refresh-btn,
+    #nav-refill-btn {
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
+      border-radius: 50% !important;
+      border: 1px solid var(--border) !important;
+      background: var(--surface-2) !important;
+      color: var(--text-color) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      box-shadow: var(--shadow-sm) !important;
+      transition: all 0.2s ease !important;
+      position: relative !important;
+      text-decoration: none !important;
+      flex-shrink: 0 !important;
+      box-sizing: border-box !important;
+      padding: 0 !important;
+    }
+
+    .theme-toggle-btn:hover,
+    #theme-toggle:hover,
+    .nav-icon-btn:hover,
+    #nav-notif-btn:hover,
+    .nav-refresh-btn:hover,
+    #nav-refill-btn:hover {
+      border-color: var(--teal) !important;
+      transform: scale(1.05) !important;
+      background: var(--option-bg) !important;
+      color: var(--teal) !important;
+    }
+
+    .sun-icon { display: none; }
+    .moon-icon { display: block; }
+    .dark-theme .sun-icon { display: block; }
+    .dark-theme .moon-icon { display: none; }
+
+    #nav-auth {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #nav-auth .btn-ghost {
+      background: var(--option-bg) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text-color) !important;
+      box-shadow: var(--shadow-sm);
+      padding: 9px 20px !important;
+      border-radius: 999px !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px;
+      line-height: 1;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    #nav-auth .btn-ghost:hover {
+      transform: translateY(-1px);
+      color: var(--teal) !important;
+      border-color: rgba(15, 168, 141, 0.4) !important;
+      box-shadow: var(--shadow-md);
+    }
+
+    .nav-user-menu {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-user-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      padding: 4px 12px 4px 4px;
+      cursor: pointer;
+      color: var(--text-soft);
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .nav-user-btn:hover {
+      background: var(--option-bg);
+      border-color: var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #d8f7f0, #e9f2ff);
+      color: var(--teal-dark);
+      font-size: 12px;
+      font-weight: 800;
+      font-family: var(--font-heading);
+      box-shadow: inset 0 0 0 1px rgba(15, 168, 141, 0.2);
+    }
+
+    .dark-theme .nav-user-avatar {
+      background: linear-gradient(135deg, rgba(20, 184, 166, 0.25), rgba(59, 130, 246, 0.25));
+      color: #5eead4;
+    }
+
+    .nav-user-name {
+      color: var(--text-color);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .nav-user-dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      min-width: 230px;
+      overflow: hidden;
+      background: var(--option-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 9999;
+    }
+
+    .dark-theme .nav-user-dropdown {
+      background: rgba(13, 20, 38, 0.98);
+    }
+
+    .nav-user-dropdown.open {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nav-user-dropdown-header {
+      padding: 14px 17px 12px;
+      border-bottom: 1px solid var(--border-soft);
+      color: var(--text-color);
+    }
+
+    .nav-user-dropdown-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      padding: 11px 17px;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      text-align: left;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-soft);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+      text-decoration: none;
+    }
+
+    .nav-user-dropdown-item:hover {
+      background: rgba(15, 168, 141, 0.08);
+      color: var(--teal-dark);
+    }
+
+    .dark-theme .nav-user-dropdown-item:hover {
+      background: rgba(20, 184, 166, 0.12);
+      color: var(--teal);
+    }
+
+    .nav-user-dropdown-item--danger:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    /* HERO SECTION */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: calc(100vh - 72px);
+      display: flex;
+      align-items: center;
+      padding: 105px 7vw 80px;
+      overflow: hidden;
+    }
+
+    .hero-inner {
+      width: 100%;
+      max-width: 1380px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(480px, 0.9fr);
+      align-items: center;
+      gap: 65px;
+    }
+
+    /* LEFT HERO CONTENT */
+    .hero-content {
+      position: relative;
+      z-index: 5;
+      max-width: 720px;
+      padding-top: 14px;
+    }
+
+    .hero-title {
+      font-family: var(--font-heading);
+      font-size: clamp(42px, 5.4vw, 70px);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+      margin-bottom: 24px;
+    }
+
+    .hero-title-line1 {
+      display: block;
+      color: var(--text-color);
+    }
+
+    .hero-title-line2 {
+      display: block;
+      background: linear-gradient(135deg, #0fa88d 0%, #15b79e 45%, #2879d8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .dark-theme .hero-title-line2 {
+      background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 45%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 1.35vw, 19.5px);
+      line-height: 1.6;
+      color: var(--text-soft);
+      max-width: 590px;
+      margin-bottom: 44px;
+    }
+
+    .hero-sub-accent {
+      color: var(--teal-dark);
+      font-weight: 700;
+    }
+
+    .dark-theme .hero-sub-accent {
+      color: #2dd4bf;
+    }
+
+    /* CTA GROUP (Start diagnosis full button, rest two buttons on downside) */
+    .cta-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 28px;
+      margin-bottom: 0;
+      width: 100%;
+      max-width: 580px;
+    }
+
+    .start-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      height: 58px;
+      padding: 0 32px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #0fa88d 0%, #0b9c85 55%, #0b8e9d 100%);
+      color: #ffffff !important;
+      font-family: var(--font-heading);
+      font-size: 16.5px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 12px 28px rgba(15, 168, 141, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+      cursor: pointer;
+      box-sizing: border-box;
+      white-space: nowrap;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 18px 36px rgba(15, 168, 141, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+
+    .start-btn:active {
+      transform: translateY(-1px);
+    }
+
+    .cta-subrow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .btn-secondary {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex: 1;
+      height: 54px;
+      padding: 0 24px;
+      border-radius: 14px;
+      background: var(--option-bg);
+      border: 1px solid var(--border);
+      color: var(--text-color);
+      font-family: var(--font-heading);
+      font-size: 15.5px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+      text-decoration: none;
+      box-sizing: border-box;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-3px);
+      border-color: rgba(15, 168, 141, 0.4);
+      color: var(--teal);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary:active {
+      transform: translateY(-1px);
+    }
+
+    .start-btn svg {
+      flex-shrink: 0;
+      width: 23px;
+      height: 23px;
+    }
+
+    .btn-secondary svg {
+      flex-shrink: 0;
+      width: 21px;
+      height: 21px;
+    }
+
+    /* RIGHT VISUAL - 3D PERSPECTIVE CARD */
+    .hero-visual {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 1200px;
+    }
+
+    .visual-halo {
+      position: absolute;
+      width: 480px;
+      height: 480px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(15, 168, 141, 0.16) 0%, rgba(40, 121, 216, 0.10) 45%, transparent 70%);
+      filter: blur(40px);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .visual-ring {
+      position: absolute;
+      width: 530px;
+      height: 530px;
+      border-radius: 50%;
+      border: 1px dashed rgba(15, 168, 141, 0.25);
+      z-index: 1;
+      animation: rotate-ring 40s infinite linear;
+      pointer-events: none;
+    }
+
+    @keyframes rotate-ring {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .diagnosis-card {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+      max-width: 470px;
+      padding: 26px 28px;
+      border-radius: 26px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 30px 70px rgba(27, 67, 84, 0.12), 0 10px 25px rgba(27, 67, 84, 0.06);
+      transform: rotateY(-6deg) rotateX(4deg);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .diagnosis-card:hover {
+      transform: rotateY(-2deg) rotateX(2deg) translateY(-4px);
+      box-shadow: 0 36px 85px rgba(27, 67, 84, 0.18), 0 14px 35px rgba(15, 168, 141, 0.14);
+    }
+
+    .diagnosis-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .diagnosis-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .mini-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: rgba(15, 168, 141, 0.12);
+      color: var(--teal-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dark-theme .mini-logo {
+      background: rgba(20, 184, 166, 0.18);
+      color: #2dd4bf;
+    }
+
+    .diagnosis-title {
+      font-family: var(--font-heading);
+      font-size: 14.5px;
+      font-weight: 800;
+      color: var(--text-color);
+      letter-spacing: -0.01em;
+    }
+
+    .diagnosis-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.1);
+      color: #059669;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .dark-theme .diagnosis-status {
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+    }
+
+    /* Patient presentation summary inside card */
+    .patient-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      border-radius: 16px;
+      background: var(--option-bg);
+      border: 1px solid var(--border);
+    }
+
+    .patient-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .patient-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(15, 168, 141, 0.1);
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .patient-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .patient-value {
+      margin-top: 2px;
+      color: var(--text-color);
+      font-size: 12.5px;
+      font-weight: 800;
+    }
+
+    .patient-time {
+      color: var(--teal-dark);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      background: rgba(15, 168, 141, 0.1);
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .dark-theme .patient-time {
+      color: #5eead4;
+      background: rgba(20, 184, 166, 0.18);
+    }
+
+    /* Conditions progress bars */
+    .analysis-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 16px 3px 10px;
+    }
+
+    .analysis-label strong {
+      font-family: var(--font-heading);
+      font-size: 11.5px;
+      font-weight: 800;
+      color: var(--text-color);
+    }
+
+    .analysis-label span {
+      color: var(--muted);
+      font-size: 9.5px;
+      font-weight: 600;
+    }
+
+    .diagnosis-option {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 12px;
+      margin-bottom: 8px;
+      border-radius: 13px;
+      background: var(--option-bg);
+      border: 1px solid var(--option-border);
+      box-shadow: 0 3px 10px rgba(25, 70, 89, 0.025);
+    }
+
+    .option-indicator {
+      width: 31px;
+      height: 31px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .option-green { background: #e6f9f4; color: #0d9488; }
+    .option-blue  { background: #eff6ff; color: #2563eb; }
+    .option-purple{ background: #faf5ff; color: #9333ea; }
+
+    .dark-theme .option-green { background: rgba(20, 184, 166, 0.16); color: #2dd4bf; }
+    .dark-theme .option-blue  { background: rgba(59, 130, 246, 0.16); color: #60a5fa; }
+    .dark-theme .option-purple{ background: rgba(168, 85, 247, 0.16); color: #c084fc; }
+
+    .option-info { flex: 1; }
+    .option-name {
+      color: var(--text-color);
+      font-size: 11.5px;
+      font-weight: 800;
+    }
+
+    .option-bar {
+      height: 6px;
+      margin-top: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #edf2f4;
+      position: relative;
+    }
+
+    .dark-theme .option-bar {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .option-progress {
+      height: 100%;
+      border-radius: inherit;
+      position: relative;
+    }
+
+    .progress-green { width: 82%; background: linear-gradient(90deg, #10b981, #14b8a6); }
+    .progress-blue  { width: 61%; background: linear-gradient(90deg, #3b82f6, #0ea5e9); }
+    .progress-purple{ width: 37%; background: linear-gradient(90deg, #8b5cf6, #a855f7); }
+
+    .option-percent {
+      color: var(--text-color);
+      font-size: 12px;
+      font-weight: 800;
+      min-width: 32px;
+      text-align: right;
+    }
+
+    .card-footer-action {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--option-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-footer-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: var(--teal);
+      text-decoration: none;
+      transition: gap 0.2s ease;
+    }
+
+    .card-footer-link:hover {
+      gap: 9px;
+      color: var(--teal-dark);
+    }
+
+    /* Floating badges on right visual */
+    .floating-badge {
+      position: absolute;
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 16px;
+      border-radius: 15px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 16px 38px rgba(29, 73, 92, 0.12);
+      color: var(--text-color);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .badge-secure {
+      top: -24px;
+      right: -20px;
+      animation: float-y 5s infinite ease-in-out;
+    }
+
+    .badge-reasoning {
+      bottom: -18px;
+      left: -24px;
+      animation: float-y 6s infinite ease-in-out 1s;
+    }
+
+    @keyframes float-y {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .floating-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .secure-icon { background: #dcfce7; color: #15803d; }
+    .reasoning-icon { background: #e0f2fe; color: #0369a1; }
+
+    /* LANGUAGE MARQUEE STRIP */
+    .lang-strip-wrapper {
+      position: relative;
+      z-index: 10;
+      margin-top: 10px;
+      border-top: 1px solid var(--border);
+      background: var(--marquee-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      overflow: hidden;
+      padding: 14px 0;
+    }
+
+    .lang-strip {
+      display: flex;
+      overflow: hidden;
+      user-select: none;
+      mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
+    }
+
+    .lang-strip-track {
+      display: flex;
+      align-items: center;
+      gap: 36px;
+      white-space: nowrap;
+      animation: marquee-scroll 45s linear infinite;
+    }
+
+    @keyframes marquee-scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    .lang-item {
+      font-family: var(--font-hindi);
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color 0.2s ease;
+    }
+
+    .lang-item:hover { color: var(--teal); }
+    .lang-sep { font-size: 7px; color: var(--border); }
+
+    /* RESPONSIVE */
+    @media (max-width: 1080px) {
+      .hero-inner {
+        grid-template-columns: 1fr;
+        gap: 50px;
+      }
+      .hero {
+        padding: 90px 5vw 60px;
+      }
+      .hero-content {
+        max-width: 100%;
+        text-align: center;
+      }
+      .hero-sub {
+        margin: 0 auto 36px;
+      }
+      .cta-group {
+        margin: 20px auto 0;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .cta-subrow {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .start-btn,
+      .btn-secondary {
+        width: 100%;
+        min-width: unset;
+      }
+      .diagnosis-card {
+        padding: 20px 18px;
+      }
+      .badge-secure, .badge-reasoning {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient lighting backgrounds -->
+  <div class="background-layer" aria-hidden="true">
+    <div class="orb orb-one"></div>
+    <div class="orb orb-two"></div>
+    <div class="orb orb-three"></div>
+  </div>
+
+  <!-- TOPBAR / NAVIGATION -->
+  <header class="topbar">
+    <div class="brand-section">
+      <a href="/patient-overview.html" class="brand" title="DiffDx Overview">
+        <svg class="brand-icon" width="30" height="30" viewBox="0 0 28 28" fill="none">
+          <defs>
+            <linearGradient id="p-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0fa88d" />
+              <stop offset="100%" stop-color="#2879d8" />
+            </linearGradient>
+            <linearGradient id="p-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0fa88d" />
+              <stop offset="100%" stop-color="#14b8a6" />
+            </linearGradient>
+            <linearGradient id="p-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0fa88d" />
+              <stop offset="100%" stop-color="#2879d8" />
+            </linearGradient>
+          </defs>
+          <circle cx="14" cy="14" r="12.5" stroke="url(#p-ring)" stroke-width="1.3" fill="rgba(15,168,141,.08)" />
+          <line x1="6" y1="14" x2="13" y2="14" stroke="#0fa88d" stroke-width="2" stroke-linecap="round" />
+          <path d="M13 14 L19 8.5" stroke="url(#p-ft)" stroke-width="2" stroke-linecap="round" />
+          <path d="M13 14 L19 19.5" stroke="url(#p-fb)" stroke-width="2" stroke-linecap="round" />
+          <circle cx="20" cy="8.5" r="2" fill="#14b8a6" />
+          <circle cx="20" cy="19.5" r="2" fill="#2879d8" />
+        </svg>
+        <span class="brand-name">Diff<span class="brand-accent">/Dx</span></span>
+      </a>
+
+      <!-- Patient Navigation Tabs (Aligned on Left) -->
+      <nav class="patient-nav-tabs patient-topbar-tabs" id="patient-nav-tabs">
+        <a href="/patient-overview.html" class="patient-nav-tab patient-topbar-tab active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Overview</span>
+        </a>
+        <a href="/my-sessions.html" class="patient-nav-tab patient-topbar-tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Sessions</span>
+        </a>
+        <a href="/messages.html" class="patient-nav-tab patient-topbar-tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Messages</span>
+        </a>
+        <a href="/book-slot.html" class="patient-nav-tab patient-topbar-tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Book</span>
+        </a>
+        <a href="/health-history.html" class="patient-nav-tab patient-topbar-tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+          <span>History</span>
+        </a>
+        <a href="/my-profile.html" class="patient-nav-tab patient-topbar-tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Profile</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="topbar-right">
+      <!-- Theme Switcher -->
+      <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme">
+        <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="21" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+        <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+
+      <!-- Auth Container populated by auth.js -->
+      <div id="nav-auth"></div>
+    </div>
+  </header>
+
+  <!-- SPLIT HERO SECTION -->
+  <main class="hero">
+    <div class="hero-inner">
+
+      <!-- LEFT CONTENT -->
+      <section class="hero-content">
+        <h1 class="hero-title">
+          <span class="hero-title-line1" id="hero-greeting-prefix">Good afternoon,</span>
+          <span class="hero-title-line2" id="hero-patient-name">Mallu.</span>
+        </h1>
+
+        <p class="hero-sub" id="hero-patient-sub">
+          Your personal AI health companion is ready — start an instant
+          <span class="hero-sub-accent">live differential diagnosis</span>,
+          review past health records, or consult verified specialists.
+        </p>
+
+        <!-- CTA ACTIONS -->
+        <div class="cta-group">
+          <a href="/patient-info" class="start-btn" id="start-diagnosis-btn">
+            <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+            Start Diagnosis
+          </a>
+          <div class="cta-subrow">
+            <a href="/my-sessions.html" class="btn-secondary" id="my-sessions-btn">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              My Sessions
+            </a>
+            <a href="/find-doctors.html" class="btn-secondary" id="find-doctors-btn">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              Find Doctors
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT VISUAL (DIAGNOSIS PANEL) -->
+      <section class="hero-visual" aria-hidden="true">
+        <div class="visual-halo"></div>
+        <div class="visual-ring"></div>
+
+        <!-- Floating security badge -->
+        <div class="floating-badge badge-secure">
+          <div class="floating-icon secure-icon">✓</div>
+          Secure analysis
+        </div>
+
+        <!-- Floating reasoning badge -->
+        <div class="floating-badge badge-reasoning">
+          <div class="floating-icon reasoning-icon">≋</div>
+          Transparent reasoning
+        </div>
+
+        <!-- MAIN MEDICAL DIAGNOSIS CARD -->
+        <div class="diagnosis-card">
+          <div class="diagnosis-top">
+            <div class="diagnosis-brand">
+              <div class="mini-logo">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 12h5l2-7 3 14 2-7h4" />
+                </svg>
+              </div>
+              <div class="diagnosis-title">Differential Diagnosis</div>
+            </div>
+
+            <div class="diagnosis-status">
+              <span class="status-dot"></span>
+              Analysis ready
+            </div>
+          </div>
+
+          <!-- Patient summary -->
+          <div class="patient-summary">
+            <div class="patient-left">
+              <div class="patient-avatar">♡</div>
+              <div>
+                <div class="patient-label">Patient presentation</div>
+                <div class="patient-value">Respiratory symptoms</div>
+              </div>
+            </div>
+            <div class="patient-time">Live</div>
+          </div>
+
+          <!-- Analysis Header -->
+          <div class="analysis-label">
+            <strong>Possible conditions</strong>
+            <span>AI-assisted</span>
+          </div>
+
+          <!-- Option 1 -->
+          <div class="diagnosis-option">
+            <div class="option-indicator option-green">01</div>
+            <div class="option-info">
+              <div class="option-name">Upper respiratory infection</div>
+              <div class="option-bar">
+                <div class="option-progress progress-green"></div>
+              </div>
+            </div>
+            <div class="option-percent">82%</div>
+          </div>
+
+          <!-- Option 2 -->
+          <div class="diagnosis-option">
+            <div class="option-indicator option-blue">02</div>
+            <div class="option-info">
+              <div class="option-name">Acute bronchitis</div>
+              <div class="option-bar">
+                <div class="option-progress progress-blue"></div>
+              </div>
+            </div>
+            <div class="option-percent">61%</div>
+          </div>
+
+          <!-- Option 3 -->
+          <div class="diagnosis-option">
+            <div class="option-indicator option-purple">03</div>
+            <div class="option-info">
+              <div class="option-name">Allergic airway response</div>
+              <div class="option-bar">
+                <div class="option-progress progress-purple"></div>
+              </div>
+            </div>
+            <div class="option-percent">37%</div>
+          </div>
+
+          <!-- Card Quick Action Link -->
+          <div class="card-footer-action">
+            <span style="font-size:11px;color:var(--muted);font-weight:600;">Active AI Assessment</span>
+            <a href="/patient-info" class="card-footer-link">
+              Start Your Diagnosis
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- LANGUAGE & CAPABILITIES MARQUEE STRIP -->
+  <div class="lang-strip-wrapper">
+    <div class="lang-strip" aria-hidden="true">
+      <div class="lang-strip-track">
+        <span class="lang-item">English</span><span class="lang-sep">◆</span>
+        <span class="lang-item">हिंदी</span><span class="lang-sep">◆</span>
+        <span class="lang-item">தமிழ்</span><span class="lang-sep">◆</span>
+        <span class="lang-item">తెలుగు</span><span class="lang-sep">◆</span>
+        <span class="lang-item">ಕನ್ನಡ</span><span class="lang-sep">◆</span>
+        <span class="lang-item">മലയാളം</span><span class="lang-sep">◆</span>
+        <span class="lang-item">বাংলা</span><span class="lang-sep">◆</span>
+        <span class="lang-item">मराठी</span><span class="lang-sep">◆</span>
+        <span class="lang-item">ગુજરાતી</span><span class="lang-sep">◆</span>
+        <span class="lang-item">ਪੰਜਾਬੀ</span><span class="lang-sep">◆</span>
+
+        <span class="lang-item">English</span><span class="lang-sep">◆</span>
+        <span class="lang-item">हिंदी</span><span class="lang-sep">◆</span>
+        <span class="lang-item">தமிழ்</span><span class="lang-sep">◆</span>
+        <span class="lang-item">తెలుగు</span><span class="lang-sep">◆</span>
+        <span class="lang-item">ಕನ್ನಡ</span><span class="lang-sep">◆</span>
+        <span class="lang-item">മലയാളം</span><span class="lang-sep">◆</span>
+        <span class="lang-item">বাংলা</span><span class="lang-sep">◆</span>
+        <span class="lang-item">मराठी</span><span class="lang-sep">◆</span>
+        <span class="lang-item">ગુજરાતી</span><span class="lang-sep">◆</span>
+        <span class="lang-item">ਪੰਜਾਬੀ</span><span class="lang-sep">◆</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme toggle handling
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark-theme');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      });
+    }
+
+    // Dynamic Patient Personalization & Greeting
+    function applyPatientWelcome(u) {
+      if (!u) return;
+      let pName = u.name ? u.name.trim() : 'Patient';
+      // Format first name nicely
+      const parts = pName.split(/\s+/);
+      const firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+
+      const nameEl = document.getElementById('hero-patient-name');
+      if (nameEl) {
+        nameEl.textContent = firstName + '.';
+      }
+
+      const prefixEl = document.getElementById('hero-greeting-prefix');
+      if (prefixEl) {
+        const hr = new Date().getHours();
+        const greet = hr < 12 ? 'Good morning,' : hr < 17 ? 'Good afternoon,' : 'Welcome back,';
+        prefixEl.textContent = greet;
+      }
+
+      const subEl = document.getElementById('hero-patient-sub');
+      if (subEl) {
+        subEl.innerHTML = `Your personal AI health companion is ready — start an instant <span class="hero-sub-accent">differential diagnosis</span>, review past health records, or consult verified specialists.`;
+      }
+    }
+
+    // Initialize navbar auth
+    if (typeof initAuthNav === 'function') {
+      initAuthNav();
+    }
+
+    // Check auth user and apply greeting
+    const user = typeof getAuthUser === 'function' ? getAuthUser() : null;
+    if (user) {
+      applyPatientWelcome(user);
+    } else if (typeof getAuthToken === 'function' && getAuthToken()) {
+      try {
+        fetch('/api/auth/me', { headers: typeof authHeaders === 'function' ? authHeaders() : {} })
+          .then(r => r.ok ? r.json() : null)
+          .then(me => {
+            if (me) {
+              try { localStorage.setItem('authUser', JSON.stringify(me)); } catch (_) {}
+              applyPatientWelcome(me);
+            }
+          }).catch(() => {});
+      } catch (_) {}
+    }
+  </script>
+</body>
+</html>

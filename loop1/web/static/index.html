@@ -407,6 +407,27 @@
       border-color: rgba(15, 168, 141, 0.3) !important;
       color: var(--teal) !important;
     }
+    /* ── Dark-mode nav button override (high-specificity so it wins over ID rules) ── */
+    html.dark-theme .theme-toggle-btn,
+    html.dark-theme #theme-toggle,
+    html.dark-theme .nav-refresh-btn,
+    html.dark-theme #nav-notif-btn,
+    html.dark-theme .nav-icon-btn,
+    html.dark-theme #nav-refill-btn {
+      background: rgba(255, 255, 255, 0.06) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      color: #cbd5e1 !important;
+    }
+    html.dark-theme .theme-toggle-btn:hover,
+    html.dark-theme #theme-toggle:hover,
+    html.dark-theme .nav-refresh-btn:hover,
+    html.dark-theme #nav-notif-btn:hover,
+    html.dark-theme .nav-icon-btn:hover,
+    html.dark-theme #nav-refill-btn:hover {
+      background: rgba(20, 184, 166, 0.12) !important;
+      border-color: var(--teal, #14b8a6) !important;
+      color: var(--teal, #14b8a6) !important;
+    }
 
     #nav-notif-badge,
     #nav-refill-badge {

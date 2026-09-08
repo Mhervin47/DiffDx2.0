@@ -385,9 +385,7 @@ html.dark-theme .nav-user-dropdown-item--danger:hover {
   padding: 0 !important;
   cursor: pointer !important;
   line-height: 1 !important;
-  font-size: 0 !important;
   overflow: visible !important;
-  vertical-align: middle !important;
 }
 #nav-refill-btn svg,
 #nav-notif-btn svg,

@@ -291,9 +291,15 @@
       text-decoration: none;
     }
     /* Nav icon SVG size lock */
-    .theme-toggle-btn svg, .nav-refresh-btn svg,
+    .nav-refresh-btn svg,
     #nav-notif-btn svg, #nav-refill-btn svg, .nav-icon-btn svg, #theme-toggle svg {
       display: block !important;
+      flex-shrink: 0 !important;
+      width: 16px !important;
+      height: 16px !important;
+    }
+    /* Theme toggle: NO display override — sun/moon toggled via display:none */
+    .theme-toggle-btn svg {
       flex-shrink: 0 !important;
       width: 16px !important;
       height: 16px !important;

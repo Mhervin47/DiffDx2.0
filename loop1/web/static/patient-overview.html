@@ -302,12 +302,17 @@
     }
 
     .theme-toggle-btn,
+    #theme-toggle,
     .nav-icon-btn,
-    #nav-notif-btn {
+    #nav-notif-btn,
+    .nav-refresh-btn,
+    #nav-refill-btn {
       width: 38px !important;
       height: 38px !important;
       min-width: 38px !important;
       min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
       border-radius: 50% !important;
       border: 1px solid var(--border) !important;
       background: var(--surface-2) !important;
@@ -326,8 +331,11 @@
     }
 
     .theme-toggle-btn:hover,
+    #theme-toggle:hover,
     .nav-icon-btn:hover,
-    #nav-notif-btn:hover {
+    #nav-notif-btn:hover,
+    .nav-refresh-btn:hover,
+    #nav-refill-btn:hover {
       border-color: var(--teal) !important;
       transform: scale(1.05) !important;
       background: var(--option-bg) !important;
@@ -510,53 +518,15 @@
     .hero-content {
       position: relative;
       z-index: 5;
-      max-width: 670px;
-    }
-
-    .eyebrow {
-      width: fit-content;
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      padding: 8px 16px;
-      margin-bottom: 22px;
-      border-radius: 999px;
-      background: var(--option-bg);
-      border: 1px solid var(--border);
-      color: var(--teal-dark);
-      font-family: var(--font-heading);
-      font-size: 11.5px;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      box-shadow: 0 4px 14px rgba(16, 112, 101, 0.06);
-    }
-
-    .dark-theme .eyebrow {
-      color: var(--teal);
-      border-color: rgba(20, 184, 166, 0.25);
-      background: rgba(20, 184, 166, 0.08);
-    }
-
-    .eyebrow-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 10px #10b981;
-      animation: pulse-dot 1.8s infinite ease-in-out;
-    }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
+      max-width: 720px;
+      padding-top: 14px;
     }
 
     .hero-title {
       font-family: var(--font-heading);
-      font-size: clamp(40px, 5.2vw, 68px);
+      font-size: clamp(42px, 5.4vw, 70px);
       font-weight: 800;
-      line-height: 1.05;
+      line-height: 1.08;
       letter-spacing: -0.04em;
       margin-bottom: 24px;
     }
@@ -582,11 +552,11 @@
     }
 
     .hero-sub {
-      font-size: clamp(16px, 1.35vw, 19px);
-      line-height: 1.55;
+      font-size: clamp(16px, 1.35vw, 19.5px);
+      line-height: 1.6;
       color: var(--text-soft);
-      max-width: 580px;
-      margin-bottom: 34px;
+      max-width: 590px;
+      margin-bottom: 44px;
     }
 
     .hero-sub-accent {
@@ -598,13 +568,15 @@
       color: #2dd4bf;
     }
 
-    /* CTA GROUP */
+    /* CTA GROUP (Start diagnosis full button, rest two buttons on downside) */
     .cta-group {
       display: flex;
-      align-items: center;
+      flex-direction: column;
       gap: 14px;
-      margin-bottom: 36px;
-      flex-wrap: wrap;
+      margin-top: 28px;
+      margin-bottom: 0;
+      width: 100%;
+      max-width: 580px;
     }
 
     .start-btn {
@@ -613,13 +585,14 @@
       align-items: center;
       justify-content: center;
       gap: 12px;
-      min-width: 220px;
-      padding: 17px 32px;
+      width: 100%;
+      height: 58px;
+      padding: 0 32px;
       border-radius: 14px;
       background: linear-gradient(135deg, #0fa88d 0%, #0b9c85 55%, #0b8e9d 100%);
       color: #ffffff !important;
       font-family: var(--font-heading);
-      font-size: 16px;
+      font-size: 16.5px;
       font-weight: 800;
       letter-spacing: -0.015em;
       text-decoration: none;
@@ -627,6 +600,8 @@
       box-shadow: 0 12px 28px rgba(15, 168, 141, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.25);
       transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
       cursor: pointer;
+      box-sizing: border-box;
+      white-space: nowrap;
     }
 
     .start-btn:hover {
@@ -639,103 +614,59 @@
       transform: translateY(-1px);
     }
 
+    .cta-subrow {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+    }
+
     .btn-secondary {
+      position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 9px;
-      padding: 16px 24px;
+      justify-content: center;
+      gap: 10px;
+      flex: 1;
+      height: 54px;
+      padding: 0 24px;
       border-radius: 14px;
       background: var(--option-bg);
       border: 1px solid var(--border);
       color: var(--text-color);
       font-family: var(--font-heading);
-      font-size: 14.5px;
-      font-weight: 700;
+      font-size: 15.5px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
       box-shadow: var(--shadow-sm);
-      transition: all 0.25s ease;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
       text-decoration: none;
+      box-sizing: border-box;
+      white-space: nowrap;
+      cursor: pointer;
     }
 
     .btn-secondary:hover {
-      transform: translateY(-2px);
+      transform: translateY(-3px);
       border-color: rgba(15, 168, 141, 0.4);
       color: var(--teal);
       box-shadow: var(--shadow-md);
     }
 
-    /* 4 FEATURE CARDS (MATCHING SCREENSHOT) */
-    .feature-pills {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
-      margin-top: 10px;
-      max-width: 680px;
+    .btn-secondary:active {
+      transform: translateY(-1px);
     }
 
-    .feature-card {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 16px 18px;
-      border-radius: 18px;
-      background: var(--feature-bg);
-      border: 1px solid var(--border);
-      box-shadow: 0 4px 16px rgba(27, 67, 84, 0.03);
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      text-align: left;
-    }
-
-    .feature-card:hover {
-      transform: translateY(-3px);
-      border-color: rgba(15, 168, 141, 0.4);
-      box-shadow: 0 12px 30px rgba(27, 67, 84, 0.08);
-    }
-
-    .feature-card-img-wrap {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      background: var(--option-bg);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .start-btn svg {
       flex-shrink: 0;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(27, 67, 84, 0.04);
-      transition: transform 0.25s ease;
+      width: 23px;
+      height: 23px;
     }
 
-    .feature-card:hover .feature-card-img-wrap {
-      transform: scale(1.08);
-      border-color: var(--teal);
-    }
-
-    .feature-card-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .feature-card-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .feature-card-title {
-      font-family: var(--font-heading);
-      font-size: 13.5px;
-      font-weight: 800;
-      color: var(--text-color);
-      margin-bottom: 2px;
-      letter-spacing: -0.01em;
-    }
-
-    .feature-card-desc {
-      font-size: 11.5px;
-      line-height: 1.45;
-      color: var(--muted);
+    .btn-secondary svg {
+      flex-shrink: 0;
+      width: 21px;
+      height: 21px;
     }
 
     /* RIGHT VISUAL - 3D PERSPECTIVE CARD */
@@ -1142,23 +1073,23 @@
         max-width: 100%;
         text-align: center;
       }
-      .eyebrow {
-        margin: 0 auto 20px;
-      }
       .hero-sub {
-        margin: 0 auto 30px;
+        margin: 0 auto 36px;
       }
       .cta-group {
-        justify-content: center;
-      }
-      .feature-pills {
-        margin: 30px auto 0;
+        margin: 20px auto 0;
       }
     }
 
     @media (max-width: 600px) {
-      .feature-pills {
-        grid-template-columns: 1fr;
+      .cta-subrow {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .start-btn,
+      .btn-secondary {
+        width: 100%;
+        min-width: unset;
       }
       .diagnosis-card {
         padding: 20px 18px;
@@ -1267,11 +1198,6 @@
 
       <!-- LEFT CONTENT -->
       <section class="hero-content">
-        <div class="eyebrow" id="patient-eyebrow">
-          <span class="eyebrow-dot"></span>
-          <span>Personal AI Health Companion</span>
-        </div>
-
         <h1 class="hero-title">
           <span class="hero-title-line1" id="hero-greeting-prefix">Good afternoon,</span>
           <span class="hero-title-line2" id="hero-patient-name">Mallu.</span>
@@ -1286,69 +1212,28 @@
         <!-- CTA ACTIONS -->
         <div class="cta-group">
           <a href="/patient-info" class="start-btn" id="start-diagnosis-btn">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
             </svg>
             Start Diagnosis
           </a>
-          <a href="/my-sessions.html" class="btn-secondary" id="my-sessions-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            My Sessions
-          </a>
-          <a href="/find-doctors.html" class="btn-secondary" id="find-doctors-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            Find Doctors
-          </a>
-        </div>
-
-        <!-- 4 FEATURE CARDS WITH 3D ICONS (MATCHING SCREENSHOT) -->
-        <div class="feature-pills">
-          <div class="feature-card">
-            <div class="feature-card-img-wrap">
-              <img src="/feat_diagnostic.jpg" alt="Diagnostic Analysis" class="feature-card-img">
-            </div>
-            <div class="feature-card-info">
-              <div class="feature-card-title">Diagnostic Analysis</div>
-              <div class="feature-card-desc">Real-time clinical insights & diagnostic matching.</div>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-card-img-wrap">
-              <img src="/feat_reasoning.jpg" alt="Transparent Reasoning" class="feature-card-img">
-            </div>
-            <div class="feature-card-info">
-              <div class="feature-card-title">Transparent Reasoning</div>
-              <div class="feature-card-desc">Explainable diagnostic paths without guesswork.</div>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-card-img-wrap">
-              <img src="/feat_language.jpg" alt="Multi-Language Support" class="feature-card-img">
-            </div>
-            <div class="feature-card-info">
-              <div class="feature-card-title">Multi-Language Support</div>
-              <div class="feature-card-desc">Complete diagnostic analysis in 10+ regional languages.</div>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-card-img-wrap">
-              <img src="/feat_patient.jpg" alt="Patient-Focused Care" class="feature-card-img">
-            </div>
-            <div class="feature-card-info">
-              <div class="feature-card-title">Patient-Focused Care</div>
-              <div class="feature-card-desc">Empowering clinical decision making for everyone.</div>
-            </div>
+          <div class="cta-subrow">
+            <a href="/my-sessions.html" class="btn-secondary" id="my-sessions-btn">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              My Sessions
+            </a>
+            <a href="/find-doctors.html" class="btn-secondary" id="find-doctors-btn">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              Find Doctors
+            </a>
           </div>
         </div>
       </section>

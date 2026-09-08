@@ -357,39 +357,72 @@ html.dark-theme .nav-user-dropdown-item--danger:hover {
   background: rgba(239, 68, 68, 0.12) !important;
 }
 
-#nav-refill-btn, #nav-notif-btn, .nav-icon-btn {
+#nav-refill-btn,
+#nav-notif-btn,
+.nav-icon-btn,
+.nav-refresh-btn,
+.theme-toggle-btn,
+#theme-toggle {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: 38px !important;
   height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  max-width: 38px !important;
+  max-height: 38px !important;
   border-radius: 50% !important;
   background: var(--btn-nav-bg, #ffffff) !important;
   border: 1px solid var(--btn-nav-border, var(--border, #cbd5e1)) !important;
   color: var(--text-muted, #64748b) !important;
   box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
   transition: all .2s ease !important;
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
   position: relative;
   text-decoration: none;
+  box-sizing: border-box !important;
+  padding: 0 !important;
+  cursor: pointer !important;
 }
-#nav-refill-btn:hover, #nav-notif-btn:hover {
+#nav-refill-btn:hover,
+#nav-notif-btn:hover,
+.nav-icon-btn:hover,
+.nav-refresh-btn:hover,
+.theme-toggle-btn:hover,
+#theme-toggle:hover {
   border-color: var(--primary, #0d9488) !important;
   color: var(--primary, #0d9488) !important;
   transform: translateY(-1px);
 }
 .dark-theme #nav-refill-btn,
 .dark-theme #nav-notif-btn,
+.dark-theme .nav-icon-btn,
+.dark-theme .nav-refresh-btn,
+.dark-theme .theme-toggle-btn,
+.dark-theme #theme-toggle,
 html.dark-theme #nav-refill-btn,
-html.dark-theme #nav-notif-btn {
+html.dark-theme #nav-notif-btn,
+html.dark-theme .nav-icon-btn,
+html.dark-theme .nav-refresh-btn,
+html.dark-theme .theme-toggle-btn,
+html.dark-theme #theme-toggle {
   background: var(--btn-nav-bg, rgba(255, 255, 255, 0.04)) !important;
   border-color: var(--btn-nav-border, rgba(150, 180, 210, 0.10)) !important;
   color: var(--text-muted, #8fa2b9) !important;
 }
 .dark-theme #nav-refill-btn:hover,
 .dark-theme #nav-notif-btn:hover,
+.dark-theme .nav-icon-btn:hover,
+.dark-theme .nav-refresh-btn:hover,
+.dark-theme .theme-toggle-btn:hover,
+.dark-theme #theme-toggle:hover,
 html.dark-theme #nav-refill-btn:hover,
-html.dark-theme #nav-notif-btn:hover {
+html.dark-theme #nav-notif-btn:hover,
+html.dark-theme .nav-icon-btn:hover,
+html.dark-theme .nav-refresh-btn:hover,
+html.dark-theme .theme-toggle-btn:hover,
+html.dark-theme #theme-toggle:hover {
   border-color: var(--primary, #19c6ad) !important;
   color: var(--primary, #19c6ad) !important;
 }

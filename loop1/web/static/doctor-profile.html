@@ -15,8 +15,8 @@
   <script src="/reloader.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Manrope:wght@500;600;700;800&family=Sora:wght@400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/auth.js"></script>
+  <link rel="stylesheet" href="/styles.css?v=20260909_01">
+  <script src="/auth.js?v=20260909_01"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -65,7 +65,7 @@
       --border: rgba(150, 180, 210, 0.12);
       --border-subtle: rgba(150, 180, 210, 0.06);
       --teal-primary: #19C6AD;
-      --teal-glow: rgba(25, 198, 173, 0.22);
+      --teal-glow: rgba(25, 198, 173, 0.06);
       --blue-secondary: #4C8FF5;
       --purple-accent: #8174E8;
       --amber-accent: #F59E0B;
@@ -75,9 +75,8 @@
       --text-dim: #94A3B8;
       --nav-bg: rgba(5, 13, 24, 0.88);
       --btn-nav-bg: rgba(255, 255, 255, 0.04);
-      --btn-nav-border: rgba(150, 180, 210, 0.10);
-      --btn-nav-text: #EAF2FA;
-      --card-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65);
+      --topbar-bg: rgba(5, 13, 24, 0.88);
+      --card-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
       --surface-1: #0A1525;
       --surface-2: #0E1B2E;
       --surface-3: #13243C;
@@ -91,7 +90,7 @@
       --input-focus-border: #19C6AD;
       --input-text: #EAF2FA;
       --glass-border: rgba(150, 180, 210, 0.14);
-      --cover-gradient: linear-gradient(135deg, rgba(25, 198, 173, 0.08) 0%, rgba(76, 143, 245, 0.08) 100%);
+      --cover-gradient: transparent;
     }
 
     body {
@@ -390,6 +389,8 @@
       overflow: hidden;
       box-shadow: var(--card-shadow);
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+      z-index: 2;
     }
 
     .provider-cover {
@@ -403,6 +404,13 @@
       position: absolute; inset: 0; opacity: 0.04;
       background-image: radial-gradient(var(--primary) 1px, transparent 1px);
       background-size: 16px 16px;
+    }
+    html.dark-theme .provider-cover {
+      background: transparent !important;
+      border-bottom: none !important;
+    }
+    html.dark-theme .provider-cover-pattern {
+      display: none !important;
     }
 
     .provider-body {
@@ -588,20 +596,20 @@
       margin-bottom: 22px;
       box-shadow: var(--card-shadow);
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+      z-index: 2;
     }
-    .profile-section:hover {
+    .profile-section:hover,
+    .provider-card:hover {
       border-color: rgba(25, 198, 173, 0.28);
     }
 
     /* Strict Dark-Theme Profile Card Overrides (Deep Sleek Navy Solid Surfaces) */
     html.dark-theme .provider-card,
-    html.dark-theme .profile-section,
-    html.dark-theme .modal-card,
-    html.dark-theme .save-bar,
-    html.dark-theme .thinking-row {
+    html.dark-theme .profile-section {
       background: #0A1525 !important;
       border: 1px solid rgba(150, 180, 210, 0.10) !important;
-      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65) !important;
+      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
     }
 
     html.dark-theme .incomplete-banner {

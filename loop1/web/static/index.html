@@ -12,6 +12,19 @@
       if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark-theme');
       }
+      // If user is already logged in, route to their dedicated overview page
+      try {
+        const token = localStorage.getItem('authToken');
+        const raw = localStorage.getItem('authUser');
+        if (token && raw) {
+          const u = JSON.parse(raw);
+          if (u && u.role === 'doctor') {
+            window.location.replace('/doctor-overview.html' + window.location.search);
+          } else if (u) {
+            window.location.replace('/patient-overview.html' + window.location.search);
+          }
+        }
+      } catch (_) {}
     })();
   </script>
 
@@ -1657,6 +1670,18 @@
   <script src="/auth.js"></script>
   <script>
     initAuthNav();
+
+    // If authenticated, ensure redirect to role-specific overview
+    (function () {
+      const u = typeof getAuthUser === 'function' ? getAuthUser() : null;
+      if (u) {
+        if (u.role === 'doctor') {
+          window.location.replace('/doctor-overview.html');
+        } else {
+          window.location.replace('/patient-overview.html');
+        }
+      }
+    })();
 
     // Theme toggle handling
     const toggleBtn = document.getElementById('theme-toggle');

@@ -178,11 +178,8 @@ function initAuthNav() {
       `;
     } else {
       el.innerHTML = `
-        <a href="/my-sessions.html" class="btn btn-ghost btn-sm" style="font-size:12px;padding:5px 10px;" id="nav-sessions-link">
-          My Sessions
-        </a>
         <a href="/notifications.html" class="nav-icon-btn" title="Notifications" id="nav-notif-btn">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
           <span id="nav-notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#00b4d8;color:#000;font-size:9px;font-weight:800;border-radius:99px;padding:1px 5px;line-height:1.6;min-width:16px;text-align:center;"></span>
         </a>
         <div class="nav-user-menu" id="nav-user-menu">
@@ -196,8 +193,11 @@ function initAuthNav() {
               <div style="font-weight:600;font-size:13px;">${_escHtml(user.name)}</div>
               <div style="font-size:11px;color:var(--text-muted);">${_escHtml(user.email || '')}</div>
             </div>
+            <a class="nav-user-dropdown-item" href="/patient-overview.html">Overview</a>
+            <a class="nav-user-dropdown-item" href="/my-sessions.html">My Sessions</a>
             <a class="nav-user-dropdown-item" href="/my-profile.html">My Profile</a>
             <a class="nav-user-dropdown-item" href="/health-history.html">Health History</a>
+            <a class="nav-user-dropdown-item" href="/find-doctors.html">Find Doctors</a>
             <a class="nav-user-dropdown-item" href="/messages.html">Messages <span id="nav-msg-badge" style="display:none;margin-left:auto;background:#ef4444;color:#fff;font-size:9px;font-weight:800;border-radius:99px;padding:1px 6px;"></span></a>
             <button class="nav-user-dropdown-item nav-user-dropdown-item--danger" onclick="logout()">Sign Out</button>
           </div>

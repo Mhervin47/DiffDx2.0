@@ -6,11 +6,18 @@
 (function () {
   const TABS = [
     {
-      id: 'home',
-      label: 'Home',
-      href: '/my-sessions.html',
-      match: ['/my-sessions.html', '/index-patient'],
+      id: 'overview',
+      label: 'Overview',
+      href: '/patient-overview.html',
+      match: ['/patient-overview.html', '/patient-landing.html'],
       icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+    },
+    {
+      id: 'sessions',
+      label: 'Sessions',
+      href: '/my-sessions.html',
+      match: ['/my-sessions.html'],
+      icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
     },
     {
       id: 'messages',
@@ -25,13 +32,6 @@
       href: '/book-slot.html',
       match: ['/book-slot.html'],
       icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
-    },
-    {
-      id: 'notifications',
-      label: 'Notifications',
-      href: '/notifications.html',
-      match: ['/notifications.html'],
-      icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
     },
     {
       id: 'history',
@@ -62,25 +62,34 @@
       gap: 4px;
     }
     .patient-nav-tabs {
-      display: flex; align-items: center; gap: 2px;
-      flex: 1; justify-content: center;
-      margin-left: 24px;
-      padding-left: 20px;
-      border-left: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; gap: 6px;
+      justify-content: flex-start;
+      margin-left: 20px;
+      margin-right: auto;
+      padding: 4px 6px;
+      background: rgba(13, 20, 38, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     }
     .patient-tab {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 12px; border-radius: 8px;
-      font-size: 12px; font-weight: 600; color: var(--text-muted, #64748b);
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 14px; border-radius: 999px;
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 12.5px; font-weight: 700; color: #cbd5e1;
       cursor: pointer; border: none; background: none;
-      font-family: inherit; text-decoration: none;
-      transition: color .15s, background .15s;
+      text-decoration: none;
+      transition: all 0.2s ease;
       white-space: nowrap;
     }
-    .patient-tab:hover { color: var(--text, #e2e8f0); background: rgba(16,185,129,.07); }
+    .patient-tab:hover {
+      color: #14b8a6;
+      background: rgba(20, 184, 166, 0.12);
+    }
     .patient-tab.active {
-      color: #10b981;
-      background: rgba(16,185,129,.1);
+      background: linear-gradient(135deg, #0fa88d 0%, #07816e 100%) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 10px rgba(15, 168, 141, 0.3) !important;
     }
     .patient-tab-badge {
       display: inline-flex; align-items: center; justify-content: center;
@@ -153,11 +162,11 @@
     const path = location.pathname;
     const tabsEl = document.createElement('div');
     tabsEl.id = 'patient-nav-tabs';
-    tabsEl.className = 'patient-nav-tabs';
+    tabsEl.className = 'patient-nav-tabs patient-topbar-tabs';
     tabsEl.innerHTML = TABS.map(t => {
       const isActive = t.match.some(m => path === m || path.startsWith(m));
-      return `<a class="patient-tab${isActive ? ' active' : ''}" href="${t.href}" id="ptab-${t.id}">
-        ${t.icon}${t.label}
+      return `<a class="patient-nav-tab patient-topbar-tab patient-tab${isActive ? ' active' : ''}" href="${t.href}" id="ptab-${t.id}">
+        ${t.icon}<span>${t.label}</span>
       </a>`;
     }).join('');
 

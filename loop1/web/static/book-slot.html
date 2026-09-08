@@ -1,249 +1,827 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark-theme">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DiffDx — Book Appointment</title>
+  <title>DiffDx — Book an Appointment</title>
+  <script>
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.remove('dark-theme');
+    } else {
+      document.documentElement.classList.add('dark-theme');
+    }
+  </script>
   <link rel="stylesheet" href="/reloader.css">
   <script src="/reloader.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Manrope:wght@500;600;700;800&family=Sora:wght@400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="/auth.js"></script>
-  <script src="/patient-nav.js"></script>
+
   <style>
-    .bs-page { max-width: 840px; margin: 0 auto; padding: 104px 24px 100px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── Referral banner ───────────────────────────────── */
+    :root {
+      --bg-dark: #F1F5F9;
+      --bg-card: #FFFFFF;
+      --border-card: #CBD5E1;
+      --border: #CBD5E1;
+      --border-subtle: #E2E8F0;
+      --teal-primary: #0D9488;
+      --teal-glow: rgba(13, 148, 136, 0.16);
+      --blue-secondary: #2563EB;
+      --purple-accent: #6D28D9;
+      --amber-accent: #B45309;
+      --text: #0F172A;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --text-dim: #334155;
+      --topbar-bg: rgba(255, 255, 255, 0.96);
+      --card-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+      --surface-1: #FFFFFF;
+      --surface-2: #F8FAFC;
+      --surface-3: #F1F5F9;
+      --surface-4: #E2E8F0;
+      --primary: #0D9488;
+      --primary-light: #14B8A6;
+      --primary-dim: rgba(13, 148, 136, 0.12);
+      --font-heading: 'Sora', sans-serif;
+      --font-body: 'Noto Sans', sans-serif;
+      --input-bg: #FFFFFF;
+      --input-border: #CBD5E1;
+      --input-text: #0F172A;
+    }
+
+    html.dark-theme {
+      --bg-dark: #050D18;
+      --bg-card: #0A1525;
+      --border-card: rgba(150, 180, 210, 0.10);
+      --border: rgba(150, 180, 210, 0.12);
+      --border-subtle: rgba(150, 180, 210, 0.06);
+      --teal-primary: #19C6AD;
+      --teal-glow: rgba(25, 198, 173, 0.22);
+      --blue-secondary: #4C8FF5;
+      --purple-accent: #8174E8;
+      --amber-accent: #F59E0B;
+      --text: #EAF2FA;
+      --text-main: #EAF2FA;
+      --text-muted: #8FA2B9;
+      --text-dim: #94A3B8;
+      --topbar-bg: rgba(5, 13, 24, 0.88);
+      --card-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      --surface-1: #0A1525;
+      --surface-2: #0E1B2E;
+      --surface-3: #13243C;
+      --surface-4: #192F4D;
+      --primary: #19C6AD;
+      --primary-light: #34D399;
+      --primary-dim: rgba(25, 198, 173, 0.15);
+      --input-bg: #0C192A;
+      --input-border: rgba(150, 180, 210, 0.14);
+      --input-text: #EAF2FA;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* Ambient Background Effects */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(143, 162, 185, 0.07) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(ellipse 85% 65% at 50% 25%, black 40%, transparent 95%);
+    }
+
+    .bg-glow-left {
+      position: fixed; top: -120px; left: -100px; width: 640px; height: 640px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--teal-glow) 0%, transparent 70%);
+      filter: blur(100px); pointer-events: none; z-index: 0;
+      animation: floatGlowLeft 22s ease-in-out infinite alternate;
+    }
+
+    .bg-glow-right {
+      position: fixed; top: 300px; right: -120px; width: 680px; height: 680px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(76, 143, 245, 0.12) 0%, transparent 70%);
+      filter: blur(120px); pointer-events: none; z-index: 0;
+      animation: floatGlowRight 26s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatGlowLeft {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, 30px) scale(1.05); }
+    }
+    @keyframes floatGlowRight {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(-30px, -35px) scale(1.04); }
+    }
+
+    /* Executive Topbar Navigation */
+    .nav {
+      position: sticky !important; top: 0 !important; left: 0 !important; right: 0 !important; transform: none !important;
+      width: 100% !important; max-width: 100% !important; border-radius: 0 !important;
+      height: 72px !important; min-height: 72px !important; z-index: 100 !important;
+      padding: 0 38px !important;
+      display: flex !important; align-items: center !important; justify-content: space-between !important;
+      background: var(--topbar-bg) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
+      border: none !important;
+      border-bottom: 1px solid var(--border-card) !important;
+      box-shadow: none !important;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      box-sizing: border-box !important;
+    }
+    html.dark-theme .nav {
+      background: rgba(9, 13, 22, 0.88) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .brand-section {
+      display: flex; align-items: center; gap: 28px;
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 11px;
+      text-decoration: none;
+      transition: transform 0.2s ease;
+    }
+    .brand:hover { transform: translateY(-0.5px); }
+
+    .brand-icon {
+      filter: drop-shadow(0 0 8px rgba(15, 168, 141, 0.35));
+      transition: transform 0.2s ease, filter 0.2s ease;
+      width: 32px !important; height: 32px !important; flex-shrink: 0 !important;
+    }
+    .brand:hover .brand-icon {
+      transform: scale(1.05);
+      filter: drop-shadow(0 0 12px rgba(15, 168, 141, 0.55));
+    }
+
+    .brand-name {
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 20px !important;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      color: var(--text-main);
+      line-height: 1;
+    }
+    .brand-accent {
+      background: linear-gradient(100deg, var(--teal-primary) 0%, var(--blue-secondary) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Left-Aligned Patient Navigation Tabs */
+    .patient-nav-tabs {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      background: #ffffff !important;
+      padding: 4px 6px !important;
+      border-radius: 999px !important;
+      border: 1px solid #dfe9ed !important;
+      box-shadow: 0 4px 16px rgba(27, 67, 84, 0.06) !important;
+      margin: 0 !important;
+    }
+    html.dark-theme .patient-nav-tabs {
+      background: rgba(13, 20, 38, 0.45) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .patient-nav-tab {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 7px !important;
+      padding: 6px 14px !important;
+      border-radius: 999px !important;
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      font-size: 12.5px !important;
+      font-weight: 700 !important;
+      line-height: 1 !important;
+      color: #31445f !important;
+      transition: all 0.2s ease !important;
+      text-decoration: none !important;
+      white-space: nowrap !important;
+      box-sizing: border-box !important;
+    }
+    html.dark-theme .patient-nav-tab {
+      color: #cbd5e1 !important;
+    }
+    .patient-nav-tab:hover {
+      color: #0fa88d !important;
+      background: rgba(15, 168, 141, 0.06) !important;
+    }
+    html.dark-theme .patient-nav-tab:hover {
+      color: #14b8a6 !important;
+      background: rgba(20, 184, 166, 0.12) !important;
+    }
+    .patient-nav-tab.active {
+      background: linear-gradient(135deg, #0fa88d 0%, #07816e 100%) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 10px rgba(15, 168, 141, 0.3) !important;
+    }
+    .patient-nav-tab svg {
+      flex-shrink: 0 !important;
+      width: 14px !important;
+      height: 14px !important;
+    }
+    @media (max-width: 1100px) {
+      .patient-nav-tabs span { display: none; }
+      .patient-nav-tab { padding: 7px; }
+    }
+    @media (max-width: 820px) {
+      .patient-nav-tabs { display: none; }
+    }
+
+    .nav-right {
+      display: flex; align-items: center; gap: 12px; margin-left: auto;
+    }
+
+    /* Standardized 38px Circular Action Buttons */
+    .theme-toggle-btn,
+    #nav-notif-btn,
+    .nav-icon-btn {
+      width: 38px !important; height: 38px !important;
+      min-width: 38px !important; min-height: 38px !important;
+      display: inline-flex !important; align-items: center !important; justify-content: center !important;
+      border-radius: 50% !important;
+      background: var(--surface-1, #ffffff) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text-soft, var(--text-dim)) !important;
+      cursor: pointer !important;
+      box-shadow: var(--shadow-sm, 0 4px 16px rgba(27, 67, 84, 0.06)) !important;
+      transition: all .2s ease !important;
+      flex-shrink: 0 !important;
+      box-sizing: border-box !important;
+      padding: 0 !important;
+      position: relative !important;
+      text-decoration: none !important;
+    }
+    html.dark-theme .theme-toggle-btn,
+    html.dark-theme #nav-notif-btn,
+    html.dark-theme .nav-icon-btn {
+      background: rgba(13, 20, 38, 0.45) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      color: #cbd5e1 !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+    .theme-toggle-btn:hover,
+    #nav-notif-btn:hover,
+    .nav-icon-btn:hover {
+      border-color: rgba(15, 168, 141, 0.4) !important;
+      color: var(--teal, #0fa88d) !important;
+      transform: scale(1.06) !important;
+    }
+    html.dark-theme .sun-icon { display: block !important; }
+    html.dark-theme .moon-icon { display: none !important; }
+    html:not(.dark-theme) .sun-icon { display: none !important; }
+    html:not(.dark-theme) .moon-icon { display: block !important; }
+
+    /* Page Layout Container */
+    .bs-page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 36px 28px 100px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Page Header */
+    .patient-page-header {
+      margin-bottom: 28px;
+    }
+    .page-kicker {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 4px 12px; border-radius: 9999px;
+      background: var(--primary-dim);
+      border: 1px solid rgba(13, 148, 136, 0.28);
+      color: #0F766E; font-size: 11px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      font-family: var(--font-heading);
+      margin-bottom: 12px;
+    }
+    html.dark-theme .page-kicker {
+      border-color: rgba(25, 198, 173, 0.25);
+      color: var(--primary);
+    }
+    .kicker-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 6px var(--primary);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .patient-page-title {
+      font-family: var(--font-heading);
+      font-size: 30px; font-weight: 800; letter-spacing: -.025em;
+      color: var(--text-main); margin-bottom: 8px;
+    }
+    .patient-page-sub {
+      font-size: 14.5px; color: var(--text-muted); line-height: 1.55;
+    }
+
+    /* Referral Banner */
     .ref-banner {
-      display: flex; align-items: center; gap: 12px;
-      background: rgba(0,180,216,.07); border: 1px solid rgba(0,180,216,.22);
-      border-radius: 12px; padding: 13px 16px; margin-bottom: 20px;
-      font-size: 13px; color: var(--text-dim); line-height: 1.5;
+      display: flex; align-items: center; gap: 14px;
+      background: rgba(13, 148, 136, 0.08);
+      border: 1px solid rgba(25, 198, 173, 0.25);
+      border-radius: 16px; padding: 14px 18px; margin-bottom: 24px;
+      font-size: 13.5px; color: var(--text-main); line-height: 1.5;
+      box-shadow: 0 4px 16px rgba(13, 148, 136, 0.08);
     }
 
-    /* ── Search + filter ───────────────────────────────── */
+    /* Search Toolbar (Strict High-Specificity Dark Inputs) */
     .bs-toolbar {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 14px; flex-wrap: wrap;
+      margin-bottom: 20px;
     }
-    .bs-search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .bs-search-wrap {
+      position: relative; width: 100%;
+    }
     .bs-search-wrap svg {
-      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-      color: var(--text-muted); pointer-events: none;
+      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); pointer-events: none; z-index: 2;
     }
+    input[type="text"].bs-search,
+    input.bs-search,
     .bs-search {
-      width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      border-radius: var(--radius); color: var(--text); font-family: var(--font);
-      font-size: 14px; padding: 10px 12px 10px 38px; outline: none;
-      transition: border-color .15s, box-shadow .15s;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      background: var(--input-bg) !important;
+      border: 1.5px solid var(--input-border) !important;
+      border-radius: 14px !important;
+      color: var(--input-text) !important;
+      font-family: var(--font-body) !important;
+      font-size: 14.5px !important;
+      font-weight: 600 !important;
+      padding: 13px 18px 13px 44px !important;
+      outline: none !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+      transition: all 0.2s ease !important;
     }
-    .bs-search:focus { border-color: rgba(16,185,129,.4); box-shadow: 0 0 0 3px rgba(16,185,129,.07); }
-    .bs-search::placeholder { color: var(--text-muted); }
+    html.dark-theme input[type="text"].bs-search,
+    html.dark-theme input.bs-search,
+    html.dark-theme .bs-search {
+      background: #0C192A !important;
+      border-color: rgba(150, 180, 210, 0.16) !important;
+      color: #EAF2FA !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+    }
+    input.bs-search:focus,
+    html.dark-theme input.bs-search:focus {
+      border-color: var(--teal-primary) !important;
+      box-shadow: 0 0 0 3px var(--primary-dim) !important;
+      background: #0E1B2E !important;
+    }
+    input.bs-search::placeholder {
+      color: var(--text-muted) !important; opacity: 0.85 !important; font-weight: 400 !important;
+    }
 
-    .spec-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+    /* Specialty Filter Chips Bar */
+    .spec-chips {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px;
+    }
     .spec-chip {
-      font-size: 12px; font-weight: 600; padding: 5px 13px;
-      border-radius: 99px; cursor: pointer; border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.04); color: var(--text-muted);
-      transition: all .13s; white-space: nowrap;
+      font-family: var(--font-heading);
+      font-size: 12px; font-weight: 700; padding: 7px 15px;
+      border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--border-card);
+      background: var(--surface-1); color: var(--text-muted);
+      transition: all 0.2s ease; white-space: nowrap;
     }
-    .spec-chip:hover { border-color: rgba(16,185,129,.3); color: var(--text); }
-    .spec-chip.active { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.4); color: #10b981; }
+    html.dark-theme .spec-chip {
+      background: var(--surface-2); border-color: var(--border);
+    }
+    .spec-chip:hover {
+      border-color: var(--teal-primary); color: var(--text-main);
+      transform: translateY(-1px);
+    }
+    .spec-chip.active {
+      background: linear-gradient(135deg, var(--teal-primary) 0%, #07816e 100%);
+      border-color: transparent; color: #ffffff;
+      box-shadow: 0 4px 14px var(--teal-glow);
+    }
 
-    /* ── Doctor grid ───────────────────────────────────── */
+    /* Doctor Grid & Cards */
     .doc-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 14px; margin-bottom: 32px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 20px; margin-bottom: 40px;
     }
+    @media (max-width: 680px) {
+      .doc-grid { grid-template-columns: 1fr; }
+    }
+
     .doc-card {
-      background: rgba(255,255,255,.04);
-      backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: var(--radius-lg); padding: 18px;
-      display: flex; flex-direction: column; gap: 12px;
-      transition: border-color .15s, box-shadow .15s;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 20px; padding: 22px;
+      display: flex; flex-direction: column; gap: 16px;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
     }
-    .doc-card:hover { border-color: rgba(16,185,129,.25); box-shadow: 0 0 24px rgba(16,185,129,.07); }
-    .doc-head { display: flex; align-items: center; gap: 12px; }
+    .doc-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(25, 198, 173, 0.4);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+    }
+
+    .doc-head {
+      display: flex; align-items: center; gap: 14px;
+    }
     .doc-avatar {
-      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 800; color: #fff;
+      font-size: 14px; font-weight: 800; color: #ffffff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
     }
-    .doc-name   { font-size: 14px; font-weight: 700; color: var(--text); }
-    .doc-spec   { font-size: 12px; color: #10b981; font-weight: 600; margin-top: 1px; }
-    .doc-clinic { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
-    .doc-rating { font-size: 12px; color: var(--warning); font-weight: 600; margin-top: 2px; }
+    .doc-info { flex: 1; min-width: 0; }
+    .doc-name {
+      font-family: var(--font-heading);
+      font-size: 15.5px; font-weight: 700; color: var(--text-main);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .doc-spec {
+      font-size: 12.5px; color: var(--teal-primary); font-weight: 700; margin-top: 2px;
+    }
+    .doc-clinic {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .doc-rating {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11.5px; color: var(--amber-accent); font-weight: 700; margin-top: 4px;
+      background: rgba(245, 158, 11, 0.08); padding: 2px 8px; border-radius: 6px;
+    }
 
+    .doc-slots-box {
+      background: var(--surface-2); border: 1px solid var(--border-subtle);
+      border-radius: 14px; padding: 12px 14px;
+    }
     .doc-slots-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: var(--text-muted); margin-bottom: 7px;
+      font-family: var(--font-heading);
+      font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
     }
-    .slot-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .slot-chips {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
     .slot-chip {
-      font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 8px;
-      cursor: pointer; border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.04); color: var(--text-dim); transition: all .13s;
+      font-family: var(--font-heading);
+      font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 8px;
+      cursor: pointer; border: 1px solid var(--border-card);
+      background: var(--surface-1); color: var(--text-main);
+      transition: all 0.15s ease;
     }
-    .slot-chip:hover { border-color: rgba(16,185,129,.4); color: #10b981; background: rgba(16,185,129,.07); }
-    .slot-chip.selected { background: #10b981; border-color: #10b981; color: #000; font-weight: 700; }
-    .doc-no-slots { font-size: 12px; color: var(--text-muted); font-style: italic; }
+    html.dark-theme .slot-chip {
+      background: var(--surface-3); border-color: rgba(150, 180, 210, 0.12);
+    }
+    .slot-chip:hover {
+      border-color: var(--teal-primary); color: var(--teal-primary);
+      background: var(--primary-dim); transform: translateY(-1px);
+    }
+    .slot-chip.selected {
+      background: var(--teal-primary); border-color: var(--teal-primary);
+      color: #050D18; font-weight: 800; box-shadow: 0 2px 8px var(--teal-glow);
+    }
+    .doc-no-slots {
+      font-size: 12px; color: var(--text-muted); font-style: italic;
+    }
 
-    /* ── Modals ────────────────────────────────────────── */
+    /* Buttons */
+    .btn-book-action {
+      width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 16px; border-radius: 12px;
+      font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s ease; border: none;
+    }
+    .btn-book-primary {
+      background: linear-gradient(135deg, #0fa88d 0%, #07816e 100%);
+      color: #ffffff; box-shadow: 0 4px 14px var(--teal-glow);
+    }
+    .btn-book-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(15, 168, 141, 0.4);
+    }
+    .btn-book-primary:disabled {
+      opacity: 0.45; cursor: not-allowed; box-shadow: none;
+    }
+    .btn-book-waitlist {
+      background: var(--surface-2); border: 1px solid var(--border-card);
+      color: var(--text-main);
+    }
+    .btn-book-waitlist:hover:not(:disabled) {
+      background: var(--surface-3); border-color: var(--teal-primary);
+      color: var(--teal-primary);
+    }
+    .btn-book-waitlist:disabled {
+      opacity: 0.6; cursor: default;
+    }
+
+    /* Empty Glass State Card */
+    .empty-glass-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 24px;
+      padding: 64px 32px;
+      text-align: center;
+      box-shadow: var(--card-shadow);
+      margin-top: 12px;
+      grid-column: 1 / -1;
+    }
+    .empty-icon-box {
+      width: 68px; height: 68px; border-radius: 18px;
+      background: linear-gradient(135deg, rgba(25, 198, 173, 0.18) 0%, rgba(76, 143, 245, 0.12) 100%);
+      border: 1px solid rgba(25, 198, 173, 0.3);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--primary); margin: 0 auto 18px;
+      box-shadow: 0 8px 24px var(--teal-glow);
+    }
+    .empty-title {
+      font-family: var(--font-heading);
+      font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 6px;
+    }
+    .empty-sub {
+      font-size: 14px; color: var(--text-muted); line-height: 1.55;
+      max-width: 440px; margin: 0 auto 24px;
+    }
+    .empty-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 10px;
+      background: var(--surface-2); border: 1px solid var(--border-card);
+      color: var(--text-main); font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    .empty-btn:hover {
+      background: var(--surface-3); border-color: var(--teal-primary);
+      color: var(--teal-primary);
+    }
+
+    /* Confirmation Screen */
+    .confirm-screen {
+      display: none; text-align: center; padding: 48px 20px;
+    }
+    .confirm-screen.show { display: block; }
+    .confirm-icon-wrap {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(34, 197, 94, 0.15); border: 2px solid rgba(34, 197, 94, 0.3);
+      display: flex; align-items: center; justify-content: center;
+      color: #22c55e; margin: 0 auto 20px; box-shadow: 0 0 24px rgba(34, 197, 94, 0.25);
+    }
+    .confirm-title {
+      font-family: var(--font-heading);
+      font-size: 26px; font-weight: 800; color: var(--text-main); margin-bottom: 8px;
+    }
+    .confirm-sub {
+      font-size: 14.5px; color: var(--text-muted); margin-bottom: 28px;
+    }
+    .confirm-card {
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 20px; padding: 24px 28px; max-width: 480px; margin: 0 auto 28px;
+      box-shadow: var(--card-shadow); text-align: left;
+    }
+    .confirm-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid var(--border-subtle);
+    }
+    .confirm-row:last-child { border-bottom: none; }
+    .confirm-key {
+      font-size: 12.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: .04em; font-family: var(--font-heading);
+    }
+    .confirm-val {
+      font-size: 14px; font-weight: 700; color: var(--text-main);
+    }
+
+    /* Modals */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(12px);
-      display: none; align-items: center; justify-content: center; z-index: 1000; padding: 24px;
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
     }
     .modal-overlay.open { display: flex; }
     .modal-box {
-      background: rgba(13,17,28,.88);
-      backdrop-filter: blur(28px) saturate(1.5); -webkit-backdrop-filter: blur(28px) saturate(1.5);
-      border: 1px solid rgba(16,185,129,.15);
-      border-radius: 18px; padding: 24px; width: 460px; max-width: 100%;
-      box-shadow: 0 32px 80px rgba(0,0,0,.5), 0 0 40px rgba(16,185,129,.06);
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 22px; padding: 28px; width: 480px; max-width: 100%;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      position: relative;
     }
-    .modal-title { font-size: 18px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 4px; }
-    .modal-sub   { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+    .modal-title {
+      font-family: var(--font-heading);
+      font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;
+    }
+    .modal-sub {
+      font-size: 13px; color: var(--text-muted); margin-bottom: 18px;
+    }
     .field-label {
-      font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      font-family: var(--font-heading);
+      font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
       color: var(--text-muted); margin-bottom: 6px; display: block;
     }
     .modal-ta {
-      width: 100%; box-sizing: border-box; background: var(--surface-3);
-      border: 1px solid var(--border); border-radius: var(--radius);
-      color: var(--text); font-size: 13px; padding: 10px; outline: none;
-      font-family: var(--font); resize: vertical; min-height: 72px;
+      width: 100%; box-sizing: border-box; background: var(--surface-2);
+      border: 1.5px solid var(--border-subtle); border-radius: 12px;
+      color: var(--text-main); font-size: 13.5px; padding: 12px 14px; outline: none;
+      font-family: var(--font-body); resize: vertical; min-height: 80px;
+      transition: border-color 0.2s ease;
     }
-    .modal-ta:focus { border-color: var(--primary); }
-    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+    .modal-ta:focus {
+      border-color: var(--teal-primary); background: var(--bg-card);
+    }
+    .modal-actions {
+      display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px;
+    }
+    .btn-modal-cancel {
+      padding: 9px 18px; border-radius: 10px; background: var(--surface-2);
+      border: 1px solid var(--border-card); color: var(--text-main);
+      font-family: var(--font-heading); font-size: 12.5px; font-weight: 700; cursor: pointer;
+    }
+    .btn-modal-confirm {
+      padding: 9px 20px; border-radius: 10px;
+      background: linear-gradient(135deg, #0fa88d 0%, #07816e 100%);
+      border: none; color: #ffffff;
+      font-family: var(--font-heading); font-size: 12.5px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 14px var(--teal-glow);
+    }
 
-    /* ── Confirmation screen ───────────────────────────── */
-    .confirm-screen {
-      display: none; flex-direction: column; align-items: center;
-      padding: 48px 24px; text-align: center;
+    .thinking-row {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      padding: 60px 20px; color: var(--text-muted); font-size: 14px; font-weight: 600;
     }
-    .confirm-screen.show { display: flex; }
-    .confirm-checkmark {
-      width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0;
-      background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.3);
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 20px; animation: pop-in .4s cubic-bezier(.34,1.56,.64,1);
+    .spinner {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2.5px solid var(--border-subtle);
+      border-top-color: var(--teal-primary);
+      animation: spin 0.8s linear infinite;
     }
-    @keyframes pop-in { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    .confirm-title { font-size: 22px; font-weight: 800; letter-spacing: -.03em; margin-bottom: 6px; }
-    .confirm-sub   { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; max-width: 340px; }
-    .confirm-card  {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px 22px; width: 100%; max-width: 380px;
-      text-align: left; margin-bottom: 24px;
-    }
-    .confirm-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 13px; }
-    .confirm-row:last-child { border-bottom: none; }
-    .confirm-key   { color: var(--text-muted); font-size: 12px; }
-    .confirm-value { color: var(--text); font-weight: 600; }
-
-    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); font-size: 14px; }
-
-    @media (max-width: 600px) {
-      .doc-grid { grid-template-columns: 1fr; }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
+<!-- Ambient Grid & Glow Effects -->
+<div class="bg-grid"></div>
+<div class="bg-glow-left"></div>
+<div class="bg-glow-right"></div>
+
+<!-- Top Executive Navigation Bar -->
 <nav class="nav">
-  <div class="nav-brand">
-    <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px rgba(16,185,129,.5))">
-      <defs>
-        <linearGradient id="bs2-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-        <linearGradient id="bs2-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#34d399"/></linearGradient>
-        <linearGradient id="bs2-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-      </defs>
-      <circle cx="14" cy="14" r="12.5" stroke="url(#bs2-ring)" stroke-width="1.25" fill="rgba(16,185,129,.08)"/>
-      <line x1="6" y1="14" x2="13" y2="14" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-      <path d="M13 14 L19 8.5" stroke="url(#bs2-ft)" stroke-width="2" stroke-linecap="round"/>
-      <path d="M13 14 L19 19.5" stroke="url(#bs2-fb)" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="20" cy="8.5" r="2" fill="#34d399"/>
-      <circle cx="20" cy="19.5" r="2" fill="#a855f7"/>
-    </svg>
-    <span style="font-family:'Sora',sans-serif;font-size:15px;font-weight:800;letter-spacing:-.03em;color:#f1f5f9;">Diff<span style="background:linear-gradient(90deg,#10b981,#34d399);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">/Dx</span></span>
+  <div class="brand-section">
+    <a href="/patient-overview.html" class="brand" title="DiffDx Overview">
+      <svg class="brand-icon" width="32" height="32" viewBox="0 0 28 28" fill="none">
+        <defs>
+          <linearGradient id="bk-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0fa88d" />
+            <stop offset="100%" stop-color="#2879d8" />
+          </linearGradient>
+          <linearGradient id="bk-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0fa88d" />
+            <stop offset="100%" stop-color="#14b8a6" />
+          </linearGradient>
+          <linearGradient id="bk-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0fa88d" />
+            <stop offset="100%" stop-color="#2879d8" />
+          </linearGradient>
+        </defs>
+        <circle cx="14" cy="14" r="12.5" stroke="url(#bk-ring)" stroke-width="1.3" fill="rgba(15,168,141,.08)" />
+        <line x1="6" y1="14" x2="13" y2="14" stroke="#0fa88d" stroke-width="2" stroke-linecap="round" />
+        <path d="M13 14 L19 8.5" stroke="url(#bk-ft)" stroke-width="2" stroke-linecap="round" />
+        <path d="M13 14 L19 19.5" stroke="url(#bk-fb)" stroke-width="2" stroke-linecap="round" />
+        <circle cx="20" cy="8.5" r="2" fill="#14b8a6" />
+        <circle cx="20" cy="19.5" r="2" fill="#2879d8" />
+      </svg>
+      <span class="brand-name">Diff<span class="brand-accent">/Dx</span></span>
+    </a>
+
+    <!-- Left-Aligned Patient Navigation Tabs -->
+    <div class="patient-nav-tabs patient-topbar-tabs" id="patient-nav-tabs">
+      <a href="/patient-overview.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Overview</span>
+      </a>
+      <a href="/my-sessions.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Sessions</span>
+      </a>
+      <a href="/messages.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Messages</span>
+      </a>
+      <a href="/book-slot.html" class="patient-nav-tab patient-topbar-tab active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Book</span>
+      </a>
+      <a href="/health-history.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+        <span>History</span>
+      </a>
+      <a href="/my-profile.html" class="patient-nav-tab patient-topbar-tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Profile</span>
+      </a>
+    </div>
   </div>
-  <div class="nav-spacer"></div>
-  <div id="nav-auth" style="display:flex;align-items:center;gap:6px;margin-right:8px;"></div>
+
+  <div class="nav-right">
+    <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <div id="nav-auth" style="display:flex;align-items:center;gap:8px;"></div>
+  </div>
 </nav>
 
-<div class="bs-page">
-  <div class="patient-page-header" id="page-header">
-    <div>
-      <div class="patient-page-title">Book an Appointment</div>
-      <div class="patient-page-sub">Find a doctor and reserve a slot that works for you.</div>
-    </div>
-  </div>
+<!-- Main Page Container -->
+<main class="bs-page">
+  <!-- Header -->
+  <header class="patient-page-header" id="page-header">
+    <h1 class="patient-page-title">Book an Appointment</h1>
+    <p class="patient-page-sub">Find a doctor and reserve a slot that works for you.</p>
+  </header>
 
-  <!-- Confirmation screen (shown after booking) -->
-  <div class="confirm-screen" id="confirm-screen">
-    <div class="confirm-checkmark">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  <!-- Confirmation Screen (shown after successful booking) -->
+  <section class="confirm-screen" id="confirm-screen">
+    <div class="confirm-icon-wrap">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <div class="confirm-title">Appointment Booked!</div>
-    <div class="confirm-sub" id="confirm-sub"></div>
+    <h2 class="confirm-title">Appointment Confirmed!</h2>
+    <p class="confirm-sub" id="confirm-sub">Your consultation slot has been reserved successfully.</p>
     <div class="confirm-card" id="confirm-card"></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-      <button class="btn btn-ghost" onclick="resetBooking()">Book Another</button>
-      <button class="btn btn-primary" onclick="window.location.href='/my-sessions.html'">Go to My Sessions →</button>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+      <button class="empty-btn" onclick="resetBooking()">Book Another</button>
+      <a class="empty-primary-btn" href="/my-sessions.html" style="text-decoration:none;">Go to My Sessions →</a>
     </div>
-  </div>
+  </section>
 
-  <!-- Search area (hidden after booking) -->
-  <div id="search-area">
+  <!-- Search & Catalog Area -->
+  <section id="search-area">
     <div id="ref-banner-wrap"></div>
 
     <div class="bs-toolbar">
       <div class="bs-search-wrap">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input class="bs-search" id="bs-search" type="text" placeholder="Search by doctor or clinic…" oninput="renderDoctors()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="bs-search" id="bs-search" type="text" placeholder="Search by doctor or clinic..." oninput="renderDoctors()">
       </div>
     </div>
 
+    <!-- Specialty Chips -->
     <div class="spec-chips" id="spec-chips"></div>
 
+    <!-- Doctor Grid -->
     <div class="doc-grid" id="doc-grid">
-      <div class="thinking-row" style="grid-column:1/-1;"><div class="spinner"></div> Loading doctors…</div>
+      <div class="thinking-row" style="grid-column:1/-1;">
+        <div class="spinner"></div>
+        <span>Searching available medical specialists…</span>
+      </div>
     </div>
-  </div>
-</div>
+  </section>
+</main>
 
-<!-- Booking confirm modal -->
+<!-- Booking Confirm Modal -->
 <div class="modal-overlay" id="book-modal" onclick="if(event.target===this)closeBook()">
   <div class="modal-box">
-    <div class="modal-title">Confirm Booking</div>
+    <h3 class="modal-title">Confirm Appointment</h3>
     <div class="modal-sub" id="book-sub"></div>
-    <label class="field-label">Selected Slot</label>
-    <div id="book-slot-display" style="background:var(--surface-3);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-size:13px;color:var(--text);margin-bottom:14px;"></div>
-    <label class="field-label" for="book-note">Note to Doctor (optional)</label>
-    <textarea class="modal-ta" id="book-note" placeholder="Reason for visit, symptoms, urgency, etc."></textarea>
-    <div id="book-error" style="display:none;font-size:12px;color:var(--danger);margin-top:8px;padding:8px 10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;"></div>
+    <label class="field-label">Selected Consultation Slot</label>
+    <div id="book-slot-display" style="background:var(--surface-2);border:1.5px solid var(--border-subtle);border-radius:12px;padding:12px 14px;font-size:13.5px;color:var(--text-main);margin-bottom:16px;font-weight:600;"></div>
+    <label class="field-label" for="book-note">Clinical Note for Physician (optional)</label>
+    <textarea class="modal-ta" id="book-note" placeholder="Share primary reason for visit, symptoms, or concerns…"></textarea>
+    <div id="book-error" style="display:none;font-size:12.5px;color:#ef4444;margin-top:10px;padding:9px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;"></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeBook()">Cancel</button>
-      <button class="btn btn-primary btn-sm" id="book-confirm-btn" onclick="confirmBook()">Confirm Booking</button>
+      <button class="btn-modal-cancel" onclick="closeBook()">Cancel</button>
+      <button class="btn-modal-confirm" id="book-confirm-btn" onclick="confirmBook()">Confirm Booking</button>
     </div>
   </div>
 </div>
 
-<!-- Waitlist modal -->
+<!-- Waitlist Modal -->
 <div class="modal-overlay" id="waitlist-modal" onclick="if(event.target===this)closeWaitlist()">
   <div class="modal-box">
-    <div class="modal-title">Join Waitlist</div>
+    <h3 class="modal-title">Join Priority Waitlist</h3>
     <div class="modal-sub" id="wl-doctor-name"></div>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.55;">You'll be notified by email when a slot opens with this doctor.</p>
-    <label class="field-label" for="wl-note">Note (optional)</label>
-    <textarea class="modal-ta" id="wl-note" placeholder="Reason for visit, urgency, etc."></textarea>
-    <div id="wl-error" style="display:none;font-size:12px;color:var(--danger);margin-top:8px;padding:8px 10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;"></div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.55;">You will receive an automated notification as soon as a consultation cancellation or new slot opens with this physician.</p>
+    <label class="field-label" for="wl-note">Note to Doctor (optional)</label>
+    <textarea class="modal-ta" id="wl-note" placeholder="Reason for consultation, urgency, preferred days…"></textarea>
+    <div id="wl-error" style="display:none;font-size:12.5px;color:#ef4444;margin-top:10px;padding:9px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;"></div>
     <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeWaitlist()">Cancel</button>
-      <button class="btn btn-primary btn-sm" id="wl-confirm" onclick="confirmWaitlist()">Join Waitlist</button>
+      <button class="btn-modal-cancel" onclick="closeWaitlist()">Cancel</button>
+      <button class="btn-modal-confirm" id="wl-confirm" onclick="confirmWaitlist()">Join Waitlist</button>
     </div>
   </div>
 </div>
@@ -253,6 +831,11 @@ const API = '';
 const user = getAuthUser();
 if (!user) window.location.replace('/login.html?next=/book-slot.html');
 
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark-theme');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
 let _doctors    = [];
 let _activeSpec = 'All';
 let _selected   = {}; // docId -> slot string
@@ -261,27 +844,32 @@ let _waitlistDoctor = null;
 let _bookingDoctor  = null;
 let _bookingSlot    = null;
 
-const SPEC_COLORS = ['#00b4d8','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6','#6366f1'];
+const SPEC_COLORS = ['#19C6AD','#8174E8','#4C8FF5','#F59E0B','#EF4444','#EC4899','#10B981','#6366F1'];
 function specColor(spec) {
   let h = 0;
   for (const c of (spec || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return SPEC_COLORS[h % SPEC_COLORS.length];
 }
-function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function fmtSlot(iso) {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}) +
-           ' at ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    return d.toLocaleDateString('en-US',{weekday:'long',day:'numeric',month:'long'}) +
+           ' at ' + d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   } catch { return iso; }
 }
+
 function fmtSlotShort(iso) {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) +
-           ' ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    return d.toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short'}) +
+           ' ' + d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   } catch { return iso; }
 }
 
@@ -291,18 +879,37 @@ function renderChips() {
     `<span class="spec-chip${s === _activeSpec ? ' active' : ''}" onclick="setSpec('${escHtml(s).replace(/'/g,"\\'")}')">${escHtml(s)}</span>`
   ).join('');
 }
-function setSpec(s) { _activeSpec = s; renderChips(); renderDoctors(); }
+
+function setSpec(s) {
+  _activeSpec = s;
+  renderChips();
+  renderDoctors();
+}
 
 function renderDoctors() {
   const grid = document.getElementById('doc-grid');
-  const q = (document.getElementById('bs-search').value || '').toLowerCase();
+  const q = (document.getElementById('bs-search').value || '').toLowerCase().trim();
   let list = _doctors;
   if (_activeSpec !== 'All') list = list.filter(d => d.specialty === _activeSpec);
   if (q) list = list.filter(d =>
-    (d.name||'').toLowerCase().includes(q) || (d.hospital||'').toLowerCase().includes(q));
+    (d.name||'').toLowerCase().includes(q) ||
+    (d.hospital||'').toLowerCase().includes(q) ||
+    (d.specialty||'').toLowerCase().includes(q)
+  );
 
   if (!list.length) {
-    grid.innerHTML = '<div class="empty-state">No doctors match your search.</div>';
+    grid.innerHTML = `
+      <div class="empty-glass-card">
+        <div class="empty-icon-box">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <h3 class="empty-title">No Specialists Found</h3>
+        <p class="empty-sub">No physicians match your search criteria. Try modifying your search keywords or reset the specialty filter.</p>
+        <button class="empty-btn" onclick="clearFilters()">Reset All Filters</button>
+      </div>
+    `;
     return;
   }
 
@@ -316,31 +923,45 @@ function renderDoctors() {
       ? `<div class="slot-chips">${upcoming.map(s =>
           `<span class="slot-chip${sel === s ? ' selected' : ''}" onclick="selectSlot('${escHtml(d.id)}','${escHtml(s)}')">${fmtSlotShort(s)}</span>`
         ).join('')}</div>`
-      : `<div class="doc-no-slots">No available slots right now</div>`;
+      : `<div class="doc-no-slots">No open slots this week</div>`;
 
     const actionBtn = upcoming.length
-      ? `<button class="btn btn-primary btn-sm" ${!sel ? 'disabled' : ''} onclick="openBook('${escHtml(d.id)}')">Book Appointment</button>`
-      : `<button class="btn ${onWaitlist ? 'btn-secondary' : 'btn-ghost'} btn-sm" ${onWaitlist ? 'disabled' : ''} onclick="openWaitlist('${escHtml(d.id)}')">
-           ${onWaitlist ? '✓ On Waitlist' : 'Join Waitlist'}
+      ? `<button class="btn-book-action btn-book-primary" ${!sel ? 'disabled' : ''} onclick="openBook('${escHtml(d.id)}')">
+           ${sel ? 'Book Selected Slot →' : 'Select a Slot Above'}
+         </button>`
+      : `<button class="btn-book-action btn-book-waitlist" ${onWaitlist ? 'disabled' : ''} onclick="openWaitlist('${escHtml(d.id)}')">
+           ${onWaitlist ? '✓ On Waitlist' : 'Join Doctor Waitlist'}
          </button>`;
 
-    return `<div class="doc-card" id="doc-${escHtml(d.id)}">
+    const initials = escHtml(d.avatar_initials || (d.name||'Dr').replace(/^Dr\.?\s*/i,'').slice(0,2).toUpperCase());
+
+    return `
+    <div class="doc-card" id="doc-${escHtml(d.id)}">
       <div class="doc-head">
-        <div class="doc-avatar" style="background:${color};">${escHtml(d.avatar_initials || (d.name||'').slice(0,2).toUpperCase())}</div>
-        <div>
+        <div class="doc-avatar" style="background:${color};">${initials}</div>
+        <div class="doc-info">
           <div class="doc-name">${escHtml(d.name)}</div>
-          <div class="doc-spec">${escHtml(d.specialty||'')}</div>
-          <div class="doc-clinic">${escHtml(d.hospital||'')}</div>
-          ${d.rating ? `<div class="doc-rating">★ ${d.rating}</div>` : ''}
+          <div class="doc-spec">${escHtml(d.specialty||'Physician')}</div>
+          <div class="doc-clinic">${escHtml(d.hospital||'Clinical Practice')}</div>
+          ${d.rating ? `<div class="doc-rating">★ ${d.rating} Verified Rating</div>` : ''}
         </div>
       </div>
-      <div>
-        <div class="doc-slots-label">Next Available</div>
+
+      <div class="doc-slots-box">
+        <div class="doc-slots-label">Next Available Slots</div>
         ${slotsHtml}
       </div>
+
       ${actionBtn}
     </div>`;
   }).join('');
+}
+
+function clearFilters() {
+  document.getElementById('bs-search').value = '';
+  _activeSpec = 'All';
+  renderChips();
+  renderDoctors();
 }
 
 function selectSlot(docId, slot) {
@@ -348,7 +969,6 @@ function selectSlot(docId, slot) {
   renderDoctors();
 }
 
-// ── Booking modal ─────────────────────────────────────────────────────────
 function openBook(docId) {
   const slot = _selected[docId];
   if (!slot) return;
@@ -360,12 +980,15 @@ function openBook(docId) {
   document.getElementById('book-error').style.display = 'none';
   document.getElementById('book-modal').classList.add('open');
 }
-function closeBook() { document.getElementById('book-modal').classList.remove('open'); }
+
+function closeBook() {
+  document.getElementById('book-modal').classList.remove('open');
+}
 
 async function confirmBook() {
   const btn = document.getElementById('book-confirm-btn');
   const errEl = document.getElementById('book-error');
-  btn.disabled = true; btn.textContent = 'Booking…';
+  btn.disabled = true; btn.textContent = 'Securing reservation…';
   errEl.style.display = 'none';
   try {
     const res = await fetch(`${API}/api/patient/book-direct`, {
@@ -386,6 +1009,7 @@ async function confirmBook() {
   } catch (e) {
     errEl.textContent = e.message;
     errEl.style.display = '';
+  } finally {
     btn.disabled = false; btn.textContent = 'Confirm Booking';
   }
 }
@@ -398,10 +1022,10 @@ function showConfirmation(doc, slot) {
   document.getElementById('confirm-sub').textContent =
     `Your appointment with ${doc.name} has been confirmed.`;
   document.getElementById('confirm-card').innerHTML = `
-    <div class="confirm-row"><span class="confirm-key">Doctor</span><span class="confirm-value">${escHtml(doc.name)}</span></div>
-    <div class="confirm-row"><span class="confirm-key">Specialty</span><span class="confirm-value">${escHtml(doc.specialty||'—')}</span></div>
-    <div class="confirm-row"><span class="confirm-key">Clinic</span><span class="confirm-value">${escHtml(doc.hospital||'—')}</span></div>
-    <div class="confirm-row"><span class="confirm-key">Date & Time</span><span class="confirm-value">${escHtml(fmtSlot(slot))}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Physician</span><span class="confirm-val">${escHtml(doc.name)}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Specialty</span><span class="confirm-val">${escHtml(doc.specialty||'—')}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Medical Center</span><span class="confirm-val">${escHtml(doc.hospital||'—')}</span></div>
+    <div class="confirm-row"><span class="confirm-key">Date & Time</span><span class="confirm-val">${escHtml(fmtSlot(slot))}</span></div>
   `;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -414,7 +1038,6 @@ function resetBooking() {
   init();
 }
 
-// ── Waitlist ──────────────────────────────────────────────────────────────
 function openWaitlist(docId) {
   _waitlistDoctor = _doctors.find(d => d.id === docId);
   if (!_waitlistDoctor) return;
@@ -424,12 +1047,15 @@ function openWaitlist(docId) {
   document.getElementById('wl-error').style.display = 'none';
   document.getElementById('waitlist-modal').classList.add('open');
 }
-function closeWaitlist() { document.getElementById('waitlist-modal').classList.remove('open'); }
+
+function closeWaitlist() {
+  document.getElementById('waitlist-modal').classList.remove('open');
+}
 
 async function confirmWaitlist() {
   const btn   = document.getElementById('wl-confirm');
   const errEl = document.getElementById('wl-error');
-  btn.disabled = true; btn.textContent = 'Joining…';
+  btn.disabled = true; btn.textContent = 'Registering…';
   errEl.style.display = 'none';
   try {
     const res = await fetch(`${API}/api/patient/waitlist`, {
@@ -458,7 +1084,6 @@ async function confirmWaitlist() {
   }
 }
 
-// ── Load & referral param support ─────────────────────────────────────────
 async function init() {
   try {
     const [docRes, wlRes] = await Promise.all([
@@ -486,8 +1111,8 @@ async function init() {
     if (isRef && refSpec) {
       const wrap = document.getElementById('ref-banner-wrap');
       const msg = refDoc
-        ? `Your doctor referred you to <strong style="color:var(--text);">Dr. ${escHtml(refDoc)}</strong>. Book your appointment below.`
-        : `Your doctor referred you to a <strong style="color:var(--text);">${escHtml(refSpec)} specialist</strong>. Choose a doctor and book your appointment below.`;
+        ? `Your doctor referred you to <strong style="color:var(--text-main);">Dr. ${escHtml(refDoc)}</strong>. Book your appointment below.`
+        : `Your doctor referred you to a <strong style="color:var(--text-main);">${escHtml(refSpec)} specialist</strong>. Choose a doctor and book your appointment below.`;
       wrap.innerHTML = `<div class="ref-banner">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" style="flex-shrink:0;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         <span style="font-size:13px;">${msg}</span>
@@ -501,8 +1126,8 @@ async function init() {
       setTimeout(() => {
         document.querySelectorAll('.doc-card').forEach(c => {
           if (c.textContent.includes(refDoc)) {
-            c.style.border = '1.5px solid rgba(0,180,216,.6)';
-            c.style.boxShadow = '0 0 0 4px rgba(0,180,216,.1)';
+            c.style.border = '1.5px solid rgba(25, 198, 173, 0.7)';
+            c.style.boxShadow = '0 0 0 4px var(--teal-glow)';
             c.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         });
@@ -510,10 +1135,12 @@ async function init() {
     }
   } catch (e) {
     document.getElementById('doc-grid').innerHTML =
-      `<div class="empty-state">Could not load doctors: ${escHtml(e.message)}</div>`;
+      `<div class="empty-glass-card"><p style="color:#ef4444;font-weight:700;">Could not load doctors: ${escHtml(e.message)}</p></div>`;
   }
 }
 
+// Initialise page
+initAuthNav();
 init();
 </script>
 </body>

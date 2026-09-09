@@ -1607,6 +1607,16 @@ async function submitResultUpload() {
   const file = fileInput.files[0];
   const status = document.getElementById('result-upload-status');
   const btn = document.getElementById('result-upload-btn');
+
+  // Uploading a result attaches it to a patient's own account — a guest
+  // session (no account yet) can run a diagnosis but can't upload files.
+  // Catch that here with a clear next step instead of a raw 401 message.
+  if (typeof getAccessToken !== 'function' || !getAccessToken()) {
+    status.innerHTML = 'Please <a href="/login.html" style="color:#00b4d8;font-weight:600;">sign in</a> to upload test results.';
+    status.style.color = '#ff6b6b';
+    return;
+  }
+
   btn.disabled = true; btn.textContent = 'Uploading…'; status.textContent = '';
   try {
     const fd = new FormData();
@@ -1758,7 +1768,7 @@ function buildNextSteps(r) {
     <div class="report-section-title">Next Steps</div>
     <div style="margin-bottom:18px;">
       <div style="font-size:14px;color:var(--text-dim);margin-bottom:10px;">
-        Based on your diagnosis, we recommend seeing a <strong style="color:var(--text);">${escHtml(r.specialty)}</strong>.
+        Based on your diagnosis, we recommend seeing a specialist in <strong style="color:var(--text);">${escHtml(r.specialty)}</strong>.
       </div>
       <span class="urgency-badge ${urgencyClass}">${urgencyLabel}</span>
       <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">${escHtml(r.reasoning)}</div>

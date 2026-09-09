@@ -1246,19 +1246,6 @@
           <p class="form-note">Already have an account? <a onclick="showTab('signin')">Sign in</a></p>
         </div>
 
-        <div class="tab-pane" id="pane-otp">
-          <div class="alert alert-err" id="otp-error"></div>
-          <div class="alert alert-ok" id="otp-success"></div>
-          <p class="form-note" style="margin-top:0;">We emailed a 6-digit code to <strong id="otp-email-display"></strong>.</p>
-          <div class="field">
-            <label>Verification Code</label>
-            <input type="text" id="otp-code" placeholder="123456" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
-              onkeydown="if(event.key==='Enter') doVerifyOtp()">
-          </div>
-          <button class="submit-btn patient-btn" id="otp-btn" onclick="doVerifyOtp()">Verify &amp; Continue</button>
-          <p class="form-note">Didn't get it? <a onclick="doResendOtp()">Resend code</a></p>
-        </div>
-
         <div class="guest-footer">
           Just browsing? <a onclick="window.location.href='/patient-info'">Continue as guest</a>
         </div>
@@ -1354,15 +1341,6 @@ function showTab(tab) {
 function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; }
 function hideAlert(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
 
-function showOtpPane(email) {
-  document.querySelectorAll('#patient-card .tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('#patient-card .tab-pane').forEach(p => p.classList.remove('active'));
-  document.getElementById('pane-otp').classList.add('active');
-  document.getElementById('otp-email-display').textContent = email;
-  document.getElementById('pane-otp').dataset.email = email;
-  hideAlert('otp-error'); hideAlert('otp-success');
-}
-
 async function doSignIn() {
   hideAlert('signin-error');
   const email = document.getElementById('signin-email').value.trim();
@@ -1373,15 +1351,7 @@ async function doSignIn() {
   try {
     const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,password}) });
     const data = await res.json();
-    if (!res.ok) {
-      const detail = data.detail;
-      if (detail && typeof detail === 'object' && detail.verification_required) {
-        showOtpPane(detail.email || email);
-        return;
-      }
-      showAlert('signin-error', (typeof detail === 'string' && detail) || 'Sign in failed.');
-      return;
-    }
+    if (!res.ok) { showAlert('signin-error', data.detail || 'Sign in failed.'); return; }
     if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
     const nextParam = new URLSearchParams(location.search).get('next');
     const dest = (nextParam && nextParam !== '/' && nextParam !== '/index.html') ? nextParam : (data.user?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html');
@@ -1421,37 +1391,12 @@ async function doRegister() {
     const res = await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,email,password}) });
     const data = await res.json();
     if (!res.ok) { showAlert('reg-error', data.detail || 'Registration failed.'); return; }
-    showOtpPane(data.email || email);
-  } catch (e) { showAlert('reg-error', 'Network error: ' + e.message); }
-  finally { btn.disabled = false; btn.textContent = 'Create Account'; }
-}
-
-async function doVerifyOtp() {
-  hideAlert('otp-error'); hideAlert('otp-success');
-  const email = document.getElementById('pane-otp').dataset.email;
-  const code = document.getElementById('otp-code').value.trim();
-  if (!code) { showAlert('otp-error', 'Enter the code we emailed you.'); return; }
-  const btn = document.getElementById('otp-btn');
-  btn.disabled = true; btn.textContent = 'Verifying…';
-  try {
-    const res = await fetch('/api/auth/verify-otp', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email,code}) });
-    const data = await res.json();
-    if (!res.ok) { showAlert('otp-error', data.detail || 'Verification failed.'); return; }
     if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
     const nextParam = new URLSearchParams(location.search).get('next');
     const dest = (nextParam && nextParam !== '/' && nextParam !== '/index.html') ? nextParam : (data.user?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html');
     window.location.replace(dest);
-  } catch (e) { showAlert('otp-error', 'Network error: ' + e.message); }
-  finally { btn.disabled = false; btn.textContent = 'Verify & Continue'; }
-}
-
-async function doResendOtp() {
-  hideAlert('otp-error');
-  const email = document.getElementById('pane-otp').dataset.email;
-  try {
-    await fetch('/api/auth/resend-otp', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email}) });
-    showAlert('otp-success', 'A new code has been sent.');
-  } catch (e) { showAlert('otp-error', 'Network error: ' + e.message); }
+  } catch (e) { showAlert('reg-error', 'Network error: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Create Account'; }
 }
 
 // Theme toggle handling

@@ -607,6 +607,7 @@
       position: relative;
       z-index: 5;
       max-width: 670px;
+      padding-top: 16px;
     }
 
     .eyebrow {
@@ -675,9 +676,9 @@
 
     .hero-sub {
       max-width: 600px;
-      margin-bottom: 32px;
+      margin-bottom: 44px;
       color: var(--text-soft);
-      font-size: 17px;
+      font-size: 17.5px;
       line-height: 1.72;
       letter-spacing: -0.01em;
     }
@@ -687,34 +688,43 @@
       font-weight: 700;
     }
 
-    /* CTA BUTTON GROUP */
+    /* CTA BUTTON GROUP (Shifted downwards, equalized button dimensions) */
     .cta-group {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
+      margin-top: 32px;
+      margin-bottom: 0;
       flex-wrap: wrap;
     }
 
-    .start-btn {
+    .start-btn,
+    .btn-secondary {
       position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 12px;
-      min-width: 245px;
-      padding: 17px 32px;
+      min-width: 225px;
+      height: 56px;
+      padding: 0 32px;
       border-radius: 14px;
-      background: linear-gradient(135deg, #0fa88d 0%, #0b9c85 55%, #0b8e9d 100%);
-      color: #ffffff !important;
       font-family: var(--font-heading);
       font-size: 16px;
       font-weight: 800;
       letter-spacing: -0.015em;
       text-decoration: none;
+      box-sizing: border-box;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    }
+
+    .start-btn {
+      background: linear-gradient(135deg, #0fa88d 0%, #0b9c85 55%, #0b8e9d 100%);
+      color: #ffffff !important;
       border: 1px solid rgba(255, 255, 255, 0.4);
       box-shadow: 0 12px 28px rgba(15, 168, 141, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
-      cursor: pointer;
     }
 
     .start-btn:hover {
@@ -729,111 +739,32 @@
 
     .start-btn svg {
       flex-shrink: 0;
+      width: 22px;
+      height: 22px;
     }
 
     .btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 16px 26px;
-      border-radius: 14px;
       background: var(--option-bg);
       border: 1px solid var(--border);
       color: var(--text-color);
-      font-family: var(--font-heading);
-      font-size: 15px;
-      font-weight: 700;
       box-shadow: var(--shadow-sm);
-      transition: all 0.25s ease;
-      text-decoration: none;
     }
 
     .btn-secondary:hover {
-      transform: translateY(-2px);
+      transform: translateY(-3px);
       border-color: rgba(15, 168, 141, 0.4);
       color: var(--teal);
       box-shadow: var(--shadow-md);
     }
 
-    /* FEATURE CARDS (2X2 GRID WITH 3D ICONS) */
-    .feature-pills {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
-      margin-top: 36px;
-      max-width: 680px;
+    .btn-secondary:active {
+      transform: translateY(-1px);
     }
 
-    .feature-card {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 16px 18px;
-      border-radius: 18px;
-      background: var(--feature-bg);
-      border: 1px solid var(--border);
-      box-shadow: 0 4px 16px rgba(27, 67, 84, 0.03);
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      text-align: left;
-    }
-
-    .feature-card:hover {
-      transform: translateY(-3px);
-      border-color: rgba(15, 168, 141, 0.4);
-      box-shadow: 0 12px 30px rgba(27, 67, 84, 0.08);
-    }
-
-    .feature-card-img-wrap {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
-      overflow: hidden;
+    .btn-secondary svg {
       flex-shrink: 0;
-      border: 1px solid var(--border);
-      background: #ffffff;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .dark-theme .feature-card-img-wrap {
-      background: #0f172a;
-      border-color: rgba(255, 255, 255, 0.12);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-
-    .feature-card:hover .feature-card-img-wrap {
-      transform: scale(1.08) translateY(-1px);
-    }
-
-    .feature-card-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .feature-card-info {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .feature-card-title {
-      font-family: var(--font-heading);
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text-color);
-      line-height: 1.25;
-    }
-
-    .feature-card-desc {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.45;
-      font-weight: 500;
+      width: 20px;
+      height: 20px;
     }
 
     /* =========================================================
@@ -1606,8 +1537,15 @@
         padding: 95px 18px 60px;
       }
 
-      .feature-pills {
-        grid-template-columns: 1fr;
+      .cta-group {
+        flex-direction: column;
+        width: 100%;
+      }
+
+      .start-btn,
+      .btn-secondary {
+        width: 100%;
+        min-width: 0;
       }
 
       .portal-cards-grid {
@@ -1754,55 +1692,12 @@
             Launch Patient Queue
           </a>
           <a href="/messages.html" class="btn-secondary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
             Consultations
           </a>
-        </div>
-
-        <!-- 2X2 FEATURE CARDS WITH 3D SQUIRCLE ICONS -->
-        <div class="feature-pills">
-          <div class="feature-card">
-            <div class="feature-card-img-wrap">
-              <img src="/feat_diagnostic.jpg" alt="Clinical Analysis" class="feature-card-img">
-            </div>
-            <div class="feature-card-info">
-              <div class="feature-card-title">Diagnostic Analysis</div>
-              <div class="feature-card-desc">Real-time clinical insights & diagnostic matching.</div>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-card-img-wrap">
-              <img src="/feat_reasoning.jpg" alt="Transparent Reasoning" class="feature-card-img">
-            </div>
-            <div class="feature-card-info">
-              <div class="feature-card-title">Transparent Reasoning</div>
-              <div class="feature-card-desc">Explainable diagnostic paths without guesswork.</div>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-card-img-wrap">
-              <img src="/feat_language.jpg" alt="Multi-Language Support" class="feature-card-img">
-            </div>
-            <div class="feature-card-info">
-              <div class="feature-card-title">Multi-Language Support</div>
-              <div class="feature-card-desc">Complete diagnostic analysis in 10+ regional languages.</div>
-            </div>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-card-img-wrap">
-              <img src="/feat_patient.jpg" alt="Patient-Focused Care" class="feature-card-img">
-            </div>
-            <div class="feature-card-info">
-              <div class="feature-card-title">Patient-Focused Care</div>
-              <div class="feature-card-desc">Empowering clinical decision making for everyone.</div>
-            </div>
-          </div>
         </div>
       </section>
 

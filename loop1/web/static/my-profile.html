@@ -685,12 +685,48 @@
       border: 1px solid var(--border-card);
       background: var(--surface-2);
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-      transition: none !important;
+      transition: all 0.2s ease;
     }
-    .profile-section:hover .ps-icon-wrap,
-    .ps-icon-wrap:hover {
-      transform: none !important;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+    .ps-icon-wrap svg {
+      width: 22px; height: 22px;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+    .profile-section:hover .ps-icon-wrap svg {
+      transform: scale(1.08);
+    }
+    .ps-icon-account {
+      background: rgba(40, 121, 216, 0.10);
+      border-color: rgba(40, 121, 216, 0.25);
+      color: #2563eb;
+    }
+    html.dark-theme .ps-icon-account {
+      background: rgba(76, 143, 245, 0.15) !important;
+      border-color: rgba(76, 143, 245, 0.3) !important;
+      color: #60a5fa;
+      box-shadow: 0 4px 16px rgba(76, 143, 245, 0.15) !important;
+    }
+    .ps-icon-personal {
+      background: rgba(15, 168, 141, 0.10);
+      border-color: rgba(15, 168, 141, 0.25);
+      color: #0d9488;
+    }
+    html.dark-theme .ps-icon-personal {
+      background: rgba(25, 198, 173, 0.15) !important;
+      border-color: rgba(25, 198, 173, 0.3) !important;
+      color: #19c6ad;
+      box-shadow: 0 4px 16px rgba(25, 198, 173, 0.15) !important;
+    }
+    .ps-icon-medical {
+      background: rgba(239, 68, 68, 0.10);
+      border-color: rgba(239, 68, 68, 0.25);
+      color: #dc2626;
+    }
+    html.dark-theme .ps-icon-medical {
+      background: rgba(239, 68, 68, 0.15) !important;
+      border-color: rgba(239, 68, 68, 0.3) !important;
+      color: #f87171;
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15) !important;
     }
     .ps-icon-img {
       width: 100%; height: 100%;
@@ -1271,8 +1307,12 @@
         <!-- Section 1: Account Identity -->
         <div class="profile-section" id="section-account">
           <div class="profile-section-header">
-            <div class="ps-icon-wrap">
-              <img src="/sec_account_icon.jpg" class="ps-icon-img" alt="Account Credentials" loading="lazy">
+            <div class="ps-icon-wrap ps-icon-account">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <polyline points="17 11 19 13 23 9"/>
+              </svg>
             </div>
             <div class="ps-title-wrap">
               <div class="ps-title">Account Credentials</div>
@@ -1306,8 +1346,11 @@
         <!-- Section 2: Personal Details -->
         <div class="profile-section" id="section-personal">
           <div class="profile-section-header">
-            <div class="ps-icon-wrap">
-              <img src="/sec_practice_icon.jpg" class="ps-icon-img" alt="Personal Details" loading="lazy">
+            <div class="ps-icon-wrap ps-icon-personal">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
             </div>
             <div class="ps-title-wrap">
               <div class="ps-title">Personal Details</div>
@@ -1377,8 +1420,10 @@
         <!-- Section 3: Medical Information -->
         <div class="profile-section" id="section-medical">
           <div class="profile-section-header">
-            <div class="ps-icon-wrap">
-              <img src="/sec_education_icon.jpg" class="ps-icon-img" alt="Medical Information" loading="lazy">
+            <div class="ps-icon-wrap ps-icon-medical">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+              </svg>
             </div>
             <div class="ps-title-wrap">
               <div class="ps-title">Medical Information &amp; Emergency Contacts</div>

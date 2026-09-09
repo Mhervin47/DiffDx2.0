@@ -647,12 +647,49 @@
       border: 1px solid var(--border-card);
       background: var(--surface-2);
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-      transition: none !important;
+      transition: all 0.2s ease;
     }
-    .profile-section:hover .ps-icon-wrap,
-    .ps-icon-wrap:hover {
-      transform: none !important;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+    .ps-icon-wrap svg {
+      width: 22px; height: 22px;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+    .profile-section:hover .ps-icon-wrap svg,
+    .section-toggle:hover .ps-icon-wrap svg {
+      transform: scale(1.08);
+    }
+    .ps-icon-account {
+      background: rgba(40, 121, 216, 0.10);
+      border-color: rgba(40, 121, 216, 0.25);
+      color: #2563eb;
+    }
+    html.dark-theme .ps-icon-account {
+      background: rgba(76, 143, 245, 0.15);
+      border-color: rgba(76, 143, 245, 0.3);
+      color: #60a5fa;
+      box-shadow: 0 4px 16px rgba(76, 143, 245, 0.15);
+    }
+    .ps-icon-practice {
+      background: rgba(15, 168, 141, 0.10);
+      border-color: rgba(15, 168, 141, 0.25);
+      color: #0d9488;
+    }
+    html.dark-theme .ps-icon-practice {
+      background: rgba(25, 198, 173, 0.15);
+      border-color: rgba(25, 198, 173, 0.3);
+      color: #19c6ad;
+      box-shadow: 0 4px 16px rgba(25, 198, 173, 0.15);
+    }
+    .ps-icon-education {
+      background: rgba(129, 116, 232, 0.10);
+      border-color: rgba(129, 116, 232, 0.25);
+      color: #7c3aed;
+    }
+    html.dark-theme .ps-icon-education {
+      background: rgba(129, 116, 232, 0.15);
+      border-color: rgba(129, 116, 232, 0.3);
+      color: #a78bfa;
+      box-shadow: 0 4px 16px rgba(129, 116, 232, 0.15);
     }
     .ps-icon-img {
       width: 100%; height: 100%;
@@ -1210,8 +1247,12 @@
         <!-- Section 1: Account Credentials -->
         <div class="profile-section" id="section-account">
           <div class="profile-section-header">
-            <div class="ps-icon-wrap">
-              <img src="/sec_account_icon.jpg" class="ps-icon-img" alt="Account Credentials" loading="lazy">
+            <div class="ps-icon-wrap ps-icon-account">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <polyline points="17 11 19 13 23 9"/>
+              </svg>
             </div>
             <div class="ps-title-wrap">
               <div class="ps-title">Account Credentials</div>
@@ -1245,8 +1286,14 @@
         <!-- Section 2: Clinical Practice Details -->
         <div class="profile-section" id="section-practice">
           <div class="profile-section-header">
-            <div class="ps-icon-wrap">
-              <img src="/sec_practice_icon.jpg" class="ps-icon-img" alt="Clinical Practice Details" loading="lazy">
+            <div class="ps-icon-wrap ps-icon-practice">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 2v5a4 4 0 0 1-8 0V2"/>
+                <path d="M3 2h2"/>
+                <path d="M9 2h2"/>
+                <path d="M7 7v7a5 5 0 0 0 10 0v-2.5"/>
+                <circle cx="17" cy="11.5" r="2.5"/>
+              </svg>
             </div>
             <div class="ps-title-wrap">
               <div class="ps-title">Clinical Practice Details</div>
@@ -1331,8 +1378,11 @@
         <!-- Section 3: Education & Qualifications (Collapsible) -->
         <div class="profile-section" id="section-education">
           <button type="button" class="section-toggle" id="edu-toggle" onclick="toggleEdu()">
-            <div class="ps-icon-wrap">
-              <img src="/sec_education_icon.jpg" class="ps-icon-img" alt="Education & Qualifications" loading="lazy">
+            <div class="ps-icon-wrap ps-icon-education">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+              </svg>
             </div>
             <div class="ps-title-wrap">
               <div class="ps-title" style="display:flex;align-items:center;">

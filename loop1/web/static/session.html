@@ -126,7 +126,10 @@
     html:not(.dark-theme) .moon-icon { display: block !important; }
     .nav-right-cluster {
       display: flex; align-items: center; gap: 7px;
-      justify-self: end; min-width: 0;
+      justify-self: end; min-width: 0; overflow: hidden;
+    }
+    .nav-right-cluster .session-chip {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
     }
     .session-chip {
       display: inline-flex; align-items: center;

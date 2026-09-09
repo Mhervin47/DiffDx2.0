@@ -214,7 +214,10 @@
 
     .nav-right-cluster {
       display: flex; align-items: center; gap: 8px;
-      justify-self: end; min-width: 0;
+      justify-self: end; min-width: 0; overflow: hidden;
+    }
+    .nav-right-cluster .session-chip {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
     }
 
     /* Theme Toggle Button */

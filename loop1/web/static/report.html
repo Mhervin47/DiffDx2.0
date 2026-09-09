@@ -895,10 +895,45 @@
     }
     .own-doc-chip:hover { color: var(--text-main); border-color: var(--teal-primary); }
     .own-doc-chip.active { background: rgba(13, 148, 136, 0.12); border-color: var(--teal-primary); color: var(--teal-primary); }
+    .own-doctor-search-wrap { position: relative; }
+    .own-doctor-search-wrap svg {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); pointer-events: none;
+    }
+    .own-doctor-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
     .own-doctor-card {
       background: var(--bg-card); border: 1px solid var(--border-card);
-      border-radius: 16px; padding: 14px 18px; margin-bottom: 10px;
+      border-radius: 16px; padding: 16px 18px; margin-bottom: 10px;
+      transition: border-color .15s;
     }
+    .own-doctor-card:hover { border-color: var(--teal-primary); }
+    .own-doctor-card.mismatch-card { opacity: .88; }
+    .own-doctor-card-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .own-doctor-card-info { flex: 1; min-width: 0; }
+    .own-doctor-name { font-family: var(--font-heading); font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 2px; }
+    .own-doctor-meta { font-size: 12.5px; color: var(--text-muted); }
+    .own-doctor-mismatch-badge {
+      flex-shrink: 0; font-family: var(--font-heading); font-size: 10px; font-weight: 800;
+      letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+      padding: 4px 10px; border-radius: 9999px;
+      background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .own-doctor-slots { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .own-doctor-slot-chip {
+      font-family: var(--font-body); font-size: 12px; font-weight: 600;
+      padding: 6px 12px; border-radius: 9999px; cursor: pointer;
+      background: var(--bg-input); border: 1px solid var(--border-card); color: var(--text-main);
+      transition: all .15s;
+    }
+    .own-doctor-slot-chip:hover { border-color: var(--teal-primary); color: var(--teal-primary); background: rgba(13, 148, 136, 0.08); }
+    .own-doctor-no-slots { font-size: 12.5px; color: var(--text-muted); font-style: italic; }
+    .own-doctor-card-actions { display: flex; }
+    .own-doctor-not-found {
+      text-align: center; padding: 32px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .own-doctor-not-found-title { font-family: var(--font-heading); font-size: 15px; font-weight: 800; color: var(--text-main); }
+    .own-doctor-not-found-sub { font-size: 13px; color: var(--text-muted); max-width: 340px; line-height: 1.5; margin-bottom: 10px; }
 
     /* ── Weakness Tag List ── */
     .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }

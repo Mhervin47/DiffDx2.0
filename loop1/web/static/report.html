@@ -163,7 +163,7 @@
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
-      display: flex; align-items: center; justify-content: space-between;
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 12px;
       padding: 0 18px; height: 52px;
       background: var(--nav-bg);
       backdrop-filter: blur(24px) saturate(1.8);
@@ -175,7 +175,7 @@
       transition: all 0.3s ease;
     }
 
-    .nav-left { display: flex; align-items: center; }
+    .nav-left { display: flex; align-items: center; justify-self: start; min-width: 0; }
     .nav-back-pill {
       display: inline-flex; align-items: center; gap: 7px;
       padding: 7px 16px; border-radius: 9999px;
@@ -194,8 +194,8 @@
     }
 
     .nav-center-logo {
-      position: absolute; left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      min-width: 0; overflow: hidden;
     }
     .nav-brand-capsule {
       display: flex; align-items: center; gap: 8px;
@@ -214,6 +214,7 @@
 
     .nav-right-cluster {
       display: flex; align-items: center; gap: 8px;
+      justify-self: end; min-width: 0;
     }
 
     /* Theme Toggle Button */

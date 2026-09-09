@@ -57,7 +57,7 @@
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
-      display: flex; align-items: center;
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 10px;
       padding: 0 20px; height: 52px;
       background: rgba(8, 8, 16, 0.85);
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -76,6 +76,7 @@
       font-size: 13px; font-weight: 600; cursor: pointer;
       text-decoration: none; transition: all .2s ease;
       white-space: nowrap; flex-shrink: 0;
+      justify-self: start;
     }
     .nav-back-pill:hover {
       border-color: rgba(168,85,247,.45);
@@ -84,8 +85,8 @@
       box-shadow: 0 0 18px rgba(168,85,247,.2);
     }
     .nav-center-logo {
-      position: absolute; left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      min-width: 0; overflow: hidden;
     }
     .theme-toggle-btn {
       display: inline-flex !important; align-items: center !important; justify-content: center !important;
@@ -124,9 +125,8 @@
     html:not(.dark-theme) .sun-icon { display: none !important; }
     html:not(.dark-theme) .moon-icon { display: block !important; }
     .nav-right-cluster {
-      margin-left: auto; display: flex; align-items: center; gap: 7px;
-      /* keep the right cluster from bleeding into the centered badge */
-      max-width: 40%;
+      display: flex; align-items: center; gap: 7px;
+      justify-self: end; min-width: 0;
     }
     .session-chip {
       display: inline-flex; align-items: center;

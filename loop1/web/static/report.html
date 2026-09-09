@@ -1539,10 +1539,26 @@ async function loadTestOrders() {
     const res = await fetch(`${API}/api/appointments`, { headers: { ...authHeaders() } });
     if (!res.ok) return;
     const data = await res.json();
-    const appts = data.appointments || data;
-    const appt = Array.isArray(appts)
-      ? appts.find(a => a.session_id === sessionId)
-      : Object.values(appts).find(a => a.session_id === sessionId);
+    const _apptsRaw = data.appointments || data;
+    const appts = Array.isArray(_apptsRaw) ? _apptsRaw : Object.values(_apptsRaw);
+    // A session can have more than one appointment for it (reschedule,
+    // cancel + rebook) — a plain .find() picks whichever comes first and
+    // can easily land on one the doctor never touched, while their actual
+    // notes/prescriptions/test orders sit on a different appointment_id
+    // for the same session_id. Same scoring my-sessions.html already uses
+    // to solve this exact problem: prefer the appointment that actually
+    // has doctor data, then prefer non-cancelled/upcoming over stale.
+    function _apptScore(a) {
+      const s = a.status || 'upcoming';
+      const hasData = ((a.prescriptions?.length > 0) || (a.test_orders?.length > 0) || !!a.referral || !!a.doctor_summary || !!a.doctor_notes) ? 1 : 0;
+      if (s === 'cancelled') return hasData ? 5 : 0;
+      if (s === 'seen')      return hasData ? 25 : 10;
+      /* upcoming */         return hasData ? 30 : 20;
+    }
+    const matching = appts.filter(a => a.session_id === sessionId);
+    const appt = matching.length
+      ? matching.reduce((best, a) => _apptScore(a) > _apptScore(best) ? a : best)
+      : undefined;
     if (!appt) {
       if (summaryEl) summaryEl.innerHTML = `
         <div class="report-section">

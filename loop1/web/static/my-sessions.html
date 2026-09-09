@@ -484,6 +484,37 @@
       background: var(--teal-primary); color: #050D18;
     }
 
+    .record-card {
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 18px; padding: 20px 22px; margin-bottom: 14px;
+      box-shadow: var(--card-shadow);
+    }
+    .record-card-header {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border-card);
+    }
+    .record-card-doctor { font-size: 15px; font-weight: 700; color: var(--text); }
+    .record-card-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .record-block { margin-bottom: 14px; }
+    .record-block:last-child { margin-bottom: 0; }
+    .record-block-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 8px;
+    }
+    .record-note-text { font-size: 13.5px; color: var(--text-dim); line-height: 1.55; }
+    .record-rx-row { padding: 8px 0; border-bottom: 1px dashed var(--border-card); }
+    .record-rx-row:last-child { border-bottom: none; }
+    .record-rx-drug { font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .record-rx-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .record-rx-instr { font-size: 12px; color: var(--text-dim); font-style: italic; margin-top: 3px; }
+    .record-test-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      font-size: 13px; color: var(--text-dim); padding: 6px 0; border-bottom: 1px dashed var(--border-card);
+    }
+    .record-test-row:last-child { border-bottom: none; }
+    .record-test-done { font-size: 11px; font-weight: 700; color: #4edea3; }
+    .record-test-pending { font-size: 11px; font-weight: 700; color: #f59e0b; }
+
     .appt-card {
       background: var(--bg-card); border: 1px solid var(--border-card);
       border-radius: 18px; padding: 22px 24px; margin-bottom: 14px;
@@ -835,6 +866,11 @@
       Appointments
       <span class="page-tab-badge" id="appt-tab-badge" style="display:none;"></span>
     </button>
+    <button class="page-tab" id="tab-records" onclick="switchPageTab('records')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Records
+      <span class="page-tab-badge" id="records-tab-badge" style="display:none;"></span>
+    </button>
   </div>
 
   <!-- Appointments panel (hidden by default) -->
@@ -847,6 +883,13 @@
     </div>
     <div id="upcoming-appts-list"></div>
     <div id="followups-list" style="display:none;"></div>
+  </div>
+
+  <!-- Records panel: every doctor note/prescription/test order/referral across
+       every appointment, in one place — hidden by default. -->
+  <div id="records-panel" style="display:none;">
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Everything your doctors have added — notes, prescriptions, test orders, and referrals — across every appointment, most recent first.</p>
+    <div id="records-list"></div>
   </div>
 
   <!-- Sessions panel (shown by default) -->
@@ -1361,6 +1404,7 @@ async function loadSessions() {
 
     // Build appointments panel from same apptData
     _buildAppointmentsPanel(apptData.appointments || []);
+    _buildRecordsPanel(apptData.appointments || []);
 
   } catch (e) {
     container.innerHTML = `<div class="error-msg">Error loading sessions: ${escHtml(e.message)}</div>`;
@@ -1372,8 +1416,10 @@ async function loadSessions() {
 function switchPageTab(tab) {
   document.getElementById('sessions-panel').style.display = tab === 'sessions' ? '' : 'none';
   document.getElementById('appointments-panel').style.display = tab === 'appointments' ? '' : 'none';
+  document.getElementById('records-panel').style.display = tab === 'records' ? '' : 'none';
   document.getElementById('tab-sessions').classList.toggle('active', tab === 'sessions');
   document.getElementById('tab-appointments').classList.toggle('active', tab === 'appointments');
+  document.getElementById('tab-records').classList.toggle('active', tab === 'records');
 }
 
 let _apptSubTab = 'upcoming';
@@ -1411,6 +1457,84 @@ function _buildAppointmentsPanel(appts) {
 
   document.getElementById('upcoming-appts-list').innerHTML = _buildUpcomingHtml(upcoming);
   document.getElementById('followups-list').innerHTML = _buildFollowupsHtml(followups, appts);
+}
+
+// ── Records panel: everything a doctor has added, across every appointment ──
+// Built from clinical data buried per-appointment (prescriptions, test
+// orders, doctor's note, referral) that otherwise only ever showed up
+// inline on the one report page for the session it came from — nothing
+// aggregated them in one place before this.
+function _buildRecordsPanel(appts) {
+  const withData = appts.filter(a =>
+    (a.prescriptions && a.prescriptions.length) ||
+    (a.test_orders && a.test_orders.length) ||
+    a.doctor_summary || a.referral
+  );
+
+  const badge = document.getElementById('records-tab-badge');
+  if (withData.length > 0) {
+    badge.textContent = withData.length;
+    badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:99px;font-size:9px;font-weight:800;background:rgba(0,180,216,.2);color:var(--primary);margin-left:4px;padding:0 4px;';
+  }
+
+  const listEl = document.getElementById('records-list');
+  if (!withData.length) {
+    listEl.innerHTML = `
+      <div class="appt-empty">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div>No doctor notes, prescriptions, or test orders yet</div>
+      </div>`;
+    return;
+  }
+
+  const sorted = withData.slice().sort((a, b) => (b.slot || b.booked_at || '') < (a.slot || a.booked_at || '') ? -1 : 1);
+
+  listEl.innerHTML = sorted.map(a => {
+    const rxHtml = (a.prescriptions || []).length ? `
+      <div class="record-block">
+        <div class="record-block-label">💊 Prescriptions</div>
+        ${a.prescriptions.map(p => `
+          <div class="record-rx-row">
+            <div class="record-rx-drug">${escHtml(p.drug || '')}</div>
+            ${p.dose || p.frequency || p.duration ? `<div class="record-rx-meta">${[p.dose, p.frequency, p.duration].filter(Boolean).map(escHtml).join(' · ')}</div>` : ''}
+            ${p.instructions ? `<div class="record-rx-instr">${escHtml(p.instructions)}</div>` : ''}
+          </div>`).join('')}
+      </div>` : '';
+
+    const testsHtml = (a.test_orders || []).length ? `
+      <div class="record-block">
+        <div class="record-block-label">🧪 Test Orders</div>
+        ${a.test_orders.map(t => `
+          <div class="record-test-row">
+            <span>${escHtml(t.test || '')}</span>
+            ${t.results_uploaded ? `<span class="record-test-done">✓ Results uploaded</span>` : `<span class="record-test-pending">Pending</span>`}
+          </div>`).join('')}
+      </div>` : '';
+
+    const noteHtml = a.doctor_summary ? `
+      <div class="record-block">
+        <div class="record-block-label">📝 Doctor's Note</div>
+        <div class="record-note-text">${escHtml(a.doctor_summary)}</div>
+      </div>` : '';
+
+    const referralHtml = a.referral ? `
+      <div class="record-block">
+        <div class="record-block-label">➜ Referral</div>
+        <div class="record-note-text">${a.referral.to_doctor ? `Referred to Dr. ${escHtml(a.referral.to_doctor)}` : `Referred to any available ${escHtml(a.referral.specialty || '')} specialist`}${a.referral.notes ? ' — ' + escHtml(a.referral.notes) : ''}</div>
+      </div>` : '';
+
+    return `
+    <div class="record-card">
+      <div class="record-card-header">
+        <div>
+          <div class="record-card-doctor">${escHtml(a.doctor_name || 'Doctor')}</div>
+          <div class="record-card-meta">${escHtml(a.specialty || '')} · ${escHtml(_fmtSlot(a.slot))}</div>
+        </div>
+        <a class="btn btn-ghost btn-sm" style="text-decoration:none;flex-shrink:0;" href="/report.html?session=${escHtml(a.session_id || '')}" onclick="sessionStorage.setItem('sessionId','${escHtml(a.session_id || '')}')">View Session</a>
+      </div>
+      ${noteHtml}${rxHtml}${testsHtml}${referralHtml}
+    </div>`;
+  }).join('');
 }
 
 function _fmtSlot(iso) {

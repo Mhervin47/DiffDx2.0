@@ -18,13 +18,14 @@ from __future__ import annotations
 
 import logging
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from diffdx.db.engine import get_sessionmaker
-from diffdx.legacy_store import _hash_password
+from diffdx.legacy_store import _hash_password, _load_doctors, _save_doctors
 from diffdx.repositories.users import UserRepository
 
 logging.basicConfig(level=logging.INFO)
@@ -104,5 +105,70 @@ def seed_doctor_accounts() -> None:
             _log.info("All %d doctor accounts already exist — nothing to seed.", len(_DOCTOR_SEED))
 
 
+def _hospital_from_email(email: str) -> str:
+    domain = email.split("@", 1)[1].split(".", 1)[0]
+    return domain.replace("_", " ").title() + " Clinic"
+
+
+def _avatar_initials(name: str) -> str:
+    words = [w for w in name.replace("Dr.", "").split() if w]
+    return "".join(w[0] for w in words[:2]).upper()
+
+
+def _generate_slots(seed_index: int) -> list[str]:
+    """Next 14 days, weekdays only, business hours minus a lunch break —
+    enough to make booking immediately testable. Doctors can replace this
+    via PATCH /api/doctor/slots once they set their own real availability."""
+    hours = [9, 10, 11, 14, 15, 16]
+    now = datetime.now(timezone.utc)
+    slots: list[str] = []
+    day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    for offset in range(1, 15):
+        d = day + timedelta(days=offset)
+        if d.weekday() >= 5:  # Sat/Sun
+            continue
+        for h in hours:
+            slots.append(d.replace(hour=h).strftime("%Y-%m-%dT%H:%M"))
+    return slots
+
+
+def seed_doctor_directory() -> None:
+    """Seed the legacy blob-store "doctors" directory that /api/doctors
+    (patient search) and PATCH /api/doctor/slots (a doctor's own
+    availability) actually read/write — separate from the relational
+    users/doctors table seed_doctor_accounts() populates above, which is
+    auth/login identity only. Without this, a fresh deployment has doctor
+    LOGIN accounts but an empty patient-facing directory, and doctors get
+    a 404 "Doctor record not found" trying to set their own availability
+    (found live: /api/doctors returned zero results on a fresh install).
+
+    Only creates entries for doctor_ids not already present — never
+    overwrites an existing entry, so a doctor's own slot customization
+    (or an admin edit) survives re-running this script.
+    """
+    doctors = _load_doctors()
+    existing_ids = {d.get("id") for d in doctors}
+    changed = False
+    for i, seed in enumerate(_DOCTOR_SEED):
+        if seed["doctor_id"] in existing_ids:
+            continue
+        doctors.append({
+            "id": seed["doctor_id"],
+            "name": seed["name"],
+            "specialty": seed["specialty"],
+            "hospital": _hospital_from_email(seed["email"]),
+            "rating": round(4.3 + (i % 7) * 0.1, 1),
+            "avatar_initials": _avatar_initials(seed["name"]),
+            "available_slots": _generate_slots(i),
+        })
+        changed = True
+        _log.info("Seeded doctor directory entry: %s (%s)", seed["name"], seed["doctor_id"])
+    if changed:
+        _save_doctors(doctors)
+    else:
+        _log.info("All %d doctor directory entries already exist — nothing to seed.", len(_DOCTOR_SEED))
+
+
 if __name__ == "__main__":
     seed_doctor_accounts()
+    seed_doctor_directory()

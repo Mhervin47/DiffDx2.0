@@ -84,21 +84,12 @@ def _run_patient_session(entry: dict, session_id: str, dry_run: bool = False) ->
     Run a full Loop 1 session driven by SimulatedPatient.
     Returns the path to the saved session JSONL.
     """
-    from loop1.schemas import PatientProfile, Demographics
-    from loop1.session import Session
-    from loop2.ddxplus.patient_simulator import SimulatedPatient
-
-    ddx_patient = _build_patient_from_entry(entry)
-    sim = SimulatedPatient(ddx_patient)
-
-    # Build a minimal PatientProfile for Loop 1 using the DDXPlus data
-    profile = PatientProfile(
-        session_id=session_id,
-        demographics=Demographics(age=ddx_patient.age, sex=ddx_patient.sex),
-        chief_complaint=sim.initial_complaint(),
-    )
-
     if dry_run:
+        # Checked BEFORE constructing SimulatedPatient/PatientProfile below —
+        # neither is needed for the placeholder JSONL, and constructing the
+        # profile requires sim.initial_complaint(), a real LLM call. Moved
+        # here so --dry-run makes zero LLM calls, as its own docstring and
+        # --help text promise (previously this branch ran after that call).
         _log.info("[DRY RUN] Would run session for %s", entry["patient_id"])
         # Write a minimal placeholder JSONL
         session_path = _session_jsonl_path(entry["patient_id"])
@@ -122,6 +113,20 @@ def _run_patient_session(entry: dict, session_id: str, dry_run: bool = False) ->
                 },
             }) + "\n")
         return session_path
+
+    from loop1.schemas import PatientProfile, Demographics
+    from loop1.session import Session
+    from loop2.ddxplus.patient_simulator import SimulatedPatient
+
+    ddx_patient = _build_patient_from_entry(entry)
+    sim = SimulatedPatient(ddx_patient)
+
+    # Build a minimal PatientProfile for Loop 1 using the DDXPlus data
+    profile = PatientProfile(
+        session_id=session_id,
+        demographics=Demographics(age=ddx_patient.age, sex=ddx_patient.sex),
+        chief_complaint=sim.initial_complaint(),
+    )
 
     patient_path = _session_jsonl_path(entry["patient_id"])
 

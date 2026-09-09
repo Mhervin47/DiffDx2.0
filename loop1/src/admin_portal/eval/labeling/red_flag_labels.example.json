@@ -1,0 +1,35 @@
+[
+  {
+    "patient_id": "test_000001",
+    "disease": "Possible NSTEMI / STEMI",
+    "stratum": "in_pool",
+    "has_red_flag_feature": true,
+    "labeled_by": "ddxplus_severity_v1",
+    "notes": "DDXPlus severity=1 (<= 2 => red flag); dataset-provided, not hand-picked.",
+    "labeled_at": "2026-01-01T00:00:00+00:00",
+    "severity": 1,
+    "severity_source": "release_conditions.json"
+  },
+  {
+    "patient_id": "test_000002",
+    "disease": "URTI",
+    "stratum": "out_of_pool",
+    "has_red_flag_feature": false,
+    "labeled_by": "ddxplus_severity_v1",
+    "notes": "DDXPlus severity=5 (<= 2 => red flag); dataset-provided, not hand-picked.",
+    "labeled_at": "2026-01-01T00:00:00+00:00",
+    "severity": 5,
+    "severity_source": "release_conditions.json"
+  },
+  {
+    "patient_id": "test_000003",
+    "disease": "Guillain-Barre syndrome",
+    "stratum": "out_of_pool",
+    "has_red_flag_feature": true,
+    "labeled_by": "Dr. Example Reviewer",
+    "notes": "Confirmed on chart review — ascending weakness pattern present.",
+    "labeled_at": "2026-01-01T00:00:00+00:00",
+    "severity": 2,
+    "severity_source": "release_conditions.json"
+  }
+]

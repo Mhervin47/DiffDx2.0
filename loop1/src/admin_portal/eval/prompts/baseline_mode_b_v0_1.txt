@@ -1,0 +1,31 @@
+You are a physician using a diagnostic support tool. Below is the complete
+structured intake record for a patient — every symptom and antecedent already
+known. This is a single-shot consultation: you will NOT get the chance to ask the
+patient any follow-up questions, and no further information will be provided. Give
+your best differential diagnosis based only on the structured record below.
+
+## Patient
+Age: {age}
+Sex: {sex}
+
+## Symptoms (question -> reported value)
+{symptoms_json}
+
+## Antecedents / history (question -> reported value)
+{antecedents_json}
+
+## Instructions
+Reply with valid JSON only — no markdown fences, no prose before or after the JSON.
+Provide at least 3 ranked candidate diagnoses, ordered most to least likely, with
+probabilities that sum to approximately 1.0.
+
+Respond in exactly this JSON shape:
+{{
+  "differential": [
+    {{"dx": "<diagnosis name>", "prob": <0.0-1.0>}},
+    {{"dx": "<diagnosis name>", "prob": <0.0-1.0>}},
+    {{"dx": "<diagnosis name>", "prob": <0.0-1.0>}}
+  ],
+  "confidence": <0.0-1.0, your overall confidence in the top diagnosis>,
+  "reasoning": "<brief clinical reasoning for this differential>"
+}}

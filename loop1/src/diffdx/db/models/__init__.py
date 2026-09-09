@@ -27,6 +27,7 @@ from diffdx.db.models.scheduling import (
     RescheduleProposal,
     Waitlist,
 )
+from diffdx.db.models.usage import LlmUsageEvent
 from diffdx.db.models.user import Dependent, Doctor, Patient, RefreshToken, User
 from diffdx.db.models.verification import EmailOtp
 
@@ -56,4 +57,5 @@ __all__ = [
     "Message",
     "UploadedFile",
     "AuditLogEntry",
+    "LlmUsageEvent",
 ]

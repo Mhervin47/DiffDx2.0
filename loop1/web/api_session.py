@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,6 +41,11 @@ from loop1.schemas import (
 from loop2.critic.aggregator import aggregate_critiques
 from loop2.critic.critic import critique_turn
 from loop2.critic.critique_schema import TurnCritique
+
+try:
+    from admin_portal.instrumentation import usage_logger as _usage_logger
+except Exception:          # admin_portal is optional; the session path must run without it
+    _usage_logger = None
 
 _log = logging.getLogger(__name__)
 
@@ -109,8 +115,8 @@ class APISession:
                 "confidence_threshold": self.confidence_threshold,
             },
         )
-        doctor_output, prompt_tokens, exemplar_ids = generate_turn_with_usage(
-            self.profile, self._recent_history(), 0
+        doctor_output, prompt_tokens, exemplar_ids = self._generate_turn_with_usage_logged(
+            0, "initialize"
         )
 
         if doctor_output.should_stop or doctor_output.confidence_to_stop >= self.confidence_threshold:
@@ -185,15 +191,15 @@ class APISession:
 
         # Max turns reached — one more generation for the final differential, then close
         if next_index >= self.max_turns:
-            final_output, _, _ = generate_turn_with_usage(
-                self.profile, self._recent_history(), next_index
+            final_output, _, _ = self._generate_turn_with_usage_logged(
+                next_index, "final_generation"
             )
             self._finalize("max_turns", final_output)
             return self._build_response(final_output, None)
 
         # Generate next question
-        next_output, next_tokens, next_exemplar_ids = generate_turn_with_usage(
-            self.profile, self._recent_history(), next_index
+        next_output, next_tokens, next_exemplar_ids = self._generate_turn_with_usage_logged(
+            next_index, "next_question"
         )
 
         if next_output.should_stop or next_output.confidence_to_stop >= self.confidence_threshold:
@@ -319,6 +325,36 @@ class APISession:
         if self.profile.running_summary:
             return self.history[-self.keep_recent:]
         return self.history
+
+    def _generate_turn_with_usage_logged(self, turn_index: int, call_site: str):
+        """Wraps generate_turn_with_usage with latency timing and a usage-log
+        call (admin_portal, optional). Returns its result completely
+        unchanged; never swallows an exception — only adds logging."""
+        result = None
+        ok = True
+        error_type = None
+        t0 = time.perf_counter()
+        try:
+            result = generate_turn_with_usage(self.profile, self._recent_history(), turn_index)
+            return result
+        except Exception as exc:
+            ok = False
+            error_type = type(exc).__name__
+            raise
+        finally:
+            if _usage_logger is not None:
+                latency_ms = (time.perf_counter() - t0) * 1000
+                doctor_output, prompt_tokens = (result[0], result[1]) if result is not None else (None, None)
+                _usage_logger.log_turn_usage(
+                    session_id=self.session_id,
+                    turn_index=turn_index,
+                    call_site=call_site,
+                    prompt_tokens=prompt_tokens,
+                    doctor_output=doctor_output,
+                    latency_ms=latency_ms,
+                    ok=ok,
+                    error_type=error_type,
+                )
 
     def _maybe_compress(self) -> None:
         if len(self.history) <= self.keep_recent:

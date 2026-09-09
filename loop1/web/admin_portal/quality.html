@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiffDx Admin — AI Quality</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #121b30; --border: #24304a; --text: #e6ecf5;
+    --muted: #93a1bd; --accent: #4da3ff; --warn: #f5a524; --error: #ff6161;
+    --well: #35c26a; --over: #f5a524; --under: #4da3ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  header { padding: 20px 32px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .admin-nav { display: flex; gap: 4px; margin-top: 14px; }
+  .admin-nav a { color: var(--muted); text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; }
+  .admin-nav a.active, .admin-nav a:hover { background: var(--panel); color: var(--text); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 64px; }
+  .banner { background: #3a2a0e; border: 1px solid var(--warn); color: #ffd98a; padding: 10px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+  section { margin-bottom: 32px; }
+  h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3.sub-heading { font-size: 14px; color: var(--muted); margin-top: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+  td.metric-label { color: var(--text); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .error { color: var(--error); }
+  ul.plain-list { font-size: 13px; line-height: 1.7; padding-left: 20px; }
+  ul.bar-list { list-style: none; padding: 0; margin: 12px 0 0; }
+  ul.bar-list li { margin-bottom: 10px; }
+  .bar-label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .bar-track { background: var(--panel); border: 1px solid var(--border); border-radius: 5px; height: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; }
+  .bar-fill.bar-well-calibrated { background: var(--well); }
+  .bar-fill.bar-overconfident { background: var(--over); }
+  .bar-fill.bar-underconfident { background: var(--under); }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Quality Console</h1>
+  <div class="subtitle">Critic-derived reasoning quality for the actor-critic system.</div>
+  <div id="admin-nav-root"></div>
+</header>
+<main>
+  <div id="sample-banner" class="banner" hidden>
+    ⚠ Sample data — no real comparison report has been generated yet. Run
+    <code>compare_report.py</code> then <code>publish_report.py</code> to see real numbers.
+  </div>
+
+  <div id="content">
+    <section>
+      <h2>Critic scores</h2>
+      <p class="muted" id="turn-summary"></p>
+      <table id="scores-table"></table>
+    </section>
+
+    <section>
+      <h2>Confidence calibration</h2>
+      <div id="calibration-section"></div>
+    </section>
+
+    <section>
+      <h2>Weakness categories</h2>
+      <div id="weakness-section"></div>
+    </section>
+
+    <section id="cross-ref-section">
+      <h2>Low question quality + wrong diagnosis (cross-referenced)</h2>
+      <table id="cross-ref-table"></table>
+    </section>
+  </div>
+</main>
+<script src="js/admin-common.js"></script>
+<script src="js/mock.js"></script>
+<script src="js/quality.js"></script>
+<script>AdminPortal.mountNav("quality.html");</script>
+</body>
+</html>

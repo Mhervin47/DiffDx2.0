@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiffDx Admin — Audit Log</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #121b30; --border: #24304a; --text: #e6ecf5;
+    --muted: #93a1bd; --accent: #4da3ff; --warn: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  header { padding: 20px 32px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .admin-nav { display: flex; gap: 4px; margin-top: 14px; }
+  .admin-nav a { color: var(--muted); text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; }
+  .admin-nav a.active, .admin-nav a:hover { background: var(--panel); color: var(--text); }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 32px 64px; }
+  .banner { background: #3a2a0e; border: 1px solid var(--warn); color: #ffd98a; padding: 8px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12px; }
+  .append-only-banner { background: #0e1626; border: 1px solid var(--border); color: var(--muted); padding: 8px 14px; border-radius: 8px; margin-bottom: 18px; font-size: 12px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .auth-required { font-size: 13px; color: var(--muted); }
+  .auth-required-link { color: var(--accent); margin-left: 6px; }
+
+  form#audit-filter-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  form#audit-filter-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+  form#audit-filter-form input, form#audit-filter-form select {
+    background: #0e1626; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 8px; font-size: 13px;
+  }
+  form#audit-filter-form button { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border); background: #0e1626; color: var(--text); cursor: pointer; font-size: 13px; }
+  form#audit-filter-form button:hover { background: #17233a; }
+  form#audit-filter-form button.primary { background: var(--accent); border-color: var(--accent); color: #06121f; font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tr.highlighted { background: rgba(77,163,255,.15); outline: 1px solid var(--accent); }
+  #audit-total { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Audit Log</h1>
+  <div class="subtitle">Every login, failed login, PHI read, and appointment mutation — append-only.</div>
+  <div id="admin-nav-root"></div>
+</header>
+<main>
+  <div id="audit-sample-banner" class="banner" hidden>⚠ Sample data — could not reach the audit endpoint.</div>
+  <div class="append-only-banner">This log is append-only. No update or delete path exists in the application.</div>
+
+  <form id="audit-filter-form">
+    <label>Actor<input type="text" id="f-actor" placeholder="name contains…"></label>
+    <label>Action<input type="text" id="f-action" placeholder="e.g. subject_erasure"></label>
+    <label>Resource type<input type="text" id="f-resource-type" placeholder="e.g. user"></label>
+    <label>From<input type="datetime-local" id="f-from"></label>
+    <label>To<input type="datetime-local" id="f-to"></label>
+    <button type="submit" class="primary">Filter</button>
+    <button type="button" id="audit-filter-reset">Reset</button>
+  </form>
+
+  <div id="audit-table-wrap">
+    <table id="audit-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th><th>Actor</th><th>Action</th><th>Resource type</th><th>Resource ID</th><th>IP</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="audit-total" class="muted"></p>
+  </div>
+</main>
+<script src="/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script src="js/mock.js"></script>
+<script src="js/audit.js"></script>
+<script>AdminPortal.mountNav("audit.html");</script>
+</body>
+</html>

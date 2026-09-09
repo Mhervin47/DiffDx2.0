@@ -1400,6 +1400,17 @@ async function uploadSugResult(event, testId, testName, tests) {
   const file = event.target.files[0];
   if (!file) return;
   const labelEl = document.getElementById('sug-upload-' + testId);
+
+  // Same as the modal upload path: this endpoint requires a real account
+  // (/api/session/{id}/suggested-test-files -> _get_user_from_request),
+  // so a guest session hits a 401 here every time. Catch it upfront with
+  // a clear next step instead of a raw "Not authenticated" alert.
+  if (typeof getAccessToken !== 'function' || !getAccessToken()) {
+    event.target.value = '';
+    _showReportToast('Please sign in to upload test results', '#ef4444');
+    return;
+  }
+
   if (labelEl) labelEl.innerHTML = '<span style="font-size:11px;color:var(--text-muted);padding:4px 10px;">Uploading…</span>';
   try {
     const fd = new FormData();
@@ -1425,7 +1436,7 @@ async function uploadSugResult(event, testId, testName, tests) {
           onchange="uploadSugResult(event,'${escHtml(testId)}','${escHtml(testName)}',${JSON.stringify(tests).replace(/"/g,'&quot;')})">
       </label>`;
     }
-    alert('Upload failed: ' + e.message);
+    _showReportToast('Upload failed: ' + e.message, '#ef4444');
   }
 }
 
@@ -3002,7 +3013,7 @@ async function copyShareLink() {
   }, 2000);
 }
 
-function _showReportToast(msg) {
+function _showReportToast(msg, bg) {
   let t = document.getElementById('_report-toast');
   if (!t) {
     t = document.createElement('div');
@@ -3011,6 +3022,7 @@ function _showReportToast(msg) {
     document.body.appendChild(t);
   }
   t.textContent = msg;
+  t.style.background = bg || '#10b981';
   t.style.opacity = '1';
   clearTimeout(t._t);
   t._t = setTimeout(() => { t.style.opacity = '0'; }, 2500);

@@ -230,10 +230,12 @@
       background: rgba(255, 255, 255, 0.025);
       border: 1px solid rgba(16, 185, 129, 0.2);
       border-radius: 16px;
-      width: fit-content;
-      max-width: 100%;
+      width: auto;
+      min-width: 260px;
+      max-width: min(420px, 88vw);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
       animation: slogan-fade .4s ease;
+      transition: width .3s ease, height .3s ease;
     }
     .health-thinking-header {
       display: flex;
@@ -263,6 +265,7 @@
       line-height: 1.6;
       color: #e2e8f0;
       font-style: italic;
+      min-height: calc(1.6em * 2);
       transition: opacity .25s ease;
     }
     .health-thinking-slogan .quote-author {

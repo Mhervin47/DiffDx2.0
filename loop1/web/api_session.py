@@ -21,7 +21,7 @@ try:
 except ImportError:
     pass
 
-os.environ.setdefault("CRITIC_MODEL", "groq/openai/gpt-oss-120b")
+os.environ.setdefault("CRITIC_MODEL", "openrouter/meta-llama/llama-3.3-70b-instruct")
 
 from loop1.closing_turn import generate_closing_turn
 from loop1.compressor import compress_context

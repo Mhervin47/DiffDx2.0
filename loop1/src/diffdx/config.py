@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     cerebras_api_key: str | None = Field(default=None, alias="CEREBRAS_API_KEY")
     gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
     critic_model: str = Field(
-        default="groq/openai/gpt-oss-120b", alias="CRITIC_MODEL"
+        default="openrouter/meta-llama/llama-3.3-70b-instruct", alias="CRITIC_MODEL"
     )
 
     # Optional — database. Falls back to local SQLite if unset.

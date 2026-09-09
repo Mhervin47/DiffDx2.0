@@ -490,7 +490,7 @@
       box-shadow: 0 0 0 1px var(--primary), 0 4px 12px var(--primary-dim);
     }
     .scal-cell.has-appts {
-      border-left: 3px solid var(--primary);
+      border-left: 3px solid var(--blue-secondary, #2563eb);
     }
     .scal-date-num {
       font-size: 13px; font-weight: 700; width: 24px; height: 24px;
@@ -524,9 +524,10 @@
     .scal-cell.blocked-day.selected { border-color: #ef4444; background: rgba(239,68,68,.12); }
     .scal-events { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; overflow: hidden; }
     .scal-event {
-      font-size: 10px; background: var(--primary); color: #fff;
-      border-radius: 3px; padding: 1px 5px; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
+      font-size: 10px; background: var(--blue-secondary, #2563eb); color: #fff;
+      border-radius: 4px; padding: 2px 5px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; font-weight: 600;
+      box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
     }
     .scal-more { font-size: 9px; color: var(--text-muted); padding: 1px 4px; }
     .scal-day-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
@@ -1560,7 +1561,7 @@
     }
     .cal-stat-icon.today-icon  { background: rgba(13,148,136,.12); color: var(--primary); }
     .cal-stat-icon.week-icon   { background: rgba(245,158,11,.12); color: #f59e0b; }
-    .cal-stat-icon.slots-icon  { background: rgba(16,185,129,.12); color: #10b981; }
+    .cal-stat-icon.slots-icon  { background: rgba(37, 99, 235, 0.12); color: var(--blue-secondary, #2563eb); }
     .cal-stat-icon.pts-icon    { background: rgba(139,92,246,.12); color: #8b5cf6; }
     .cal-stat-value { font-size: 22px; font-weight: 800; color: var(--text-main); line-height: 1; font-family: var(--font-heading); }
     .cal-stat-label { font-size: 10px; color: var(--text-dim); margin-top: 3px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-family: var(--font-heading); }
@@ -1588,23 +1589,23 @@
       background: var(--surface-4); border-radius: 3px;
       padding: 1px 4px; margin-top: 1px; align-self: flex-start; white-space: nowrap;
     }
-    .scal-cell.has-appts { border-left: 2px solid var(--primary); }
+    .scal-cell.has-appts { border-left: 2px solid var(--blue-secondary, #2563eb); }
 
     /* ---- Open slot pill in preset grid ---- */
     .sch-slot-open {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.35);
+      background: rgba(37, 99, 235, 0.08);
+      border: 1px solid rgba(37, 99, 235, 0.28);
       border-radius: 8px;
       overflow: hidden;
       font-size: 11px;
       font-weight: 600;
-      color: #10b981;
+      color: var(--blue-secondary, #2563eb);
       font-variant-numeric: tabular-nums;
       font-family: var(--font-heading), var(--font);
-      box-shadow: 0 1px 3px rgba(16, 185, 129, 0.08);
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
       transition: all 0.15s ease;
       box-sizing: border-box;
       width: 100%;
@@ -1622,8 +1623,8 @@
     .sch-slot-open-x {
       background: none;
       border: none;
-      border-left: 1px solid rgba(16, 185, 129, 0.25);
-      color: rgba(16, 185, 129, 0.85);
+      border-left: 1px solid rgba(37, 99, 235, 0.2);
+      color: var(--blue-secondary, #2563eb);
       cursor: pointer;
       padding: 0 8px;
       align-self: stretch;
@@ -3500,12 +3501,15 @@
     }
     .dossier-header {
       padding: 13px 20px;
-      background: linear-gradient(90deg, rgba(10, 26, 47, 0.85) 0%, var(--surface-2) 100%);
+      background: var(--surface-2);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+    }
+    html.dark-theme .dossier-header {
+      background: linear-gradient(90deg, rgba(10, 26, 47, 0.85) 0%, var(--surface-2) 100%);
     }
     .dossier-header-title {
       display: flex;
@@ -3557,6 +3561,9 @@
     }
     .demo-cell:hover {
       background: var(--surface-3);
+      border-color: rgba(0, 180, 216, 0.25);
+    }
+    html.dark-theme .demo-cell:hover {
       border-color: rgba(255, 255, 255, 0.12);
     }
     .demo-label {
@@ -3797,9 +3804,12 @@
     }
     .tag-suggestion-pill:hover {
       background: var(--surface-3);
-      border-color: rgba(255, 255, 255, 0.2);
+      border-color: rgba(0, 180, 216, 0.3);
       color: var(--text-main);
       transform: translateY(-1px);
+    }
+    html.dark-theme .tag-suggestion-pill:hover {
+      border-color: rgba(255, 255, 255, 0.2);
     }
     .tag-suggestion-pill.applied {
       font-weight: 700;
@@ -4343,7 +4353,7 @@
       </div>
       <div class="cal-stat-card">
         <div class="cal-stat-icon slots-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 15.5"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue-secondary, #2563eb)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 15.5"/></svg>
         </div>
         <div><div class="cal-stat-value" id="stat-slots">0</div><div class="cal-stat-label">OPEN SLOTS</div></div>
       </div>
@@ -5018,7 +5028,7 @@ function renderTodayWidget(appts) {
   widget.style.display = '';
   if (countEl) countEl.textContent = todayAppts.length;
 
-  const urgColors = { emergency:'#ef4444', urgent:'#f59e0b', routine:'#10b981' };
+  const urgColors = { emergency:'#ef4444', urgent:'#f59e0b', routine:'#2563eb' };
   list.innerHTML = todayAppts.map((a, i) => {
     const t = a.slot ? new Date(a.slot).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
     const slot    = new Date(a.slot);
@@ -8946,7 +8956,7 @@ function renderCalMain() {
   const firstDow = (new Date(_scViewYear, _scViewMonth, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(_scViewYear, _scViewMonth + 1, 0).getDate();
 
-  const _URGENCY_COLOR = { emergency: '#ef4444', urgent: '#f59e0b', routine: '#22c55e' };
+  const _URGENCY_COLOR = { emergency: '#ef4444', urgent: '#f59e0b', routine: 'var(--blue-secondary, #2563eb)' };
   const byDay = {};
   for (const appt of _appointments) {
     if (!appt.slot) continue;
@@ -8978,7 +8988,7 @@ function renderCalMain() {
       isBlocked             ? 'blocked-day' : '',
     ].filter(Boolean).join(' ');
     const visible = appts.slice(0, 2).map(a => {
-      const bg = _URGENCY_COLOR[a.urgency] || 'var(--primary)';
+      const bg = _URGENCY_COLOR[a.urgency] || 'var(--blue-secondary, #2563eb)';
       const name = a.patient_name ? a.patient_name.split(' ')[0] : 'Patient';
       return `<div class="scal-event" style="background:${bg};">${a.slot.slice(11,16)} ${escHtml(name)}</div>`;
     }).join('');
@@ -9016,7 +9026,7 @@ function renderCalDayDetail() {
   const label = new Date(_scSelectedDay + 'T12:00')
     .toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const _URGENCY_COLOR = { emergency: '#ef4444', urgent: '#f59e0b', routine: '#22c55e' };
+  const _URGENCY_COLOR = { emergency: '#ef4444', urgent: '#f59e0b', routine: 'var(--blue-secondary, #2563eb)' };
   const _STATUS_LABEL  = { upcoming: 'Upcoming', seen: 'Seen', no_show: 'No Show' };
 
   const dayAppts = _appointments
@@ -9026,7 +9036,7 @@ function renderCalDayDetail() {
   const apptsHtml = dayAppts.length
     ? dayAppts.map(a => {
         const time   = a.slot.slice(11, 16);
-        const color  = _URGENCY_COLOR[a.urgency] || 'var(--primary)';
+        const color  = _URGENCY_COLOR[a.urgency] || 'var(--blue-secondary, #2563eb)';
         const status = _STATUS_LABEL[a.status] || (a.status || '');
         return `<div class="scal-appt-card" onclick="openApptFromCalendar('${a.appointment_id}')">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">

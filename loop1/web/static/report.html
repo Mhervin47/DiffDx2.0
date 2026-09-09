@@ -1522,7 +1522,20 @@ async function loadTestOrders() {
   const summaryEl = document.getElementById('doctors-note-section');
   const rxEl = document.getElementById('rx-section');
   try {
-    if (!getAuthToken()) return; // guest — skip
+    // Doctor notes/prescriptions/test orders are tied to a booked
+    // appointment, which itself requires an account (booking 401s for a
+    // guest) — so this is expected to be empty for a guest session, but
+    // it should say so rather than silently rendering nothing with no
+    // explanation of why.
+    if (!getAuthToken()) {
+      if (summaryEl) summaryEl.innerHTML = `
+        <div class="report-section">
+          <div style="font-size:13px;color:var(--text-muted);padding:8px 0;">
+            <a href="/login.html" style="color:var(--primary);font-weight:600;">Sign in</a> to see prescriptions, test orders, and notes from your doctor.
+          </div>
+        </div>`;
+      return;
+    }
     const res = await fetch(`${API}/api/appointments`, { headers: { ...authHeaders() } });
     if (!res.ok) return;
     const data = await res.json();
@@ -1530,7 +1543,15 @@ async function loadTestOrders() {
     const appt = Array.isArray(appts)
       ? appts.find(a => a.session_id === sessionId)
       : Object.values(appts).find(a => a.session_id === sessionId);
-    if (!appt) return;
+    if (!appt) {
+      if (summaryEl) summaryEl.innerHTML = `
+        <div class="report-section">
+          <div style="font-size:13px;color:var(--text-muted);padding:8px 0;">
+            No appointment is linked to this session yet — book one above to see your doctor's notes, prescriptions, and test orders here once they're added.
+          </div>
+        </div>`;
+      return;
+    }
     // Wire up "Send to Doctor" button if appointment exists
     window._reportApptId = appt.appointment_id;
     // Wire up suggested-test upload tracking

@@ -21,7 +21,10 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg-dark: #F1F5F9;
+      --bg-dark: #f6fafb;
+      --body-bg: radial-gradient(circle at 8% 18%, rgba(15, 168, 141, 0.055), transparent 28%),
+                 radial-gradient(circle at 92% 28%, rgba(40, 121, 216, 0.055), transparent 30%),
+                 linear-gradient(180deg, #ffffff 0%, #fbfdfd 48%, #f6fafb 100%);
       --bg-card: #FFFFFF;
       --border-card: #CBD5E1;
       --border: #CBD5E1;
@@ -60,6 +63,7 @@
 
     html.dark-theme {
       --bg-dark: #050D18;
+      --body-bg: #050D18;
       --bg-card: #0A1525;
       --border-card: rgba(150, 180, 210, 0.10);
       --border: rgba(150, 180, 210, 0.12);
@@ -94,16 +98,21 @@
       --cover-gradient: transparent;
     }
 
-    html,
     body {
-      background: #050D18 !important;
-      background-color: #050D18 !important;
+      background: var(--body-bg);
+      background-attachment: fixed;
       color: var(--text-main);
       font-family: var(--font-body);
       min-height: 100vh;
       overflow-x: hidden;
       position: relative;
-      transition: none !important;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    html.dark-theme,
+    html.dark-theme body {
+      background: #050D18 !important;
+      background-color: #050D18 !important;
+      color: var(--text-main) !important;
     }
 
     /* Ambient Background Effects - Hidden permanently for solid deep darker background */
@@ -602,30 +611,36 @@
 
     /* Incomplete Warning Alert Banner */
     .incomplete-banner {
-      background: rgba(245, 158, 11, 0.06);
-      border: 1px solid rgba(217, 119, 6, 0.25);
+      background: #FFFBEB;
+      border: 1px solid #FCD34D;
       border-radius: 16px; padding: 14px 18px;
       margin-bottom: 24px;
       display: flex; align-items: flex-start; gap: 14px;
-      box-shadow: none;
+      box-shadow: 0 2px 10px rgba(245, 158, 11, 0.08);
+    }
+    .incomplete-banner .ib-title {
+      font-family: var(--font-heading);
+      font-size: 13.5px; font-weight: 800; color: #92400E;
+      margin-bottom: 2px;
+    }
+    .incomplete-banner .ib-text {
+      font-size: 13px; color: #78350F; line-height: 1.45; font-weight: 500;
     }
     html.dark-theme .incomplete-banner {
       background: rgba(245, 158, 11, 0.05) !important;
       border: 1px solid rgba(245, 158, 11, 0.22) !important;
       box-shadow: none !important;
     }
+    html.dark-theme .incomplete-banner .ib-title {
+      color: var(--amber-accent) !important;
+    }
+    html.dark-theme .incomplete-banner .ib-text {
+      color: var(--text-main) !important;
+    }
     .ib-icon {
       color: var(--amber-accent); flex-shrink: 0; margin-top: 2px;
     }
     .ib-content { flex: 1; min-width: 0; }
-    .ib-title {
-      font-family: var(--font-heading);
-      font-size: 13.5px; font-weight: 800; color: var(--amber-accent);
-      margin-bottom: 2px;
-    }
-    .ib-text {
-      font-size: 13px; color: var(--text-main); line-height: 1.45; font-weight: 500;
-    }
 
     /* Form Section Cards */
     .profile-section {
@@ -641,12 +656,15 @@
     }
     .profile-section:hover,
     .provider-card:hover {
-      border-color: rgba(150, 180, 210, 0.10) !important;
+      border-color: rgba(15, 168, 141, 0.35) !important;
       transform: none !important;
+    }
+    html.dark-theme .profile-section:hover,
+    html.dark-theme .provider-card:hover {
+      border-color: rgba(150, 180, 210, 0.20) !important;
     }
 
     /* Strict Dark-Theme Profile Card Overrides (Deep Sleek Navy Solid Surfaces) */
-    html,
     html.dark-theme,
     html.dark-theme body {
       background: #050D18 !important;
@@ -733,11 +751,6 @@
       object-fit: cover;
       display: block;
       border-radius: 11px;
-    }
-    html.dark-theme .ps-icon-wrap {
-      background: #0E1B2E !important;
-      border-color: rgba(150, 180, 210, 0.16) !important;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4) !important;
     }
     .ps-title-wrap { flex: 1; min-width: 0; }
     .ps-title {
@@ -967,8 +980,8 @@
       border-color: rgba(150, 180, 210, 0.10) !important;
     }
     .dependent-card:hover {
-      border-color: rgba(150, 180, 210, 0.10) !important;
-      background: #0A1525 !important;
+      border-color: rgba(15, 168, 141, 0.3) !important;
+      background: var(--surface-2) !important;
       transform: none !important;
     }
     html.dark-theme .dependent-card:hover {
@@ -1001,10 +1014,16 @@
       border-color: rgba(150, 180, 210, 0.12) !important;
       color: #EAF2FA !important;
     }
-    .btn-secondary:hover,
+    .btn-secondary:hover {
+      background: var(--surface-3) !important;
+      border-color: var(--border) !important;
+      color: var(--text-main) !important;
+      transform: none !important;
+      filter: none !important;
+    }
     html.dark-theme .btn-secondary:hover {
       background: #0E1B2E !important;
-      border-color: rgba(150, 180, 210, 0.12) !important;
+      border-color: rgba(150, 180, 210, 0.2) !important;
       color: #EAF2FA !important;
       transform: none !important;
       filter: none !important;

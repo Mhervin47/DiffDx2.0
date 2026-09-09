@@ -2722,8 +2722,21 @@ function toggleOwnDoctor() {
   }
 }
 
+let _ownDocFilterInitialized = false;
+
 async function _loadOwnDoctorPanel() {
   const doctors = await _fetchAllDoctors();
+  // Default to just the recommended specialty on first open — showing
+  // the whole network (every specialty, most "Different specialty") is
+  // noise when the report already told the patient who they need. Only
+  // once: if the patient deliberately broadens to "All" themselves,
+  // reopening the panel should keep that choice, not reset it.
+  if (!_ownDocFilterInitialized) {
+    _ownDocFilterInitialized = true;
+    if (_recommendedSpecialty && doctors.some(d => d.specialty === _recommendedSpecialty)) {
+      _ownDocFilter = _recommendedSpecialty;
+    }
+  }
   // Build specialty filter chips
   const specs = [...new Set(doctors.map(d => d.specialty).filter(Boolean))].sort();
   const filtersEl = document.getElementById('own-doctor-filters');

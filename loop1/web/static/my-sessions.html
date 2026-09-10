@@ -460,13 +460,291 @@
       background: var(--bg-card);
       border: 1px solid var(--border-card);
       border-radius: 20px;
-      padding: 56px 24px;
+      padding: 50px 24px;
       text-align: center;
       box-shadow: var(--card-shadow);
       color: var(--text-muted); font-size: 14px;
     }
-    .empty-icon { font-size: 40px; margin-bottom: 12px; }
-    .empty-title { font-family: var(--font-heading); font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 6px; }
+    .empty-icon {
+      width: 58px; height: 58px; border-radius: 18px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-card);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      color: var(--teal-primary);
+    }
+    html.dark-theme .empty-icon {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    .empty-title { font-family: var(--font-heading); font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 6px; letter-spacing: -.015em; }
+
+    /* ═══════════════════════════════════════════════════════
+       WAITLIST SECTION & ELEVATED CARDS
+    ═══════════════════════════════════════════════════════ */
+    .waitlist-section-wrap {
+      margin-top: 36px;
+    }
+    .waitlist-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 16px;
+    }
+    .waitlist-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .waitlist-badge-icon {
+      width: 36px; height: 36px; border-radius: 12px;
+      background: rgba(13, 148, 136, 0.12);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--teal-primary);
+      flex-shrink: 0;
+    }
+    html.dark-theme .waitlist-badge-icon {
+      background: rgba(25, 198, 173, 0.15);
+      border-color: rgba(25, 198, 173, 0.3);
+    }
+    .waitlist-heading {
+      font-family: var(--font-heading);
+      font-size: 16px; font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -.015em;
+    }
+    .waitlist-subtext {
+      font-size: 13px; color: var(--text-muted);
+      margin-top: 3px;
+    }
+    .waitlist-count-badge {
+      font-family: var(--font-heading);
+      font-size: 11.5px; font-weight: 800;
+      padding: 4px 12px; border-radius: 99px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-card);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* Waitlist Card */
+    .waitlist-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 18px;
+      padding: 18px 22px;
+      margin-bottom: 12px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+      position: relative;
+    }
+    .waitlist-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--teal-primary);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+    }
+    html.dark-theme .waitlist-card:hover {
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+      border-color: rgba(25, 198, 173, 0.4);
+    }
+    .waitlist-card.is-notified {
+      border-color: rgba(16, 185, 129, 0.45);
+      background: linear-gradient(145deg, rgba(16, 185, 129, 0.05), var(--bg-card));
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.1);
+    }
+    .waitlist-card.is-notified::before {
+      content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 4px;
+      background: #10b981; border-radius: 18px 0 0 18px;
+    }
+
+    .waitlist-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+      flex: 1;
+    }
+    .waitlist-avatar {
+      width: 48px; height: 48px; border-radius: 16px;
+      background: linear-gradient(135deg, rgba(13, 148, 136, 0.15), rgba(37, 99, 235, 0.1));
+      border: 1.5px solid rgba(13, 148, 136, 0.25);
+      color: var(--teal-primary);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-heading);
+      font-size: 15px; font-weight: 800;
+      flex-shrink: 0;
+      box-shadow: 0 2px 10px var(--teal-glow);
+    }
+    html.dark-theme .waitlist-avatar {
+      background: linear-gradient(135deg, rgba(25, 198, 173, 0.18), rgba(76, 143, 245, 0.14));
+      border-color: rgba(25, 198, 173, 0.35);
+      color: var(--teal-primary);
+    }
+
+    .waitlist-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+    .waitlist-doctor-name {
+      font-family: var(--font-heading);
+      font-size: 15.5px; font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -.015em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .waitlist-meta-chips {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .wl-chip-specialty {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 99px;
+      font-family: var(--font-heading);
+      font-size: 11px; font-weight: 700;
+      background: rgba(13, 148, 136, 0.1);
+      color: var(--teal-primary);
+      border: 1px solid rgba(13, 148, 136, 0.22);
+    }
+    .wl-chip-date {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11.5px; color: var(--text-muted);
+      font-weight: 500;
+    }
+    .wl-chip-date svg {
+      color: var(--text-muted); opacity: .75;
+    }
+    .wl-note-quote {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 3px 10px;
+      font-size: 12px; color: var(--text-main);
+      margin-top: 4px;
+      max-width: fit-content;
+    }
+    .wl-note-quote svg {
+      color: var(--teal-primary); opacity: .8; flex-shrink: 0;
+    }
+
+    /* Waitlist Actions */
+    .waitlist-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .wl-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-family: var(--font-heading);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .wl-status-badge.waiting {
+      background: rgba(13, 148, 136, 0.1);
+      color: var(--teal-primary);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+    }
+    .wl-status-badge.waiting .waiting-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--teal-primary);
+      box-shadow: 0 0 6px var(--teal-glow);
+    }
+    .wl-status-badge.notified {
+      background: rgba(16, 185, 129, 0.14);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      animation: pulseNotified 2s infinite;
+    }
+    .wl-status-badge.notified .notified-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    @keyframes pulseNotified {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.2); }
+      50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    }
+
+    .wl-book-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      background: linear-gradient(135deg, var(--teal-primary), var(--primary-dark));
+      color: #ffffff !important;
+      font-family: var(--font-heading);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 2px 10px var(--teal-glow);
+      transition: all .2s ease;
+    }
+    .wl-book-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px var(--teal-glow);
+    }
+
+    .wl-leave-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 99px;
+      border: 1px solid var(--border-card);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-family: var(--font-heading);
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .wl-leave-btn:hover {
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.35);
+      background: rgba(239, 68, 68, 0.06);
+    }
+    .wl-leave-btn.wl-confirm {
+      background: #ef4444;
+      border-color: #ef4444;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
+
+    @media (max-width: 640px) {
+      .waitlist-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .waitlist-actions {
+        width: 100%;
+        justify-content: space-between;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-subtle);
+      }
+    }
 
     /* Appointments Sub-tabs & Cards */
     .appt-sub-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
@@ -913,12 +1191,20 @@
   </div>
 
   <!-- Waitlist section -->
-  <div id="waitlist-section" style="display:none;margin-top:32px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <div>
-        <div class="section-title" style="margin-bottom:2px;font-size:14px;">My Waitlist</div>
-        <div style="font-size:12px;color:var(--text-muted);">You'll be notified when a slot opens up.</div>
+  <div id="waitlist-section" class="waitlist-section-wrap" style="display:none;">
+    <div class="waitlist-section-header">
+      <div class="waitlist-title-group">
+        <div class="waitlist-badge-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div>
+          <div class="waitlist-heading">My Waitlist</div>
+          <div class="waitlist-subtext">You'll be notified automatically when an appointment slot opens up.</div>
+        </div>
       </div>
+      <span class="waitlist-count-badge" id="waitlist-count-badge">Active</span>
     </div>
     <div id="waitlist-list"></div>
   </div>
@@ -2187,42 +2473,90 @@ async function loadWaitlist() {
     const active = (waitlist || []).filter(e => e.status === 'waiting' || e.status === 'notified');
     const section = document.getElementById('waitlist-section');
     const list = document.getElementById('waitlist-list');
+    const countBadge = document.getElementById('waitlist-count-badge');
     if (!active.length) { section.style.display = 'none'; return; }
     section.style.display = '';
-    list.innerHTML = active.map(e => `
-      <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:14px;border:1px solid ${e.status==='notified'?'rgba(16,185,129,.35)':'rgba(255,255,255,.07)'};background:${e.status==='notified'?'rgba(16,185,129,.04)':'rgba(255,255,255,.025)'};margin-bottom:10px;">
-        <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#0077a8,#00b4d8);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#000d1a;flex-shrink:0;">${(e.doctor_name||'D').replace(/^Dr\.?\s*/i,'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">${escHtml(e.doctor_name||'')}</div>
-          <div style="font-size:11px;color:var(--primary);font-weight:600;">${escHtml(e.specialty||'')}</div>
-          ${e.note ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;font-style:italic;">"${escHtml(e.note)}"</div>` : ''}
-          <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Joined ${new Date(e.joined_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+    if (countBadge) {
+      countBadge.textContent = `${active.length} ${active.length === 1 ? 'Doctor' : 'Doctors'}`;
+    }
+    list.innerHTML = active.map(e => {
+      const isNotified = e.status === 'notified';
+      const initials = (e.doctor_name || 'Dr').replace(/^Dr\.?\s*/i, '').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'DR';
+      const joinedDate = e.joined_at ? new Date(e.joined_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+      return `
+      <div class="waitlist-card ${isNotified ? 'is-notified' : ''}">
+        <div class="waitlist-left">
+          <div class="waitlist-avatar">${initials}</div>
+          <div class="waitlist-info">
+            <div class="waitlist-doctor-name">
+              <span>${escHtml(e.doctor_name || 'Specialist')}</span>
+            </div>
+            <div class="waitlist-meta-chips">
+              ${e.specialty ? `<span class="wl-chip-specialty">${escHtml(e.specialty)}</span>` : ''}
+              ${joinedDate ? `
+              <span class="wl-chip-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Joined ${joinedDate}
+              </span>` : ''}
+            </div>
+            ${e.note ? `
+            <div class="wl-note-quote">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>"${escHtml(e.note)}"</span>
+            </div>` : ''}
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          ${e.status==='notified'
-            ? `<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);">Slot Available!</span>`
-            : `<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(0,180,216,.1);color:var(--primary);border:1px solid rgba(0,180,216,.2);">Waiting</span>`}
-          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 10px;border-color:rgba(239,68,68,.3);color:var(--danger);" onclick="leaveWaitlist('${escHtml(e.id)}', this)">Leave</button>
+        <div class="waitlist-actions">
+          ${isNotified ? `
+            <span class="wl-status-badge notified">
+              <span class="notified-dot"></span>
+              Slot Available!
+            </span>
+            <a href="/doctor-profile.html?id=${encodeURIComponent(e.doctor_id || '')}" class="wl-book-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Book Now
+            </a>
+          ` : `
+            <span class="wl-status-badge waiting">
+              <span class="waiting-dot"></span>
+              Waiting
+            </span>
+          `}
+          <button class="wl-leave-btn" onclick="leaveWaitlist('${escHtml(e.id)}', this)" title="Leave this doctor's waitlist">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <span>Leave</span>
+          </button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } catch {}
 }
 
 async function leaveWaitlist(entryId, btn) {
   if (!btn.classList.contains('wl-confirm')) {
     btn.classList.add('wl-confirm');
-    btn.textContent = 'Confirm?';
-    setTimeout(() => { if (btn.classList.contains('wl-confirm')) { btn.classList.remove('wl-confirm'); btn.textContent = 'Leave'; } }, 3000);
+    const span = btn.querySelector('span');
+    if (span) span.textContent = 'Confirm?'; else btn.textContent = 'Confirm?';
+    setTimeout(() => {
+      if (btn.classList.contains('wl-confirm')) {
+        btn.classList.remove('wl-confirm');
+        if (span) span.textContent = 'Leave'; else btn.textContent = 'Leave';
+      }
+    }, 3000);
     return;
   }
-  btn.disabled = true; btn.textContent = 'Leaving…';
+  btn.disabled = true;
+  const span = btn.querySelector('span');
+  if (span) span.textContent = 'Leaving…'; else btn.textContent = 'Leaving…';
   try {
     const r = await fetch(`/api/patient/waitlist/${entryId}`, { method: 'DELETE', headers: authHeaders() });
     if (!r.ok) throw new Error('Failed');
     await loadWaitlist();
   } catch {
-    btn.disabled = false; btn.textContent = 'Leave';
+    btn.disabled = false;
     btn.classList.remove('wl-confirm');
+    if (span) span.textContent = 'Leave'; else btn.textContent = 'Leave';
   }
 }
 

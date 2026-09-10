@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import json
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
@@ -60,6 +61,8 @@ from diffdx.legacy_store import (
     _session_test_uploads,
 )
 from diffdx.session_store import get_session as _get_live_session
+
+_log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["sessions"])
 
@@ -277,30 +280,42 @@ async def book_appointment(session_id: str, req: BookRequest, request: Request, 
     )
     db.commit()
 
-    # Resolve primary diagnosis + demographics: disk → in-memory → user session list
+    # Resolve primary diagnosis + demographics: disk → in-memory → user session list.
+    # Purely cosmetic enrichment for the appointment card — the relational
+    # booking above already committed (the slot is reserved), so a failure
+    # here must never block the blob write below. Without this guard, any
+    # exception in this block (disk I/O, a live session gone after a
+    # restart, etc.) left a committed-but-invisible appointment: the
+    # relational row existed and the slot was consumed, but nothing wrote
+    # it to the blob store /api/appointments actually reads its list from
+    # — the appointment silently vanished from the patient's view while
+    # still blocking the doctor's slot.
     primary_diagnosis = ""
     pat_age, pat_sex, pat_bmi = None, None, None
-    disk_rec = _load_report_from_disk(session_id)
-    if disk_rec:
-        primary_diagnosis = disk_rec.get("final_diagnosis", "")
-        pat_age = disk_rec.get("patient", {}).get("age")
-        pat_sex = disk_rec.get("patient", {}).get("sex")
-    else:
-        live = _get_live_session(session_id)
-        if live and live._final_record:
-            primary_diagnosis = live._final_record.primary_diagnosis or ""
-            demo = live._final_record.final_profile.demographics if live._final_record.final_profile else None
-            if demo:
-                pat_age = demo.age
-                pat_sex = demo.sex
-                pat_bmi = demo.other.get("bmi") if demo.other else None
+    try:
+        disk_rec = _load_report_from_disk(session_id)
+        if disk_rec:
+            primary_diagnosis = disk_rec.get("final_diagnosis", "")
+            pat_age = disk_rec.get("patient", {}).get("age")
+            pat_sex = disk_rec.get("patient", {}).get("sex")
         else:
-            user_session = next(
-                (s for s in user.get("sessions", []) if s.get("session_id") == session_id),
-                None,
-            )
-            if user_session:
-                primary_diagnosis = user_session.get("primary_diagnosis", "")
+            live = _get_live_session(session_id)
+            if live and live._final_record:
+                primary_diagnosis = live._final_record.primary_diagnosis or ""
+                demo = live._final_record.final_profile.demographics if live._final_record.final_profile else None
+                if demo:
+                    pat_age = demo.age
+                    pat_sex = demo.sex
+                    pat_bmi = demo.other.get("bmi") if demo.other else None
+            else:
+                user_session = next(
+                    (s for s in user.get("sessions", []) if s.get("session_id") == session_id),
+                    None,
+                )
+                if user_session:
+                    primary_diagnosis = user_session.get("primary_diagnosis", "")
+    except Exception:
+        _log.warning("Diagnosis/demographics enrichment failed for booking %s — booking still proceeds.", appt_id, exc_info=True)
 
     # Fall back to user profile for demographics
     if pat_age is None:

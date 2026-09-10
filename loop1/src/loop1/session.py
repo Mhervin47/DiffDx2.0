@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -24,6 +26,16 @@ from loop1.schemas import (
     SafetyEvent,
     TurnRecord,
 )
+
+try:
+    from admin_portal.instrumentation import usage_logger as _usage_logger
+    # This module is the CLI/offline harness (phase7_eval.py, scripts/run_session.py) —
+    # never the live web path (see loop1/web/api_session.py for that). Set the
+    # default here, via setdefault, so a value already set by the caller's own
+    # environment is never overridden.
+    os.environ.setdefault("DIFFDX_RUN_CONTEXT", "offline_cli")
+except Exception:          # admin_portal is optional; the session path must run without it
+    _usage_logger = None
 
 _log = logging.getLogger(__name__)
 
@@ -67,6 +79,37 @@ class Session:
         if self.profile.running_summary:
             return self.history[-self.keep_recent :]
         return self.history
+
+    def _generate_turn_with_usage_logged(self, turn_index: int, call_site: str):
+        """Wraps generate_turn_with_usage with latency timing and a usage-log
+        call (admin_portal, optional; source=offline_cli via this module's
+        own DIFFDX_RUN_CONTEXT default). Returns its result completely
+        unchanged; never swallows an exception — only adds logging."""
+        result = None
+        ok = True
+        error_type = None
+        t0 = time.perf_counter()
+        try:
+            result = generate_turn_with_usage(self.profile, self._recent_history(), turn_index)
+            return result
+        except Exception as exc:
+            ok = False
+            error_type = type(exc).__name__
+            raise
+        finally:
+            if _usage_logger is not None:
+                latency_ms = (time.perf_counter() - t0) * 1000
+                doctor_output, prompt_tokens = (result[0], result[1]) if result is not None else (None, None)
+                _usage_logger.log_turn_usage(
+                    session_id=self.profile.session_id,
+                    turn_index=turn_index,
+                    call_site=call_site,
+                    prompt_tokens=prompt_tokens,
+                    doctor_output=doctor_output,
+                    latency_ms=latency_ms,
+                    ok=ok,
+                    error_type=error_type,
+                )
 
     def _maybe_compress(self) -> None:
         """Trigger compression when there are turns older than the keep_recent window."""
@@ -188,8 +231,8 @@ class Session:
         for turn_index in range(self.max_turns):
             self.console.print(f"[dim]Turn {turn_index + 1} / {self.max_turns}[/dim]")
 
-            doctor_output, prompt_tokens, exemplar_ids = generate_turn_with_usage(
-                self.profile, self._recent_history(), turn_index
+            doctor_output, prompt_tokens, exemplar_ids = self._generate_turn_with_usage_logged(
+                turn_index, "next_question"
             )
             final_doctor_output = doctor_output
 
@@ -251,8 +294,8 @@ class Session:
 
         else:
             # Exhausted max_turns without a break — generate final assessment
-            final_doctor_output, _, _exemplar_ids = generate_turn_with_usage(
-                self.profile, self._recent_history(), self.max_turns
+            final_doctor_output, _, _exemplar_ids = self._generate_turn_with_usage_logged(
+                self.max_turns, "final_generation"
             )
             self._log_session_end(termination_reason, final_doctor_output)
 

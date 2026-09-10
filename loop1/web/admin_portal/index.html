@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiffDx Admin — Overview</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #121b30; --border: #24304a; --text: #e6ecf5;
+    --muted: #93a1bd; --accent: #4da3ff; --warn: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  header { padding: 20px 32px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .admin-nav { display: flex; gap: 4px; margin-top: 14px; }
+  .admin-nav a { color: var(--muted); text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; }
+  .admin-nav a.active, .admin-nav a:hover { background: var(--panel); color: var(--text); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 64px; display: grid; gap: 24px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; }
+  .card h2 { margin: 0 0 14px; font-size: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  .card.full { grid-column: 1 / -1; }
+  dl.kv { margin: 0; font-size: 13px; }
+  dl.kv div { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  dl.kv dt { color: var(--muted); }
+  dl.kv dd { margin: 0; text-align: right; }
+  .banner { background: #3a2a0e; border: 1px solid var(--warn); color: #ffd98a; padding: 8px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  code { background: #0a1120; padding: 1px 5px; border-radius: 4px; }
+
+  .health-pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .health-pill { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); background: #0e1626; }
+  .health-pill-name { font-weight: 600; color: var(--text); }
+  .health-pill-status { color: var(--muted); }
+  .pill-ok .health-pill-status { color: #35c26a; }
+  .pill-down { border-color: rgba(239,68,68,.5); }
+  .pill-down .health-pill-status { color: #ef4444; }
+  .pill-degraded .health-pill-status { color: var(--warn); }
+  .pill-neutral .health-pill-status { color: var(--muted); font-style: italic; }
+  .health-checked-at { margin-top: 10px; }
+  .auth-required { font-size: 13px; color: var(--muted); }
+  .auth-required-link { color: var(--accent); margin-left: 6px; }
+
+  .usage-stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+  .usage-stat-card { flex: 1 1 120px; background: #0e1626; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .usage-stat-value { font-size: 20px; font-weight: 700; }
+  .usage-stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .usage-chart { width: 100%; height: auto; margin: 10px 0; }
+  .usage-projection { font-style: italic; }
+  .usage-coverage-note { font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<header>
+  <h1>DiffDx Admin Portal</h1>
+  <div class="subtitle">Diagnostic-quality evidence for reviewers and hospital stakeholders.</div>
+  <div id="admin-nav-root"></div>
+</header>
+<main>
+  <div class="card full">
+    <h2>System Health</h2>
+    <div id="health-sample-banner" class="banner" hidden>⚠ Sample data — could not reach the health endpoint.</div>
+    <div id="health-pills"><p class="muted">Loading…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Model &amp; Config</h2>
+    <div id="config-content"><p class="muted">Loading…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Cost &amp; Usage</h2>
+    <div id="usage-sample-banner" class="banner" hidden>⚠ Sample data — could not reach the usage endpoint.</div>
+    <div id="usage-content"><p class="muted">Loading…</p></div>
+  </div>
+
+  <div class="card full">
+    <h2>Where to go next</h2>
+    <p class="muted">
+      <a href="evidence.html">Evidence</a> — accuracy, cost, and safety-recall comparison against a
+      single-shot baseline, with every caveat attached.<br>
+      <a href="quality.html">AI Quality</a> — critic-derived reasoning-quality scores for the actor-critic system.
+    </p>
+  </div>
+</main>
+<script src="/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script src="js/mock.js"></script>
+<script src="js/health.js"></script>
+<script src="js/usage.js"></script>
+<script>
+  AdminPortal.mountNav("index.html");
+
+  (async function () {
+    const { fetchJSON, fmtUsd } = AdminPortal;
+    const config = await fetchJSON("/api/admin/config");
+    const el = document.getElementById("config-content");
+    if (config.status === "error") {
+      el.innerHTML = `<p class="muted">Could not load config: ${config.message}</p>`;
+      return;
+    }
+    const rows = [
+      ["Doctor model", config.models?.doctor],
+      ["Compressor model", config.models?.compressor],
+      ["Profile updater model", config.models?.profile_updater],
+      ["Doctor prompt version", config.prompt_versions?.doctor],
+      ["Confidence threshold", config.thresholds?.confidence_to_stop],
+      ["Max turns", config.thresholds?.max_turns],
+      ["Git SHA", config.git_sha],
+    ];
+    const dl = document.createElement("dl");
+    dl.className = "kv";
+    for (const [label, value] of rows) {
+      const row = document.createElement("div");
+      row.innerHTML = `<dt>${label}</dt><dd>${value === undefined || value === null ? "—" : value}</dd>`;
+      dl.appendChild(row);
+    }
+    el.innerHTML = "";
+    el.appendChild(dl);
+  })();
+</script>
+</body>
+</html>

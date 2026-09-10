@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiffDx Admin — Evidence</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #121b30; --border: #24304a; --text: #e6ecf5;
+    --muted: #93a1bd; --accent: #4da3ff; --warn: #f5a524; --error: #ff6161;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  header { padding: 20px 32px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .admin-nav { display: flex; gap: 4px; margin-top: 14px; }
+  .admin-nav a { color: var(--muted); text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; }
+  .admin-nav a.active, .admin-nav a:hover { background: var(--panel); color: var(--text); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 64px; }
+  .banner { background: #3a2a0e; border: 1px solid var(--warn); color: #ffd98a; padding: 10px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+  section { margin-bottom: 32px; }
+  h2 { font-size: 16px; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  table.metrics-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  table.metrics-table th, table.metrics-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  table.metrics-table th { color: var(--muted); font-weight: 600; }
+  td.metric-label { color: var(--text); }
+  td.metric-label.sub { color: var(--muted); font-style: italic; padding-left: 24px; }
+  td.no-data { color: var(--muted); font-style: italic; }
+  tr.significance-row td { background: rgba(77,163,255,0.06); }
+  .caveat { cursor: help; color: var(--warn); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .error { color: var(--error); }
+  #notes-list { font-size: 13px; line-height: 1.6; color: var(--muted); padding-left: 20px; }
+  #notes-list li { margin-bottom: 10px; }
+  .notes-box { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Evidence — Actor-Critic vs. Traditional LLM</h1>
+  <div class="subtitle">Public benchmark comparison. No login required.</div>
+  <div id="admin-nav-root"></div>
+</header>
+<main>
+  <div id="sample-banner" class="banner" hidden>
+    ⚠ Sample data — no real comparison report has been generated yet. Run
+    <code>compare_report.py</code> then <code>publish_report.py</code> to see real numbers.
+  </div>
+  <p class="meta">Eval set size: <span id="eval-set-size">—</span> patients · Generated: <span id="generated-at">—</span></p>
+
+  <div id="content">
+    <section>
+      <h2>Diagnostic accuracy &amp; cost</h2>
+      <table id="main-table" class="metrics-table"></table>
+    </section>
+
+    <section>
+      <h2>Accuracy by stratum</h2>
+      <table id="stratum-table" class="metrics-table"></table>
+    </section>
+
+    <section>
+      <h2>Safety recall (red-flag patients)</h2>
+      <div id="safety-section"></div>
+    </section>
+
+    <section>
+      <h2>Caveats — read before citing any number above</h2>
+      <div class="notes-box">
+        <ul id="notes-list"></ul>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="js/admin-common.js"></script>
+<script src="js/mock.js"></script>
+<script src="js/evidence.js"></script>
+<script>AdminPortal.mountNav("evidence.html");</script>
+</body>
+</html>

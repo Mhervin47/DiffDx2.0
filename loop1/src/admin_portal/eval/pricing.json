@@ -1,0 +1,19 @@
+{
+  "_readme": "These are placeholder public list-price estimates (USD per 1,000 tokens), hand-entered at the time this file was written. They are NOT pulled from any live billing API and have NOT been verified against actual provider invoices. Verify against real provider billing before using any cost figure derived from this file in a hospital-facing or funding claim. '_default' is used for any model not explicitly listed below.",
+  "gemini/gemini-2.5-flash-lite": {
+    "input_usd_per_1k": 0.0001,
+    "output_usd_per_1k": 0.0004
+  },
+  "openrouter/nvidia/nemotron-3-super-120b-a12b:free": {
+    "input_usd_per_1k": 0.0,
+    "output_usd_per_1k": 0.0
+  },
+  "groq/openai/gpt-oss-120b": {
+    "input_usd_per_1k": 0.00015,
+    "output_usd_per_1k": 0.00075
+  },
+  "_default": {
+    "input_usd_per_1k": 0.0005,
+    "output_usd_per_1k": 0.0015
+  }
+}

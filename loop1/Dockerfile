@@ -73,10 +73,16 @@ COPY test_cases ./test_cases
 COPY exemplars ./exemplars
 COPY data/disease_specialty_map.json ./data/disease_specialty_map.json
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
-# Only the one script the entrypoint needs, not the whole scripts/
-# directory — the rest is offline AI-layer tooling with its own,
-# heavier dependency needs (not installed here, see requirements-web.txt).
+# Only the scripts that need to run against the web image's own deps, not
+# the whole scripts/ directory — the rest is offline AI-layer tooling with
+# its own, heavier dependency needs (not installed here, see
+# requirements-web.txt). seed_admin.py only touches diffdx.repositories.users
+# / diffdx.legacy_store._hash_password, same lightweight deps as
+# seed_doctors.py, and is the documented manual step for creating the admin
+# portal's first account (see scripts/seed_admin.py's own docstring) — it
+# can't run as that manual step if it isn't in the image at all.
 COPY scripts/seed_doctors.py ./scripts/seed_doctors.py
+COPY scripts/seed_admin.py ./scripts/seed_admin.py
 RUN chmod +x ./docker-entrypoint.sh
 
 RUN mkdir -p web/data logs/final_records logs/sessions logs/critic_reports \

@@ -728,7 +728,7 @@
 <!-- Top Executive Navigation Bar -->
 <nav class="nav">
   <div class="brand-section">
-    <a href="/patient-overview.html" class="brand" title="DiffDx Overview">
+    <a href="/index.html" class="brand" id="brand-logo-link" title="DiffDx">
       <svg class="brand-icon" width="32" height="32" viewBox="0 0 28 28" fill="none">
         <defs>
           <linearGradient id="bk-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
@@ -754,8 +754,8 @@
       <span class="brand-name">Diff<span class="brand-accent">/Dx</span></span>
     </a>
 
-    <!-- Left-Aligned Patient Navigation Tabs -->
-    <div class="patient-nav-tabs patient-topbar-tabs" id="patient-nav-tabs">
+    <!-- Left-Aligned Patient Navigation Tabs (Only visible when signed in) -->
+    <div class="patient-nav-tabs patient-topbar-tabs" id="patient-nav-tabs" style="display:none;">
       <a href="/patient-overview.html" class="patient-nav-tab patient-topbar-tab">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         <span>Overview</span>
@@ -871,10 +871,58 @@
   </div>
 </div>
 
+<!-- Sign In Required Modal -->
+<div class="modal-overlay" id="auth-required-modal" onclick="if(event.target===this)closeAuthRequiredModal()">
+  <div class="modal-box" style="max-width:440px;text-align:center;padding:32px 28px;">
+    <div style="width:52px;height:52px;border-radius:50%;background:rgba(15,168,141,0.12);border:1px solid rgba(15,168,141,0.25);color:var(--teal-primary,#0d9488);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    </div>
+    <h3 class="modal-title" style="font-size:20px;margin-bottom:8px;">Sign In Required</h3>
+    <p id="auth-modal-sub" style="font-size:13.5px;color:var(--text-muted);line-height:1.55;margin-bottom:24px;">
+      Please sign in or create an account to book your consultation.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <a id="auth-modal-signin-btn" href="/login.html?role=patient&next=/book-slot.html" class="btn-modal-confirm" style="display:block;text-decoration:none;padding:12px;font-size:14px;text-align:center;">
+        Sign In to Book
+      </a>
+      <a id="auth-modal-register-btn" href="/login.html?role=patient&tab=register&next=/book-slot.html" style="display:block;text-decoration:none;padding:11px;font-size:13.5px;font-weight:700;color:var(--text-main);background:var(--surface-2);border:1.5px solid var(--border);border-radius:10px;text-align:center;">
+        Create New Account
+      </a>
+      <button type="button" onclick="closeAuthRequiredModal()" style="background:transparent;border:none;color:var(--text-muted);font-size:13px;font-weight:600;padding:8px;cursor:pointer;margin-top:4px;">
+        Continue Browsing Doctors
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = '';
 const user = getAuthUser();
-if (!user) window.location.replace('/login.html?next=/book-slot.html');
+
+function syncNavAuthState() {
+  const u = (typeof getAuthUser === 'function') ? getAuthUser() : null;
+  const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('authAccessToken') || localStorage.getItem('authToken'));
+  const tabs = document.getElementById('patient-nav-tabs');
+  const brandLink = document.getElementById('brand-logo-link');
+
+  if (token && u) {
+    if (tabs) tabs.style.display = (u.role === 'patient') ? 'flex' : 'none';
+    if (brandLink) {
+      brandLink.href = (u.role === 'doctor') ? '/doctor-landing.html' : '/patient-overview.html';
+      brandLink.title = (u.role === 'doctor') ? 'Doctor Portal' : 'Patient Overview';
+    }
+  } else {
+    if (tabs) tabs.style.display = 'none';
+    if (brandLink) {
+      brandLink.href = '/index.html';
+      brandLink.title = 'DiffDx';
+    }
+  }
+}
+syncNavAuthState();
 
 function toggleTheme() {
   const isDark = document.documentElement.classList.toggle('dark-theme');
@@ -1014,7 +1062,30 @@ function selectSlot(docId, slot) {
   renderDoctors();
 }
 
+function openAuthRequiredModal(doctor) {
+  const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+  const subEl = document.getElementById('auth-modal-sub');
+  if (doctor && doctor.name) {
+    subEl.textContent = `Please sign in or create an account to book your consultation with ${doctor.name}.`;
+  } else {
+    subEl.textContent = 'Please sign in or create an account to book an appointment.';
+  }
+  document.getElementById('auth-modal-signin-btn').href = `/login.html?role=patient&next=${nextUrl}`;
+  document.getElementById('auth-modal-register-btn').href = `/login.html?role=patient&tab=register&next=${nextUrl}`;
+  document.getElementById('auth-required-modal').classList.add('open');
+}
+
+function closeAuthRequiredModal() {
+  document.getElementById('auth-required-modal').classList.remove('open');
+}
+
 function openBook(docId) {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    const doc = _doctors.find(d => d.id === docId);
+    openAuthRequiredModal(doc);
+    return;
+  }
   const slot = _selected[docId];
   if (!slot) return;
   _bookingDoctor = _doctors.find(d => d.id === docId);
@@ -1084,6 +1155,12 @@ function resetBooking() {
 }
 
 function openWaitlist(docId) {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    const doc = _doctors.find(d => d.id === docId);
+    openAuthRequiredModal(doc);
+    return;
+  }
   _waitlistDoctor = _doctors.find(d => d.id === docId);
   if (!_waitlistDoctor) return;
   document.getElementById('wl-doctor-name').textContent =
@@ -1186,6 +1263,7 @@ async function init() {
 
 // Initialise page
 initAuthNav();
+syncNavAuthState();
 init();
 </script>
 </body>

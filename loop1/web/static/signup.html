@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DiffDx — Sign Up</title>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('role')) params.set('role', 'patient');
+    if (!params.has('tab')) params.set('tab', 'register');
+    window.location.replace('/login.html?' + params.toString());
+  </script>
+</head>
+<body>
+</body>
+</html>

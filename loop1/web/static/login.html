@@ -1402,14 +1402,26 @@ async function doRegister() {
   finally { btn.disabled = false; btn.textContent = 'Create Account'; }
 }
 
-// Theme toggle handling
-const toggleBtn = document.getElementById('theme-toggle');
-if (toggleBtn) {
-  toggleBtn.addEventListener('click', () => {
-    const isDark = document.documentElement.classList.toggle('dark-theme');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  });
-}
+// URL query param handling for direct linking (e.g. ?role=patient&tab=register)
+(function checkUrlParams() {
+  const params = new URLSearchParams(location.search);
+  const role = params.get('role');
+  const tab = params.get('tab');
+  if (role === 'doctor') {
+    selectRole('doctor');
+  } else if (role === 'patient' || tab === 'register' || tab === 'signup') {
+    const picker = document.getElementById('role-picker');
+    if (picker) picker.style.display = 'none';
+    const patCard = document.getElementById('patient-card');
+    if (patCard) patCard.classList.add('show');
+    if (tab === 'register' || tab === 'signup') {
+      showTab('register');
+      setTimeout(() => document.getElementById('reg-name')?.focus(), 50);
+    } else {
+      setTimeout(() => document.getElementById('signin-email')?.focus(), 50);
+    }
+  }
+})();
 </script>
 </body>
 </html>

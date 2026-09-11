@@ -602,19 +602,21 @@
       .session-right, .diff-panel-toggle svg { transition: none !important; }
     }
 
-    /* toggle tab — sits on the seam between chat and sidebar, always visible */
+    /* toggle tab — a real flex sibling between .session-left and
+       .session-right (not absolutely positioned with a guessed offset),
+       so it always sits exactly on the real seam regardless of the
+       sidebar's actual rendered width. */
     .diff-panel-toggle {
-      position: absolute; top: 50%; right: 340px; transform: translate(50%, -50%);
-      width: 22px; height: 44px; z-index: 20;
+      align-self: center; flex-shrink: 0;
+      width: 22px; height: 44px; margin: 0 -11px; z-index: 20;
       display: flex; align-items: center; justify-content: center;
       background: rgba(30,41,59,.85); border: 1px solid rgba(255,255,255,.1);
       border-radius: 8px; cursor: pointer; color: rgba(203,213,225,.8);
-      transition: right .25s ease, background .15s ease, color .15s ease;
+      transition: background .15s ease, color .15s ease;
     }
     .diff-panel-toggle:hover { background: rgba(16,185,129,.18); color: #4ede9e; }
     .diff-panel-toggle:focus-visible { outline: 2px solid #4ede9e; outline-offset: 2px; }
     .diff-panel-toggle svg { transition: transform .25s ease; }
-    .session-layout.right-collapsed .diff-panel-toggle { right: 0; }
     .session-layout.right-collapsed .diff-panel-toggle svg { transform: rotate(180deg); }
     .session-right::-webkit-scrollbar-thumb { background: rgba(255,255,255,.07); border-radius: 4px; }
 
@@ -1434,11 +1436,6 @@
       }
     </script>
 
-    <button class="diff-panel-toggle" id="diff-panel-toggle" onclick="toggleDiffPanel()"
-      aria-expanded="true" aria-label="Collapse live differential panel">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-
     <!-- LEFT: conversation -->
     <div class="session-left">
 
@@ -1494,6 +1491,11 @@
         </div>
       </div>
     </div>
+
+    <button class="diff-panel-toggle" id="diff-panel-toggle" onclick="toggleDiffPanel()"
+      aria-expanded="true" aria-label="Collapse live differential panel">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
 
     <!-- RIGHT: live differential -->
     <div class="session-right">

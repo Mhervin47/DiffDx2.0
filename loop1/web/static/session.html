@@ -581,21 +581,27 @@
       50% { transform: scale(1.05); box-shadow: 0 0 24px rgba(20, 184, 166, 0.4); }
     }
 
-    /* ── right panel ── */
+    /* ── right panel ──
+       flex-basis (not width) is what wins for a flex item — /styles.css
+       has its own generic `.session-right { flex: 0 0 38% }` loaded
+       earlier in <head>, and since that rule already set flex-basis, a
+       plain `width` here was a no-op (flex-basis beats width whenever
+       flex-basis isn't auto). Using the `flex` shorthand so this
+       actually overrides it, both here and in the collapsed state below. */
     .session-right {
-      width: 340px; flex-shrink: 0;
+      flex: 0 0 340px;
       background: rgba(0,0,0,.2);
       border-left: 1px solid rgba(255,255,255,.06);
       padding: 20px 18px;
       overflow-y: auto; display: flex; flex-direction: column;
-      transition: width .25s ease, padding .25s ease, opacity .2s ease;
+      transition: flex-basis .25s ease, padding .25s ease, opacity .2s ease;
     }
     .session-right::-webkit-scrollbar { width: 4px; }
     .session-right::-webkit-scrollbar-track { background: transparent; }
 
     /* collapsed state — sidebar shrinks to 0, chat reclaims the space */
     .session-layout.right-collapsed .session-right {
-      width: 0; padding-left: 0; padding-right: 0; opacity: 0;
+      flex-basis: 0; padding-left: 0; padding-right: 0; opacity: 0;
       overflow: hidden; border-left-color: transparent;
     }
     @media (prefers-reduced-motion: reduce) {

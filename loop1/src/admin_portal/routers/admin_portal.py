@@ -49,8 +49,10 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
+
+from diffdx.dependencies import require_role
 
 _log = logging.getLogger(__name__)
 
@@ -116,8 +118,16 @@ def _load_published_report() -> dict[str, Any] | None:
 
 
 @router.get("/api/admin/evidence")
-def get_evidence() -> dict[str, Any]:
-    """Full comparison report, or a graceful not-generated placeholder — never a 404/500."""
+def get_evidence(_admin: dict = Depends(require_role("admin"))) -> dict[str, Any]:
+    """Full comparison report, or a graceful not-generated placeholder — never a 404/500.
+
+    Originally public by design (Admin_Portal.md: "if a judge has to log in
+    to see accuracy numbers, they will not see them"). Locked behind
+    require_role("admin") at the project owner's explicit request — every
+    /api/admin/* route is now consistently admin-gated. If judge/reviewer
+    access without an account matters later, that's a real product decision
+    to revisit deliberately, not something to silently half-do.
+    """
     report = _load_published_report()
     if report is None:
         return {"status": "not_generated", "message": _NOT_GENERATED_MESSAGE, "systems": None}
@@ -125,8 +135,11 @@ def get_evidence() -> dict[str, Any]:
 
 
 @router.get("/api/admin/quality")
-def get_quality() -> dict[str, Any]:
-    """reasoning_quality + cross_reference only, pulled from the same published report (one source of truth)."""
+def get_quality(_admin: dict = Depends(require_role("admin"))) -> dict[str, Any]:
+    """reasoning_quality + cross_reference only, pulled from the same published report (one source of truth).
+
+    Also admin-gated now — see get_evidence()'s docstring for why.
+    """
     report = _load_published_report()
     if report is None:
         return {
@@ -143,8 +156,11 @@ def get_quality() -> dict[str, Any]:
 
 
 @router.get("/api/admin/config")
-def get_config() -> dict[str, Any]:
-    """Live model/prompt/threshold config plus the current git short SHA. Read-only, no editing endpoint."""
+def get_config(_admin: dict = Depends(require_role("admin"))) -> dict[str, Any]:
+    """Live model/prompt/threshold config plus the current git short SHA. Read-only, no editing endpoint.
+
+    Also admin-gated now — see get_evidence()'s docstring for why.
+    """
     return {
         "models": _STATIC_CONFIG.get("models", {}),
         "prompt_versions": _STATIC_CONFIG.get("prompt_versions", {}),

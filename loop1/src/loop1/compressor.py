@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from loop1.config import config
-from loop1.llm import call_llm
+from loop1.llm import LlmUsage, call_llm_with_usage
 from loop1.schemas import History, PatientProfile, Symptom, TurnRecord
 
 _PROMPT_DIR = Path(__file__).parent.parent.parent / "prompts"
@@ -309,13 +309,15 @@ def _llm_recategorize_and_summarize(
     profile: PatientProfile,
     turns_to_summarize: list[TurnRecord],
     max_retries: int = 3,
-) -> tuple[History, str]:
+) -> tuple[History, str, LlmUsage]:
     messages = _build_compressor_prompt(profile, turns_to_summarize)
     model = config["models"]["compressor"]
     last_err: Exception | None = None
+    last_usage: LlmUsage | None = None
 
     for attempt in range(max_retries):
-        raw = call_llm(model=model, messages=messages)
+        raw, usage = call_llm_with_usage(model=model, messages=messages)
+        last_usage = usage
         cleaned = _strip_fences(raw)
 
         try:
@@ -338,7 +340,7 @@ def _llm_recategorize_and_summarize(
         try:
             corrected_h = History(**data["corrected_history"])
             running_summary = str(data.get("running_summary", "")).strip()
-            return corrected_h, running_summary
+            return corrected_h, running_summary, last_usage
         except (KeyError, ValidationError, TypeError) as exc:
             last_err = exc
             messages = messages + [
@@ -367,7 +369,7 @@ def compress_context(
     profile: PatientProfile,
     history: list[TurnRecord],
     keep_recent: int | None = None,
-) -> PatientProfile:
+) -> tuple[PatientProfile, LlmUsage | None]:
     """
     Compress context by:
     1. Code-level dedup of symptoms, history lists, free_notes.
@@ -375,8 +377,10 @@ def compress_context(
        - Fix history mis-categorization.
        - Generate a running_summary of the compressed turns.
 
-    Returns a new PatientProfile with deduped fields and updated running_summary.
-    The caller is responsible for passing only history[-keep_recent:] to the
+    Returns (PatientProfile, LlmUsage | None) — a new PatientProfile with
+    deduped fields and updated running_summary, plus the LLM call's usage
+    (None when no turns needed summarizing, since no call was made). The
+    caller is responsible for passing only history[-keep_recent:] to the
     doctor on subsequent turns.
     """
     if keep_recent is None:
@@ -387,9 +391,9 @@ def compress_context(
     turns_to_summarize = history[:-keep_recent] if len(history) > keep_recent else []
 
     if not turns_to_summarize:
-        return cleaned
+        return cleaned, None
 
-    corrected_history, running_summary = _llm_recategorize_and_summarize(
+    corrected_history, running_summary, usage = _llm_recategorize_and_summarize(
         cleaned, turns_to_summarize
     )
 
@@ -403,4 +407,4 @@ def compress_context(
         ruled_in=cleaned.ruled_in,
         free_notes=cleaned.free_notes,
         running_summary=running_summary,
-    )
+    ), usage

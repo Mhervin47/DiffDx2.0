@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+from dataclasses import dataclass
 from typing import Any
 
 _log = logging.getLogger(__name__)
@@ -88,13 +89,31 @@ def _provider_prefix(model: str) -> str:
     return "groq"  # default
 
 
+@dataclass(frozen=True)
+class LlmUsage:
+    """Usage/provenance for one successful chat-completion call.
+
+    completion_tokens/total_tokens/model_actual are None when the provider's
+    response doesn't include them, so callers can tell 'measured' from
+    'unavailable' instead of a silent 0. model_actual is the exact model
+    string (with our groq/openrouter/etc. prefix) that _call_llm_raw was
+    invoked with for the attempt that succeeded — this is how a caller finds
+    out which _FALLBACK_CHAIN entry actually served the request, since a 429
+    can reroute to a different provider/model than the one configured.
+    """
+    prompt_tokens: int
+    completion_tokens: int | None
+    total_tokens: int | None
+    model_actual: str | None
+
+
 @retry(
     retry=retry_if_exception(_is_retryable),
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=1, max=8),
     reraise=True,
 )
-def _call_llm_raw(model: str, messages: list[dict[str, str]], **kwargs: Any) -> tuple[str, int]:
+def _call_llm_raw(model: str, messages: list[dict[str, str]], **kwargs: Any) -> tuple[str, LlmUsage]:
     import httpx  # lazy import — avoids SSL/Keychain hang at server startup on macOS
     defaults: dict[str, Any] = {
         "temperature": config["thresholds"]["llm_temperature"],
@@ -173,8 +192,13 @@ def _call_llm_raw(model: str, messages: list[dict[str, str]], **kwargs: Any) -> 
     content: str = msg.get("content") or msg.get("reasoning") or ""
     if not content:
         raise _RetryableHTTPError("Empty content and reasoning in response — likely max_tokens too low")
-    prompt_tokens: int = data.get("usage", {}).get("prompt_tokens", 0)
-    return content, prompt_tokens
+    usage = data.get("usage", {})
+    return content, LlmUsage(
+        prompt_tokens=usage.get("prompt_tokens", 0),
+        completion_tokens=usage.get("completion_tokens"),
+        total_tokens=usage.get("total_tokens"),
+        model_actual=model,
+    )
 
 
 def _parse_reset_seconds(msg: str) -> float:
@@ -195,7 +219,7 @@ def _parse_reset_seconds(msg: str) -> float:
     return min(seconds) + 0.5  # small buffer
 
 
-def _call_with_fallback(model: str, messages: list[dict[str, str]], **kwargs: Any) -> tuple[str, int]:
+def _call_with_fallback(model: str, messages: list[dict[str, str]], **kwargs: Any) -> tuple[str, LlmUsage]:
     """Try model then walk fallbacks on 429 or exhausted same-model retries."""
     prefix = _provider_prefix(model)
     all_models = [model] + _FALLBACK_CHAIN.get(prefix, [])
@@ -227,7 +251,7 @@ def call_llm(model: str, messages: list[dict[str, str]], **kwargs: Any) -> str:
 
 def call_llm_with_usage(
     model: str, messages: list[dict[str, str]], **kwargs: Any
-) -> tuple[str, int]:
+) -> tuple[str, LlmUsage]:
     return _call_with_fallback(model, messages, **kwargs)
 
 

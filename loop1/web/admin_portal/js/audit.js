@@ -1,8 +1,21 @@
-/* audit.js — filterable table over /api/admin/audit, with ?entry=<uuid> deep-link support. */
+/*
+ * audit.js — filterable table over /api/admin/audit, with ?entry=<uuid>
+ * deep-link support.
+ *
+ * Item 9: polls every 30s (matching health.js/usage.js's own cadence and
+ * visibility-backoff pattern) — audit_log_entries reads are cheap DB
+ * queries, not LLM calls, so this is safe to poll. Respects whatever
+ * filter is currently active rather than resetting it, and the deep-link
+ * scroll/highlight only fires on the very first load, not on every poll.
+ */
 (function () {
   const { fetchWithMockFallback, renderAuthRequired, el } = AdminPortal;
 
   const state = { actor: "", action: "", resource_type: "", from: "", to: "", offset: 0, limit: 50 };
+  const POLL_MS = 30000;
+  let pollTimer = null;
+  let deepLinkApplied = false;
+  let lastUpdatedAt = null;
 
   function buildQuery() {
     const params = new URLSearchParams();
@@ -28,6 +41,7 @@
   }
 
   function applyDeepLink() {
+    if (deepLinkApplied) return;
     const params = new URLSearchParams(window.location.search);
     const entry = params.get("entry");
     if (!entry) return;
@@ -35,7 +49,15 @@
     if (row) {
       row.scrollIntoView({ behavior: "smooth", block: "center" });
       row.classList.add("highlighted");
+      deepLinkApplied = true;
     }
+  }
+
+  function renderUpdatedAgo() {
+    const label = document.getElementById("audit-updated-ago");
+    if (!label || !lastUpdatedAt) return;
+    const secs = Math.round((Date.now() - lastUpdatedAt) / 1000);
+    label.textContent = secs < 5 ? "updated just now" : `updated ${secs}s ago`;
   }
 
   async function load() {
@@ -60,6 +82,9 @@
     }
     document.getElementById("audit-total").textContent = `${data.total} total`;
     applyDeepLink();
+
+    lastUpdatedAt = Date.now();
+    renderUpdatedAgo();
   }
 
   document.getElementById("audit-filter-form").addEventListener("submit", (e) => {
@@ -79,5 +104,24 @@
     load();
   });
 
-  load();
+  function schedule() {
+    if (pollTimer) {
+      clearTimeout(pollTimer);
+      pollTimer = null;
+    }
+    if (document.visibilityState === "hidden") {
+      return;
+    }
+    load();
+    pollTimer = setTimeout(schedule, POLL_MS);
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && pollTimer === null) {
+      schedule();
+    }
+  });
+
+  schedule();
+  setInterval(renderUpdatedAgo, 1000);
 })();

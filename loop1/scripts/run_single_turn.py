@@ -58,12 +58,16 @@ def main(
         typer.echo(f"Seed     : {seed if seed is not None else 'unseeded'}")
     typer.echo(f"Calling  : generate_turn(turn_index={turn_index}) ...\n")
 
-    result, prompt_tokens, exemplar_ids = generate_turn_with_usage(
+    result, usage, exemplar_ids = generate_turn_with_usage(
         patient, history=[], turn_index=turn_index, rng=rng, forced_exemplars=forced
     )
 
     typer.echo(f"Exemplars drawn : {exemplar_ids}")
-    typer.echo(f"Tokens          : {prompt_tokens}\n")
+    typer.echo(
+        f"Tokens          : {usage.prompt_tokens} prompt"
+        f"{f', {usage.completion_tokens} completion' if usage.completion_tokens is not None else ''}"
+        f" (model_actual={usage.model_actual})\n"
+    )
     typer.echo(result.model_dump_json(indent=2))
 
 

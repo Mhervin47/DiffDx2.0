@@ -8,24 +8,19 @@ and the mandatory coverage note in _COVERAGE_NOTE):
     durable, unlike the brief's original JSONL default) -> everything else
     (tokens, latency, cost)
 
-Phase 1's two mandatory cost notes ("critic never runs live", "profile
-updater runs every turn") are WRONG for this live path — see build brief
-Section 1.2. This module's own coverage note corrects that; do not copy
-Phase 1's notes here. Required verbatim in three places (build brief
-Section 11.2): this docstring, every /api/admin/usage response body
-(the "coverage_note" field), and visibly on the usage panel
-(usage.js renders it as permanent text, not a tooltip):
-
-    "Usage figures cover the doctor model's own call only. In the live web
-    session the profile updater is disabled by design, but the compressor
-    runs once history exceeds the keep-recent window, and the critic runs
-    on every turn in a background thread — neither reports token usage,
-    because both go through call_llm(), which discards it. True
-    per-session cost is therefore higher than shown. Completion tokens are
-    estimated from output length, not measured: llm.py returns prompt
-    tokens only. llm.py also falls back to a different provider on HTTP
-    429 without reporting which model actually served the request, so
-    per-model cost attribution is approximate."
+Phase 3 closed the two biggest gaps the original coverage note disclosed:
+completion tokens/total tokens/the model that actually served each call
+(post-fallback) are now real, measured values from the provider's own
+response (loop1.llm.LlmUsage), not an estimate — and the compressor and
+critic calls, which previously left zero trace, are now logged too
+(call_site="compressor"/"critic"), so per-session cost reflects the whole
+live turn, not just the doctor's own call. The one gap still open: the
+profile updater remains disabled in the live web session by design (a
+CLI/offline-only code path) — see build brief Section 1.2 for why. Required
+verbatim in three places (build brief Section 11.2, honored across the
+Phase 3 rewrite): this docstring, every /api/admin/usage response body
+(the "coverage_note" field), and visibly on the usage panel (usage.js
+renders it as permanent text, not a tooltip) — see _COVERAGE_NOTE below.
 """
 from __future__ import annotations
 
@@ -61,16 +56,21 @@ _MIN_SAMPLE_FOR_P95 = 20
 # 1's two cost notes describe the CLI Session path (phase7_eval.py) and are
 # wrong about this one; do not conflate them.
 _COVERAGE_NOTE = (
-    "Usage figures cover the doctor model's own call only. In the live web "
-    "session the profile updater is disabled by design, but the compressor "
-    "runs once history exceeds the keep-recent window, and the critic runs "
-    "on every turn in a background thread — neither reports token usage, "
-    "because both go through call_llm(), which discards it. True "
-    "per-session cost is therefore higher than shown. Completion tokens are "
-    "estimated from output length, not measured: llm.py returns prompt "
-    "tokens only. llm.py also falls back to a different provider on HTTP "
-    "429 without reporting which model actually served the request, so "
-    "per-model cost attribution is approximate."
+    "Usage figures cover the doctor model's own call, the compressor "
+    "(runs once history exceeds the keep-recent window), and the critic "
+    "(runs on every turn in a background thread) — all three are logged "
+    "separately (see call_site on each record) and summed into these "
+    "totals. The profile updater is disabled by design in the live web "
+    "session (a CLI/offline-only path), so its cost is not, and cannot be, "
+    "represented here. Completion tokens and the exact model that served "
+    "each call (which can differ from the configured model after an HTTP "
+    "429 fallback) are real measured values from the provider's own "
+    "response where available; a record falls back to an output-length "
+    "estimate only when the provider didn't return one — see each record's "
+    "completion_tokens_is_estimate flag, and model_actual_breakdown below "
+    "for the live model mix. Cost is computed per record using that "
+    "record's own actual (or configured, if unmeasured) model against "
+    "pricing.json's rate table, not a single blended rate."
 )
 
 _EPHEMERALITY_NOTE = (
@@ -100,6 +100,42 @@ def _estimate_cost(prompt_tokens: float | None, completion_tokens: float | None,
     if prompt_tokens is None or completion_tokens is None:
         return None
     return (prompt_tokens / 1000 * rates["input_usd_per_1k"]) + (completion_tokens / 1000 * rates["output_usd_per_1k"])
+
+
+def _event_cost(event: LlmUsageEvent, pricing: dict) -> float | None:
+    """Cost for one usage record, priced against the model that actually
+    served it (falling back to the configured model when model_actual is
+    unmeasured — an older record, or a call site not yet upgraded). Priced
+    per-event rather than with one blended rate, because doctor/compressor/
+    critic calls can each use a different model with a different price."""
+    model_for_pricing = event.model_actual or event.model_configured
+    rates = _rate_for_model(pricing, model_for_pricing)
+    return _estimate_cost(event.prompt_tokens, event.completion_tokens_estimated, rates)
+
+
+def _model_actual_breakdown(events: list[LlmUsageEvent]) -> tuple[list[dict[str, Any]], int]:
+    """Live model mix actually serving requests (post-fallback), grouped
+    from model_actual. Returns (breakdown, records_missing_model_actual) —
+    the latter counts records logged before this field existed, so the
+    caller can disclose them rather than silently drop them from the
+    percentages."""
+    counts: dict[str, int] = {}
+    missing = 0
+    for e in events:
+        if e.model_actual:
+            counts[e.model_actual] = counts.get(e.model_actual, 0) + 1
+        else:
+            missing += 1
+    known_total = len(events) - missing
+    breakdown = [
+        {
+            "model": model,
+            "count": count,
+            "pct": round(count / known_total * 100, 1) if known_total else None,
+        }
+        for model, count in sorted(counts.items(), key=lambda kv: -kv[1])
+    ]
+    return breakdown, missing
 
 
 def _percentile(values: list[float], pct: float) -> float | None:
@@ -183,13 +219,14 @@ def get_usage(
         p95_note = f"Sample too small for a stable p95 (n={len(latencies)}, want >= {_MIN_SAMPLE_FOR_P95})."
 
     pricing = _load_pricing()
-    # config["models"]["doctor"] is the configured model; llm.py's fallback
-    # chain may have actually served a different one on a 429 (1.8) — this
-    # is the same approximation _COVERAGE_NOTE already discloses.
-    from loop1.config import config as loop1_config
-    model_configured = loop1_config.get("models", {}).get("doctor")
-    rates = _rate_for_model(pricing, model_configured)
-    cost_per_session = _estimate_cost(mean_prompt_per_session, mean_completion_per_session, rates)
+    # Priced per-event against each record's own actual (or configured)
+    # model — doctor/compressor/critic calls can each be a different model
+    # with a different rate, so one blended rate would misprice the mix.
+    event_costs = [_event_cost(e, pricing) for e in live_events]
+    sum_cost = sum(c for c in event_costs if c is not None)
+    cost_per_session = sum_cost / n_usage_sessions if n_usage_sessions else None
+
+    model_actual_breakdown, model_actual_unknown_count = _model_actual_breakdown(live_events)
 
     daily: list[dict[str, Any]] = []
     events_by_day: dict[date, list[LlmUsageEvent]] = {}
@@ -200,15 +237,23 @@ def get_usage(
     for i in range(days):
         d = (now - timedelta(days=days - 1 - i)).date()
         day_events = events_by_day.get(d, [])
-        day_prompt = sum((e.prompt_tokens or 0) for e in day_events)
-        day_completion = sum((e.completion_tokens_estimated or 0) for e in day_events)
-        day_cost = _estimate_cost(day_prompt, day_completion, rates) if day_events else 0.0
+        day_costs = [_event_cost(e, pricing) for e in day_events]
+        day_cost = sum(c for c in day_costs if c is not None)
         daily.append({
             "date": d.isoformat(),
             "sessions": sessions_by_day.get(d, 0),
             "turns": len(day_events),
             "cost_usd_estimated": round(day_cost, 6) if day_cost is not None else 0.0,
         })
+
+    model_actual_note = None
+    if model_actual_unknown_count:
+        model_actual_note = (
+            f"{model_actual_unknown_count} of {usage_records_total} usage record(s) in this "
+            "window have no model_actual — logged before this field was measured, or from a "
+            "call site not yet upgraded. Excluded from the percentages above, not silently "
+            "folded into any single model's share."
+        )
 
     return {
         "status": "ok",
@@ -218,10 +263,12 @@ def get_usage(
         "p95_llm_latency_ms": round(p95_latency, 1) if p95_latency is not None else None,
         "sessions_today": sessions_today,
         "daily": daily,
+        "model_actual_breakdown": model_actual_breakdown,
         "counts": {
             "usage_records": usage_records_total,
             "sessions_in_window": sessions_in_window,
             "records_excluded_by_source_filter": excluded_by_source,
+            "model_actual_unknown": model_actual_unknown_count,
             # Always 0 under Decision Gate D1 Option B (Postgres) — the
             # brief's "malformed_lines_skipped" count is a JSONL-parsing
             # concept (Option A); a DB row either matches the schema or
@@ -229,5 +276,5 @@ def get_usage(
             "malformed_lines_skipped": 0,
         },
         "coverage_note": _COVERAGE_NOTE,
-        "notes": [_EPHEMERALITY_NOTE] + ([p95_note] if p95_note else []),
+        "notes": [_EPHEMERALITY_NOTE] + ([p95_note] if p95_note else []) + ([model_actual_note] if model_actual_note else []),
     }

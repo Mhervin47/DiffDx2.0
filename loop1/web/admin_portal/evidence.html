@@ -165,6 +165,104 @@
     background: var(--teal-dim);
   }
 
+  /* Shared auth nav — user dropdown menu (admin_portal has its own design
+     tokens, mapped onto the same class names auth.js's initAuthNav()
+     markup uses everywhere else in the app: --primary -> --teal-primary,
+     --border -> --border-card, --font-headline -> --font-heading, etc.
+     A logged-in doctor or patient can technically land on this public page
+     shell too, so all three of initAuthNav()'s branches need to render
+     correctly here, not just the admin one. */
+  .nav-user-menu { position: relative; display: inline-flex; align-items: center; }
+  .nav-user-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-card);
+    border-radius: 9999px; padding: 4px 12px 4px 4px;
+    cursor: pointer; color: var(--text-main);
+    font-family: var(--font-heading); font-size: 13px;
+    transition: all 0.2s ease;
+  }
+  .nav-user-btn:hover {
+    border-color: var(--teal-primary);
+    color: var(--teal-primary);
+    background: var(--teal-dim);
+  }
+  .nav-user-btn svg {
+    color: var(--text-muted);
+    transition: transform 0.2s ease, color 0.2s ease;
+    flex-shrink: 0;
+  }
+  .nav-user-btn:hover svg { color: var(--teal-primary); }
+  .nav-user-btn[aria-expanded="true"] svg { transform: rotate(180deg); color: var(--teal-primary); }
+
+  .nav-user-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal-primary), var(--purple-accent));
+    color: #fff !important; font-size: 13px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-family: var(--font-heading);
+    box-shadow: 0 2px 10px var(--teal-glow);
+  }
+  .nav-user-name { font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--text-main); font-family: var(--font-heading); }
+
+  .nav-user-dropdown {
+    display: none;
+    position: absolute; right: 0; top: calc(100% + 8px);
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 14px; min-width: 220px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden; z-index: 99999;
+  }
+  html.dark-theme .nav-user-dropdown { backdrop-filter: blur(20px) saturate(1.3); }
+  .nav-user-dropdown.open { display: flex; flex-direction: column; }
+
+  .nav-user-dropdown-header {
+    padding: 14px 18px 12px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border-card);
+  }
+  .nav-user-dropdown-header div:first-child {
+    font-weight: 700; font-size: 13.5px; color: var(--text-main);
+    font-family: var(--font-heading); letter-spacing: -0.01em;
+  }
+  .nav-user-dropdown-header div:last-child {
+    font-size: 11.5px; color: var(--text-muted); margin-top: 2px; word-break: break-all;
+  }
+
+  .nav-user-dropdown-item {
+    display: flex; align-items: center; width: 100%; text-align: left;
+    padding: 11px 18px; font-size: 13px; font-weight: 600;
+    color: var(--text-main);
+    background: transparent; border: none; border-radius: 0;
+    cursor: pointer; text-decoration: none; box-shadow: none;
+    font-family: var(--font-heading);
+    transition: background 0.15s ease, color 0.15s ease;
+    box-sizing: border-box;
+  }
+  .nav-user-dropdown-item:hover { background: var(--teal-dim); color: var(--teal-primary); }
+
+  .nav-user-dropdown-item--danger {
+    color: var(--danger) !important;
+    border-top: 1px solid var(--border-card);
+  }
+  .nav-user-dropdown-item--danger:hover {
+    color: var(--danger) !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+  }
+
+  .nav-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    position: relative;
+    width: 36px; height: 36px; min-width: 36px; min-height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+  }
+  .nav-icon-btn:hover { border-color: var(--teal-primary); color: var(--teal-primary); }
+
   /* Theme Toggle Button */
   .theme-toggle-btn {
     width: 36px; height: 36px;
@@ -315,8 +413,43 @@
   .caveat {
     cursor: help; color: var(--warn); font-weight: 700;
   }
+  .confidence-chip {
+    display: inline-block; margin-left: 8px;
+    padding: 2px 9px; border-radius: 9999px;
+    background: var(--warn-dim); border: 1px solid var(--warn-border);
+    color: var(--warn); font-size: 10.5px; font-weight: 700;
+    font-family: var(--font-heading); cursor: help; letter-spacing: 0.01em;
+  }
   .muted { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-top: 10px; }
   .error { color: var(--danger); }
+
+  /* Item 8 — static-vs-live badge */
+  .static-badge {
+    display: inline-flex; align-items: center;
+    padding: 4px 12px; border-radius: 9999px;
+    background: var(--surface-2); border: 1px solid var(--border-card);
+    color: var(--text-muted); font-size: 11.5px; font-weight: 700;
+    font-family: var(--font-heading); letter-spacing: 0.02em;
+  }
+
+  /* Item 2 — bar chart */
+  .bar-chart-svg {
+    width: 100%; height: auto;
+    background: var(--surface-2); border: 1px solid var(--border-card);
+    border-radius: 14px; padding: 10px;
+  }
+  .bar-chart-value-label {
+    font-size: 10px; font-weight: 700; fill: var(--text-main);
+    font-family: var(--font-heading);
+  }
+  .bar-chart-group-label {
+    font-size: 11px; fill: var(--text-muted); font-family: var(--font-heading);
+  }
+  .usage-chart-legend {
+    display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--text-muted);
+  }
+  .usage-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .usage-legend-swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
   /* Caveats Box */
   .notes-box {
@@ -335,6 +468,107 @@
   }
   #notes-list li { margin-bottom: 12px; }
   #notes-list li:last-child { margin-bottom: 0; }
+
+  /* ---- Redesign: hero stats, takeaways, question-grouped sections ---- */
+  .section-block { margin-bottom: 48px; }
+  .section-block h2 { margin-bottom: 6px; border-bottom: none; padding-bottom: 0; }
+  .section-rule { border: none; border-top: 1px solid var(--border-card); margin: 0 0 18px; }
+
+  .takeaway {
+    font-family: var(--font-body); font-size: 15px; font-weight: 600;
+    color: var(--text-main); line-height: 1.55; max-width: 68ch;
+    margin-bottom: 22px;
+  }
+
+  .hero-row { display: flex; align-items: flex-end; gap: 32px; flex-wrap: wrap; margin-bottom: 20px; }
+  .hero-stat {
+    font-family: var(--font-heading); font-weight: 800; font-size: 68px;
+    line-height: 1; color: var(--text-main); letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .hero-stat.hero-teal { color: var(--teal-primary); text-shadow: 0 0 30px var(--teal-glow); }
+  .hero-unit { font-size: 30px; font-weight: 700; margin-left: 3px; color: var(--text-muted); }
+  .hero-caption { display: flex; flex-direction: column; gap: 4px; }
+  .hero-label {
+    font-family: var(--font-heading); font-size: 12.5px; font-weight: 700;
+    color: var(--text-muted); letter-spacing: 0.01em;
+  }
+
+  .hero-refs { display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch; padding-bottom: 4px; }
+  .ref-chip {
+    display: flex; flex-direction: column; gap: 3px; padding: 10px 16px;
+    border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border-card);
+    min-width: 118px;
+  }
+  .ref-value { font-family: var(--font-heading); font-size: 21px; font-weight: 700; color: var(--text-dim); }
+  .ref-label { font-size: 10.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .ref-delta { font-family: var(--font-heading); font-size: 12px; font-weight: 800; }
+  .ref-delta.positive { color: var(--teal-primary); }
+  .ref-delta.negative { color: var(--danger); }
+  .ref-delta.neutral { color: var(--text-dim); }
+
+  .section-sub-stats { display: flex; gap: 28px; flex-wrap: wrap; margin: 22px 0 14px; }
+  .sub-stat { display: flex; flex-direction: column; gap: 3px; }
+  .sub-stat-value { font-family: var(--font-heading); font-size: 21px; font-weight: 700; color: var(--text-main); }
+  .sub-stat-label { font-size: 11.5px; color: var(--text-muted); }
+
+  .confidence-badge-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+
+  .stratum-table-wrap { margin-top: 8px; }
+  .stratum-table-wrap table.metrics-table { box-shadow: none; font-size: 12.5px; }
+  .stratum-table-wrap table.metrics-table th, .stratum-table-wrap table.metrics-table td { padding: 9px 14px; }
+
+  /* Cost section — deliberately NOT teal-glorified: actor-critic is not the
+     cheaper system here, so this stays visually neutral, not a "win." */
+  .cost-card-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+  .cost-card {
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 14px; padding: 16px 22px; min-width: 168px;
+    box-shadow: var(--card-shadow);
+  }
+  html.dark-theme .cost-card { background: rgba(10, 21, 37, 0.82); backdrop-filter: blur(20px); }
+  .cost-card-value { font-family: var(--font-heading); font-size: 25px; font-weight: 800; color: var(--text-main); }
+  .cost-card.is-reference .cost-card-value { color: var(--text-dim); font-size: 20px; font-weight: 700; }
+  .cost-card-label { font-size: 11.5px; color: var(--text-muted); margin-top: 5px; line-height: 1.4; }
+
+  /* Hero SVG chart — max-height keeps it from stretching tall on wide
+     desktop containers (viewBox aspect ratio alone isn't enough once the
+     container is ~1100px+ wide); preserveAspectRatio letterboxes instead
+     of distorting. */
+  .hero-chart-svg { width: 100%; height: auto; max-height: 280px; display: block; margin: 0 auto; }
+  .hero-chart-svg .hero-bar {
+    transform-box: fill-box; transform-origin: bottom; transform: scaleY(0);
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hero-chart-svg .hero-bar.revealed { transform: scaleY(1); }
+  .hero-chart-svg .hero-bar:hover { filter: brightness(1.12); cursor: default; }
+  .hero-bar-value { font-size: 15px; font-weight: 800; fill: var(--text-main); font-family: var(--font-heading); }
+  .hero-bar-axis-label { font-size: 11px; fill: var(--text-muted); font-family: var(--font-heading); font-weight: 600; }
+  .hero-chart-baseline { stroke: var(--border-card); stroke-width: 1; }
+
+  /* Methodology — progressive disclosure for statistical machinery */
+  details.methodology {
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 14px; padding: 18px 24px; box-shadow: var(--card-shadow);
+  }
+  html.dark-theme details.methodology { background: rgba(10, 21, 37, 0.82); backdrop-filter: blur(20px); }
+  details.methodology summary {
+    cursor: pointer; font-family: var(--font-heading); font-weight: 700;
+    font-size: 14px; color: var(--text-main); list-style: none;
+    display: flex; align-items: center; gap: 8px; user-select: none;
+  }
+  details.methodology summary::-webkit-details-marker { display: none; }
+  details.methodology summary::before {
+    content: '▸'; color: var(--teal-primary); transition: transform 0.2s ease; font-size: 12px;
+  }
+  details.methodology[open] summary::before { transform: rotate(90deg); }
+  details.methodology .methodology-body { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-card); }
+  .methodology-subhead {
+    font-family: var(--font-heading); font-size: 12px; font-weight: 700;
+    color: var(--teal-primary); text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 18px 0 8px;
+  }
+  .methodology-subhead:first-child { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -370,14 +604,14 @@
       <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
     <a href="/doctor-overview.html" class="topbar-btn">Doctor Portal</a>
-    <a href="/login.html" class="topbar-btn">Sign In / Out</a>
+    <div id="nav-auth"></div>
   </div>
 </nav>
 
 <!-- Page Header -->
 <header class="page-header">
   <h1>Evidence — Actor-Critic vs. Traditional LLM</h1>
-  <div class="subtitle">Public benchmark comparison. No login required.</div>
+  <div class="subtitle">Actor-critic vs. baseline benchmark comparison. Admin sign-in required.</div>
   <div id="admin-nav-root"></div>
 </header>
 
@@ -386,32 +620,66 @@
     ⚠ Sample data — no real comparison report has been generated yet. Run
     <code>compare_report.py</code> then <code>publish_report.py</code> to see real numbers.
   </div>
-  <p class="meta">Eval set size: <span id="eval-set-size">—</span> patients · Generated: <span id="generated-at">—</span></p>
+  <p class="meta">
+    Eval set size: <span id="eval-set-size">—</span> patients · Generated: <span id="generated-at">—</span>
+    <span id="static-badge-root"></span>
+  </p>
 
   <div id="content">
-    <section>
-      <h2>Diagnostic accuracy &amp; cost</h2>
-      <table id="main-table" class="metrics-table"></table>
-    </section>
-
-    <section>
-      <h2>Accuracy by stratum</h2>
-      <table id="stratum-table" class="metrics-table"></table>
-    </section>
-
-    <section>
-      <h2>Safety recall (red-flag patients)</h2>
-      <div id="safety-section"></div>
-    </section>
-
-    <section>
-      <h2>Caveats — read before citing any number above</h2>
-      <div class="notes-box">
-        <ul id="notes-list"></ul>
+    <section class="section-block" id="accuracy-section">
+      <h2>Is it more accurate?</h2>
+      <hr class="section-rule">
+      <p class="takeaway" id="accuracy-takeaway"></p>
+      <div class="hero-row">
+        <div class="hero-caption">
+          <div class="hero-stat hero-teal" id="accuracy-hero-value">—</div>
+          <div class="hero-label" id="accuracy-hero-label">Top-1 accuracy — Actor-Critic</div>
+        </div>
+        <div class="hero-refs" id="accuracy-hero-refs"></div>
       </div>
+      <div class="confidence-badge-row" id="accuracy-confidence-row"></div>
+      <div id="accuracy-chart-root"></div>
+      <div class="section-sub-stats" id="accuracy-sub-stats"></div>
+      <div class="stratum-table-wrap">
+        <table id="stratum-table" class="metrics-table"></table>
+      </div>
+    </section>
+
+    <section class="section-block" id="cost-section">
+      <h2>Is it cost-effective?</h2>
+      <hr class="section-rule">
+      <p class="takeaway" id="cost-takeaway"></p>
+      <div class="cost-card-row" id="cost-card-row"></div>
+      <div class="section-sub-stats" id="cost-sub-stats"></div>
+    </section>
+
+    <section class="section-block" id="safety-section-block">
+      <h2>Is it safer?</h2>
+      <hr class="section-rule">
+      <p class="takeaway" id="safety-takeaway"></p>
+      <div class="hero-row">
+        <div class="hero-caption">
+          <div class="hero-stat hero-teal" id="safety-hero-value">—</div>
+          <div class="hero-label" id="safety-hero-label">Red-flag top-3 recall — Actor-Critic</div>
+        </div>
+        <div class="hero-refs" id="safety-hero-refs"></div>
+      </div>
+      <div id="safety-chart-root"></div>
+      <div class="section-sub-stats" id="safety-sub-stats"></div>
+      <p class="muted" id="safety-provenance"></p>
+      <div id="safety-fallback"></div>
+    </section>
+
+    <section>
+      <h2>Methodology &amp; statistical notes</h2>
+      <details class="methodology" id="methodology-details">
+        <summary>Statistical detail, per-field caveats, and the five mandatory notes — read before citing any number above</summary>
+        <div class="methodology-body" id="methodology-body"></div>
+      </details>
     </section>
   </div>
 </main>
+<script src="/auth.js"></script>
 <script src="js/admin-common.js"></script>
 <script src="js/mock.js"></script>
 <script src="js/evidence.js"></script>

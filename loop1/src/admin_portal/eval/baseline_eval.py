@@ -177,9 +177,9 @@ def _run_one_call(model: str, prompt: str) -> tuple[dict, int, float, bool]:
 
     for attempt in range(_MAX_ATTEMPTS):
         t0 = time.monotonic()
-        raw, prompt_tokens = call_llm_with_usage(model=model, messages=messages)
+        raw, usage = call_llm_with_usage(model=model, messages=messages)
         total_latency_ms += (time.monotonic() - t0) * 1000
-        total_prompt_tokens += prompt_tokens
+        total_prompt_tokens += usage.prompt_tokens
         raw_last = raw
 
         parsed = _extract_and_validate(raw)

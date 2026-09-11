@@ -10,6 +10,7 @@ import pytest
 from fastapi import HTTPException
 
 from diffdx import session_store
+from loop1.llm import LlmUsage
 from loop1.schemas import (
     Demographics,
     DiagnosisEntry,
@@ -62,7 +63,9 @@ def _session_with_history() -> APISession:
     )
     session._pending_turn_index = 1
     session._pending_doctor_output = _doctor_output(turn_index=1)
-    session._pending_prompt_tokens = 42
+    session._pending_usage = LlmUsage(
+        prompt_tokens=42, completion_tokens=17, total_tokens=59, model_actual="groq/test-model",
+    )
     session._pending_exemplar_ids = ["ex1", "ex2"]
     session.session_language = "hi-IN"
     return session
@@ -85,7 +88,9 @@ def test_to_dict_from_dict_round_trip_preserves_state():
     assert restored.history[0].doctor_output.chosen_question == "How long does it last?"
     assert restored._pending_turn_index == 1
     assert restored._pending_doctor_output.turn_index == 1
-    assert restored._pending_prompt_tokens == 42
+    assert restored._pending_usage == LlmUsage(
+        prompt_tokens=42, completion_tokens=17, total_tokens=59, model_actual="groq/test-model",
+    )
     assert restored._pending_exemplar_ids == ["ex1", "ex2"]
     assert restored.session_language == "hi-IN"
     assert restored.complete is False

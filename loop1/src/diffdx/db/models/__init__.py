@@ -18,6 +18,7 @@ from diffdx.db.models.clinical import (
     SuggestedTest,
     TreatmentPlanItem,
 )
+from diffdx.db.models.dsr import DsrErasureRequest
 from diffdx.db.models.files import UploadedFile
 from diffdx.db.models.messaging import Message, MessageThread
 from diffdx.db.models.scheduling import (
@@ -58,4 +59,5 @@ __all__ = [
     "UploadedFile",
     "AuditLogEntry",
     "LlmUsageEvent",
+    "DsrErasureRequest",
 ]

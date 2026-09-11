@@ -171,6 +171,104 @@
     background: var(--teal-dim);
   }
 
+  /* Shared auth nav — user dropdown menu (admin_portal has its own design
+     tokens, mapped onto the same class names auth.js's initAuthNav()
+     markup uses everywhere else in the app: --primary -> --teal-primary,
+     --border -> --border-card, --font-headline -> --font-heading, etc.
+     A logged-in doctor or patient can technically land on this public page
+     shell too, so all three of initAuthNav()'s branches need to render
+     correctly here, not just the admin one. */
+  .nav-user-menu { position: relative; display: inline-flex; align-items: center; }
+  .nav-user-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-card);
+    border-radius: 9999px; padding: 4px 12px 4px 4px;
+    cursor: pointer; color: var(--text-main);
+    font-family: var(--font-heading); font-size: 13px;
+    transition: all 0.2s ease;
+  }
+  .nav-user-btn:hover {
+    border-color: var(--teal-primary);
+    color: var(--teal-primary);
+    background: var(--teal-dim);
+  }
+  .nav-user-btn svg {
+    color: var(--text-muted);
+    transition: transform 0.2s ease, color 0.2s ease;
+    flex-shrink: 0;
+  }
+  .nav-user-btn:hover svg { color: var(--teal-primary); }
+  .nav-user-btn[aria-expanded="true"] svg { transform: rotate(180deg); color: var(--teal-primary); }
+
+  .nav-user-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal-primary), var(--purple-accent));
+    color: #fff !important; font-size: 13px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-family: var(--font-heading);
+    box-shadow: 0 2px 10px var(--teal-glow);
+  }
+  .nav-user-name { font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--text-main); font-family: var(--font-heading); }
+
+  .nav-user-dropdown {
+    display: none;
+    position: absolute; right: 0; top: calc(100% + 8px);
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 14px; min-width: 220px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden; z-index: 99999;
+  }
+  html.dark-theme .nav-user-dropdown { backdrop-filter: blur(20px) saturate(1.3); }
+  .nav-user-dropdown.open { display: flex; flex-direction: column; }
+
+  .nav-user-dropdown-header {
+    padding: 14px 18px 12px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border-card);
+  }
+  .nav-user-dropdown-header div:first-child {
+    font-weight: 700; font-size: 13.5px; color: var(--text-main);
+    font-family: var(--font-heading); letter-spacing: -0.01em;
+  }
+  .nav-user-dropdown-header div:last-child {
+    font-size: 11.5px; color: var(--text-muted); margin-top: 2px; word-break: break-all;
+  }
+
+  .nav-user-dropdown-item {
+    display: flex; align-items: center; width: 100%; text-align: left;
+    padding: 11px 18px; font-size: 13px; font-weight: 600;
+    color: var(--text-main);
+    background: transparent; border: none; border-radius: 0;
+    cursor: pointer; text-decoration: none; box-shadow: none;
+    font-family: var(--font-heading);
+    transition: background 0.15s ease, color 0.15s ease;
+    box-sizing: border-box;
+  }
+  .nav-user-dropdown-item:hover { background: var(--teal-dim); color: var(--teal-primary); }
+
+  .nav-user-dropdown-item--danger {
+    color: var(--danger) !important;
+    border-top: 1px solid var(--border-card);
+  }
+  .nav-user-dropdown-item--danger:hover {
+    color: var(--danger) !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+  }
+
+  .nav-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    position: relative;
+    width: 36px; height: 36px; min-width: 36px; min-height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+  }
+  .nav-icon-btn:hover { border-color: var(--teal-primary); color: var(--teal-primary); }
+
   /* Theme Toggle Button */
   .theme-toggle-btn {
     width: 36px; height: 36px;
@@ -307,6 +405,17 @@
   }
   .muted { color: var(--text-muted); font-size: 13px; margin: 6px 0 12px; line-height: 1.5; }
   .error { color: var(--danger); }
+  .meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+
+  /* Item 8 — static-vs-live badge */
+  .static-badge {
+    display: inline-flex; align-items: center;
+    padding: 4px 12px; border-radius: 9999px;
+    background: var(--surface-2); border: 1px solid var(--border-card);
+    color: var(--text-muted); font-size: 11.5px; font-weight: 700;
+    font-family: var(--font-heading); letter-spacing: 0.02em;
+  }
+  .safety-summary-sample { cursor: help; }
 
   /* Plain List (Weaknesses) */
   ul.plain-list {
@@ -367,6 +476,57 @@
     background: linear-gradient(90deg, #4C8FF5, #8174E8);
     box-shadow: 0 0 10px rgba(76, 143, 245, 0.45);
   }
+
+  /* ---- Redesign: hero stats, takeaways, question-grouped sections ---- */
+  .section-block { margin-bottom: 48px; }
+  .section-block h2 { margin-bottom: 6px; border-bottom: none; padding-bottom: 0; }
+  .section-rule { border: none; border-top: 1px solid var(--border-card); margin: 0 0 18px; }
+
+  .lead-takeaway {
+    font-family: var(--font-body); font-size: 16px; font-weight: 700;
+    color: var(--text-main); line-height: 1.55; max-width: 68ch;
+    margin-bottom: 26px;
+  }
+  .takeaway {
+    font-family: var(--font-body); font-size: 15px; font-weight: 600;
+    color: var(--text-main); line-height: 1.55; max-width: 68ch;
+    margin-bottom: 20px;
+  }
+
+  .hero-row { display: flex; align-items: flex-end; gap: 32px; flex-wrap: wrap; margin-bottom: 8px; }
+  .hero-stat {
+    font-family: var(--font-heading); font-weight: 800; font-size: 64px;
+    line-height: 1; color: var(--text-main); letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .hero-stat.hero-teal { color: var(--teal-primary); text-shadow: 0 0 30px var(--teal-glow); }
+  .hero-stat-suffix { font-size: 26px; font-weight: 700; margin-left: 3px; color: var(--text-dim); }
+  .hero-caption { display: flex; flex-direction: column; gap: 4px; }
+  .hero-label {
+    font-family: var(--font-heading); font-size: 12.5px; font-weight: 700;
+    color: var(--text-muted); letter-spacing: 0.01em;
+  }
+
+  .section-sub-stats { display: flex; gap: 28px; flex-wrap: wrap; margin: 18px 0 4px; }
+  .sub-stat { display: flex; flex-direction: column; gap: 3px; }
+  .sub-stat-value { font-family: var(--font-heading); font-size: 21px; font-weight: 700; color: var(--text-dim); }
+  .sub-stat-label { font-size: 11.5px; color: var(--text-muted); }
+  .sub-stat-median { font-size: 11px; color: var(--text-dim); font-weight: 500; margin-left: 4px; }
+
+  /* Calibration bars — the well-calibrated bar gets visual dominance
+     (taller track, bolder label) since it's the section's headline
+     figure; over/under stay in the same list but visually quieter. */
+  ul.bar-list li.bar-dominant .bar-label { font-size: 15px; font-weight: 800; color: var(--text-main); }
+  ul.bar-list li.bar-dominant .bar-track { height: 18px; }
+  ul.bar-list li:not(.bar-dominant) .bar-track { height: 9px; }
+  ul.bar-list li:not(.bar-dominant) .bar-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+  /* Weakness categories — horizontal bar-list, same visual language as
+     calibration, sorted by count (already is), most-common visually
+     dominant. Neutral blue-purple, not judgmental amber/red — this is
+     "what's common," not "what's broken." */
+  .bar-fill.bar-weakness-top { background: linear-gradient(90deg, #19C6AD, #4C8FF5); box-shadow: 0 0 10px var(--teal-glow); }
+  .bar-fill.bar-weakness { background: linear-gradient(90deg, #4C8FF5, #8174E8); opacity: 0.75; }
 </style>
 </head>
 <body>
@@ -402,7 +562,7 @@
       <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
     <a href="/doctor-overview.html" class="topbar-btn">Doctor Portal</a>
-    <a href="/login.html" class="topbar-btn">Sign In / Out</a>
+    <div id="nav-auth"></div>
   </div>
 </nav>
 
@@ -418,30 +578,47 @@
     ⚠ Sample data — no real comparison report has been generated yet. Run
     <code>compare_report.py</code> then <code>publish_report.py</code> to see real numbers.
   </div>
+  <p class="meta"><span id="static-badge-root"></span></p>
 
   <div id="content">
-    <section>
-      <h2>Critic scores</h2>
-      <p class="muted" id="turn-summary"></p>
-      <table id="scores-table"></table>
+    <div id="safety-summary-root"></div>
+
+    <section class="section-block" id="reasoning-section">
+      <h2>How good is the reasoning?</h2>
+      <hr class="section-rule">
+      <p class="takeaway" id="reasoning-takeaway"></p>
+      <div class="hero-row">
+        <div class="hero-caption">
+          <div class="hero-stat hero-teal" id="reasoning-hero-value">—<span class="hero-stat-suffix" id="reasoning-hero-suffix"></span></div>
+          <div class="hero-label">Mean reasoning quality</div>
+        </div>
+      </div>
+      <div class="section-sub-stats" id="reasoning-sub-stats"></div>
     </section>
 
-    <section>
-      <h2>Confidence calibration</h2>
+    <section class="section-block" id="calibration-block">
+      <h2>Is its confidence well-calibrated?</h2>
+      <hr class="section-rule">
+      <p class="takeaway" id="calibration-takeaway"></p>
       <div id="calibration-section"></div>
     </section>
 
-    <section>
-      <h2>Weakness categories</h2>
+    <section class="section-block" id="weakness-block">
+      <h2>What does it get wrong?</h2>
+      <hr class="section-rule">
+      <p class="takeaway" id="weakness-takeaway"></p>
       <div id="weakness-section"></div>
     </section>
 
-    <section id="cross-ref-section">
-      <h2>Low question quality + wrong diagnosis (cross-referenced)</h2>
+    <section class="section-block" id="cross-ref-section">
+      <h2>Where do low-quality questions coincide with a wrong diagnosis?</h2>
+      <hr class="section-rule">
+      <p class="takeaway" id="cross-ref-takeaway"></p>
       <table id="cross-ref-table"></table>
     </section>
   </div>
 </main>
+<script src="/auth.js"></script>
 <script src="js/admin-common.js"></script>
 <script src="js/mock.js"></script>
 <script src="js/quality.js"></script>

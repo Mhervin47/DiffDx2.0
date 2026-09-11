@@ -19,9 +19,14 @@ const AdminPortalMock = {
       turns: [8, 15, 11, 19, 4, 0, 12, 16, 7, 10, 18, 14, 8, 11][i],
       cost_usd_estimated: 0.0006 * [8, 15, 11, 19, 4, 0, 12, 16, 7, 10, 18, 14, 8, 11][i],
     })),
-    counts: { usage_records: 168, sessions_in_window: 41, records_excluded_by_source_filter: 0, malformed_lines_skipped: 0 },
+    counts: { usage_records: 168, sessions_in_window: 41, records_excluded_by_source_filter: 0, model_actual_unknown: 0, malformed_lines_skipped: 0 },
     coverage_note:
-      "Usage figures cover the doctor model's own call only. In the live web session the profile updater is disabled by design, but the compressor runs once history exceeds the keep-recent window, and the critic runs on every turn in a background thread — neither reports token usage, because both go through call_llm(), which discards it. True per-session cost is therefore higher than shown. Completion tokens are estimated from output length, not measured: llm.py returns prompt tokens only. llm.py also falls back to a different provider on HTTP 429 without reporting which model actually served the request, so per-model cost attribution is approximate.",
+      "Usage figures cover the doctor model's own call, the compressor (runs once history exceeds the keep-recent window), and the critic (runs on every turn in a background thread) — all three are logged separately (see call_site on each record) and summed into these totals. The profile updater is disabled by design in the live web session (a CLI/offline-only path), so its cost is not, and cannot be, represented here. Completion tokens and the exact model that served each call (which can differ from the configured model after an HTTP 429 fallback) are real measured values from the provider's own response where available; a record falls back to an output-length estimate only when the provider didn't return one — see each record's completion_tokens_is_estimate flag, and model_actual_breakdown below for the live model mix. Cost is computed per record using that record's own actual (or configured, if unmeasured) model against pricing.json's rate table, not a single blended rate.",
+    model_actual_breakdown: [
+      { model: "openrouter/meta-llama/llama-3.1-8b-instruct", count: 168, pct: 61.5 },
+      { model: "openrouter/meta-llama/llama-3.3-70b-instruct", count: 84, pct: 30.8 },
+      { model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free", count: 21, pct: 7.7 },
+    ],
     notes: [],
   },
 
@@ -42,6 +47,12 @@ const AdminPortalMock = {
     status: "ok",
     items: [
       { user_id: "u-4821", name: "Test Patient", email: "patient@example.com", created_at: "2025-11-01T00:00:00Z", session_count: 3 },
+    ],
+  },
+  dsrRequestsList: {
+    status: "ok",
+    items: [
+      { id: "req-9012", user_id: "u-4821", name: "Test Patient", email: "patient@example.com", reason: "No longer using the service", requested_at: "2025-11-05T00:00:00Z" },
     ],
   },
   subjectInventory: {

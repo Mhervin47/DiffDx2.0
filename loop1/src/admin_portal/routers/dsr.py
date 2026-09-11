@@ -66,6 +66,7 @@ from diffdx.audit import log_audit_event
 from diffdx.db.engine import get_sessionmaker
 from diffdx.db.models.audit import AuditLogEntry
 from diffdx.db.models.clinical import DiagnosticSession, SessionTurn
+from diffdx.db.models.dsr import DsrErasureRequest
 from diffdx.db.models.files import UploadedFile
 from diffdx.db.models.messaging import Message, MessageThread
 from diffdx.db.models.scheduling import Appointment, Waitlist
@@ -92,6 +93,73 @@ _PSEUDONYM_NAMESPACE = uuid.UUID("6e6f7420-6120-7265-616c-207573657200")
 
 class EraseRequest(BaseModel):
     confirm_email: str
+
+
+class DenyRequestBody(BaseModel):
+    note: str
+
+
+# ---------------------------------------------------------------------------
+# Request queue — a thin front door to everything below. A patient can ask,
+# from their own profile (diffdx.routers.dsr_requests), that their data be
+# deleted; that just writes a DsrErasureRequest row with status="pending".
+# There is no "approve" endpoint here: approving a request IS an admin
+# running the existing search -> inventory -> erase flow below on that
+# subject, unchanged. This section's only mutation is denying a request.
+# ---------------------------------------------------------------------------
+
+@router.get("/api/admin/dsr-requests")
+def list_dsr_requests(
+    request: Request,
+    status: str = Query(default="pending"),
+    _admin: dict = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    with get_sessionmaker()() as db:
+        stmt = (
+            select(DsrErasureRequest, User)
+            .join(User, User.id == DsrErasureRequest.user_id)
+            .where(DsrErasureRequest.status == status)
+            .order_by(DsrErasureRequest.requested_at.desc())
+            .limit(_SEARCH_LIMIT)
+        )
+        rows = db.execute(stmt).all()
+        items = [
+            {
+                "id": str(req.id),
+                "user_id": str(user.id),
+                "name": user.name,
+                "email": user.email,
+                "reason": req.reason,
+                "requested_at": req.requested_at.isoformat() if req.requested_at else None,
+            }
+            for req, user in rows
+        ]
+
+    _audit(request, _admin, "GET /api/admin/dsr-requests", "dsr_erasure_request", f"{len(items)}_results")
+    return {"status": "ok", "items": items}
+
+
+@router.post("/api/admin/dsr-requests/{request_id}/deny")
+def deny_dsr_request(
+    request_id: str, body: DenyRequestBody, request: Request, _admin: dict = Depends(require_role("admin")),
+) -> dict[str, Any]:
+    try:
+        rid = uuid.UUID(request_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Request not found.")
+
+    with get_sessionmaker()() as db:
+        req = db.get(DsrErasureRequest, rid)
+        if req is None:
+            raise HTTPException(status_code=404, detail="Request not found.")
+        req.status = "denied"
+        req.reviewed_at = datetime.now(timezone.utc)
+        req.reviewed_by = uuid.UUID(str(_admin["id"]))
+        req.admin_note = body.note
+        db.commit()
+
+    _audit(request, _admin, "POST /api/admin/dsr-requests/{id}/deny", "dsr_erasure_request", request_id)
+    return {"status": "ok"}
 
 
 # ---------------------------------------------------------------------------

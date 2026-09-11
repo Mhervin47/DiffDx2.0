@@ -7,8 +7,11 @@ from unittest.mock import patch
 
 import pytest
 
+from loop1.llm import LlmUsage
 from loop2.critic.critique_schema import TurnCritique
 from loop2.critic.critic import critique_turn, critique_session, _render_conversation_history
+
+_USAGE = LlmUsage(prompt_tokens=100, completion_tokens=None, total_tokens=None, model_actual=None)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "critic_calibration"
 
@@ -141,7 +144,7 @@ class TestRenderConversationHistory:
 class TestCritiqueTurnUnit:
     @patch("loop2.critic.critic._call_critic_raw")
     def test_good_turn_parses_schema(self, mock_call):
-        mock_call.return_value = json.dumps({
+        mock_call.return_value = (json.dumps({
             "question_quality_score": 0.85,
             "differential_quality_score": 0.80,
             "reasoning_quality_score": 0.90,
@@ -150,18 +153,19 @@ class TestCritiqueTurnUnit:
             "weakness_category": None,
             "would_have_asked": None,
             "rationale": "Strong question targeting the main uncertainty.",
-        })
+        }), _USAGE)
         event = _make_turn_event(0, "Do you have leg swelling?")
-        critique = critique_turn(event, [event], "test_sess")
+        critique, usage = critique_turn(event, [event], "test_sess")
         assert isinstance(critique, TurnCritique)
         assert critique.question_quality_score == pytest.approx(0.85)
         assert critique.turn == 0
+        assert usage is _USAGE
 
     @patch("loop2.critic.critic._call_critic_raw")
     def test_bad_json_retries(self, mock_call):
         mock_call.side_effect = [
-            "not json at all ```",
-            json.dumps({
+            ("not json at all ```", _USAGE),
+            (json.dumps({
                 "question_quality_score": 0.5,
                 "differential_quality_score": 0.5,
                 "reasoning_quality_score": 0.5,
@@ -170,15 +174,15 @@ class TestCritiqueTurnUnit:
                 "weakness_category": None,
                 "would_have_asked": None,
                 "rationale": "Retry worked.",
-            }),
+            }), _USAGE),
         ]
         event = _make_turn_event(0, "Test question?")
-        critique = critique_turn(event, [event], "sess")
+        critique, usage = critique_turn(event, [event], "sess")
         assert critique.rationale == "Retry worked."
 
     @patch("loop2.critic.critic._call_critic_raw")
     def test_all_retries_fail_raises(self, mock_call):
-        mock_call.return_value = "definitely not json {"
+        mock_call.return_value = ("definitely not json {", _USAGE)
         event = _make_turn_event(0, "Test?")
         with pytest.raises(ValueError, match="Failed to get a valid TurnCritique"):
             critique_turn(event, [event], "sess")

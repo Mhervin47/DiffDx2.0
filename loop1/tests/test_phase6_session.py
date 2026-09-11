@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from loop1.llm import LlmUsage
 from loop1.schemas import (
     Demographics,
     DiagnosisEntry,
@@ -16,6 +17,10 @@ from loop1.schemas import (
     Symptom,
 )
 from loop1.session import Session
+
+
+def _usage(prompt_tokens: int = 400) -> LlmUsage:
+    return LlmUsage(prompt_tokens=prompt_tokens, completion_tokens=None, total_tokens=None, model_actual=None)
 
 
 # ---------------------------------------------------------------------------
@@ -98,10 +103,10 @@ def test_safety_terminates_session_on_emergency_phrase(tmp_path, monkeypatch):
     turn0 = _doctor_output(0, confidence=0.2)
 
     with (
-        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, 400, [])),
-        patch("loop1.session.extract_profile_delta", return_value=_mock_delta()),
+        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, _usage(), [])),
+        patch("loop1.session.extract_profile_delta", return_value=(_mock_delta(), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", side_effect=lambda p, h, k: p),
+        patch("loop1.session.compress_context", side_effect=lambda p, h, k: (p, None)),
         patch("loop1.session.Prompt.ask", return_value="I am having a seizure"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=None),
@@ -120,10 +125,10 @@ def test_safety_logs_safety_event(tmp_path, monkeypatch):
     turn0 = _doctor_output(0, confidence=0.2)
 
     with (
-        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, 400, [])),
-        patch("loop1.session.extract_profile_delta", return_value=_mock_delta()),
+        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, _usage(), [])),
+        patch("loop1.session.extract_profile_delta", return_value=(_mock_delta(), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", side_effect=lambda p, h, k: p),
+        patch("loop1.session.compress_context", side_effect=lambda p, h, k: (p, None)),
         patch("loop1.session.Prompt.ask", return_value="I am suicidal"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=None),
@@ -150,10 +155,10 @@ def test_safety_does_not_generate_closing_turn(tmp_path, monkeypatch):
     turn0 = _doctor_output(0, confidence=0.2)
 
     with (
-        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, 400, [])),
-        patch("loop1.session.extract_profile_delta", return_value=_mock_delta()),
+        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, _usage(), [])),
+        patch("loop1.session.extract_profile_delta", return_value=(_mock_delta(), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", side_effect=lambda p, h, k: p),
+        patch("loop1.session.compress_context", side_effect=lambda p, h, k: (p, None)),
         patch("loop1.session.Prompt.ask", return_value="I want to die"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn") as mock_closing,
@@ -174,12 +179,12 @@ def test_normal_input_does_not_trigger_safety(tmp_path, monkeypatch):
 
     with (
         patch("loop1.session.generate_turn_with_usage", side_effect=[
-            (turn0, 400, []),
-            (turn1, 400, []),
+            (turn0, _usage(), []),
+            (turn1, _usage(), []),
         ]),
-        patch("loop1.session.extract_profile_delta", return_value=_mock_delta()),
+        patch("loop1.session.extract_profile_delta", return_value=(_mock_delta(), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", side_effect=lambda p, h, k: p),
+        patch("loop1.session.compress_context", side_effect=lambda p, h, k: (p, None)),
         patch("loop1.session.Prompt.ask", return_value="I have a mild rash"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=None),
@@ -213,12 +218,12 @@ def test_closing_turn_generated_on_confidence_stop(tmp_path, monkeypatch):
 
     with (
         patch("loop1.session.generate_turn_with_usage", side_effect=[
-            (turn0, 400, []),
-            (turn1, 400, []),
+            (turn0, _usage(), []),
+            (turn1, _usage(), []),
         ]),
-        patch("loop1.session.extract_profile_delta", return_value=_mock_delta()),
+        patch("loop1.session.extract_profile_delta", return_value=(_mock_delta(), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", side_effect=lambda p, h, k: p),
+        patch("loop1.session.compress_context", side_effect=lambda p, h, k: (p, None)),
         patch("loop1.session.Prompt.ask", return_value="Yes it itches"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=mock_ct),
@@ -247,7 +252,7 @@ def test_closing_turn_logged_to_jsonl(tmp_path, monkeypatch):
     )
 
     with (
-        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, 400, [])),
+        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, _usage(), [])),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=mock_ct),
     ):
@@ -271,7 +276,7 @@ def test_closing_turn_failure_does_not_crash(tmp_path, monkeypatch):
     turn0 = _doctor_output(0, confidence=0.9)
 
     with (
-        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, 400, [])),
+        patch("loop1.session.generate_turn_with_usage", return_value=(turn0, _usage(), [])),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=None),  # failure
     ):
@@ -295,12 +300,12 @@ def test_turn_complete_logs_profile_state(tmp_path, monkeypatch):
 
     with (
         patch("loop1.session.generate_turn_with_usage", side_effect=[
-            (turn0, 400, []),
-            (turn1, 400, []),
+            (turn0, _usage(), []),
+            (turn1, _usage(), []),
         ]),
-        patch("loop1.session.extract_profile_delta", return_value=_mock_delta()),
+        patch("loop1.session.extract_profile_delta", return_value=(_mock_delta(), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", side_effect=lambda p, h, k: p),
+        patch("loop1.session.compress_context", side_effect=lambda p, h, k: (p, None)),
         patch("loop1.session.Prompt.ask", return_value="It is itchy"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=None),

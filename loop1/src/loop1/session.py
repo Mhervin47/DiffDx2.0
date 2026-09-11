@@ -13,6 +13,7 @@ from loop1.closing_turn import generate_closing_turn
 from loop1.compressor import compress_context
 from loop1.config import config
 from loop1.doctor import generate_turn_with_usage
+from loop1.llm import LlmUsage
 from loop1.logging_utils import log_event, write_final_record
 from loop1.profile_updater import apply_delta, extract_profile_delta
 from loop1.safety import EMERGENCY_MESSAGE, check_safety
@@ -99,23 +100,49 @@ class Session:
         finally:
             if _usage_logger is not None:
                 latency_ms = (time.perf_counter() - t0) * 1000
-                doctor_output, prompt_tokens = (result[0], result[1]) if result is not None else (None, None)
+                doctor_output, usage = (result[0], result[1]) if result is not None else (None, None)
                 _usage_logger.log_turn_usage(
                     session_id=self.profile.session_id,
                     turn_index=turn_index,
                     call_site=call_site,
-                    prompt_tokens=prompt_tokens,
+                    prompt_tokens=usage.prompt_tokens if usage else None,
+                    completion_tokens=usage.completion_tokens if usage else None,
+                    total_tokens=usage.total_tokens if usage else None,
+                    model_actual=usage.model_actual if usage else None,
                     doctor_output=doctor_output,
                     latency_ms=latency_ms,
                     ok=ok,
                     error_type=error_type,
                 )
 
-    def _maybe_compress(self) -> None:
+    def _maybe_compress(self, turn_index: int) -> None:
         """Trigger compression when there are turns older than the keep_recent window."""
         if len(self.history) <= self.keep_recent:
             return
-        self.profile = compress_context(self.profile, self.history, self.keep_recent)
+        t0 = time.perf_counter()
+        ok, error_type, usage = True, None, None
+        try:
+            self.profile, usage = compress_context(self.profile, self.history, self.keep_recent)
+        except Exception as exc:
+            ok = False
+            error_type = type(exc).__name__
+            raise
+        finally:
+            if _usage_logger is not None:
+                latency_ms = (time.perf_counter() - t0) * 1000
+                _usage_logger.log_turn_usage(
+                    session_id=self.profile.session_id,
+                    turn_index=turn_index,
+                    call_site="compressor",
+                    prompt_tokens=usage.prompt_tokens if usage else None,
+                    completion_tokens=usage.completion_tokens if usage else None,
+                    total_tokens=usage.total_tokens if usage else None,
+                    model_actual=usage.model_actual if usage else None,
+                    doctor_output=None,
+                    latency_ms=latency_ms,
+                    ok=ok,
+                    error_type=error_type,
+                )
         log_event(
             session_id=self.profile.session_id,
             event_type="compression_complete",
@@ -124,6 +151,39 @@ class Session:
                 "running_summary_length": len(self.profile.running_summary),
             },
         )
+
+    def _extract_profile_delta_logged(self, question: str, answer: str, turn_index: int):
+        """Wraps extract_profile_delta with latency timing and a usage-log
+        call (admin_portal, optional; call_site='profile_update'). Returns
+        the ProfileDelta unchanged; never swallows an exception."""
+        result = None
+        ok = True
+        error_type = None
+        t0 = time.perf_counter()
+        try:
+            result = extract_profile_delta(self.profile, question, answer)
+            return result
+        except Exception as exc:
+            ok = False
+            error_type = type(exc).__name__
+            raise
+        finally:
+            if _usage_logger is not None:
+                latency_ms = (time.perf_counter() - t0) * 1000
+                usage = result[1] if result is not None else None
+                _usage_logger.log_turn_usage(
+                    session_id=self.profile.session_id,
+                    turn_index=turn_index,
+                    call_site="profile_update",
+                    prompt_tokens=usage.prompt_tokens if usage else None,
+                    completion_tokens=usage.completion_tokens if usage else None,
+                    total_tokens=usage.total_tokens if usage else None,
+                    model_actual=usage.model_actual if usage else None,
+                    doctor_output=None,
+                    latency_ms=latency_ms,
+                    ok=ok,
+                    error_type=error_type,
+                )
 
     def _log_turn(self, turn_record: TurnRecord, prompt_tokens: int) -> None:
         log_event(
@@ -231,7 +291,7 @@ class Session:
         for turn_index in range(self.max_turns):
             self.console.print(f"[dim]Turn {turn_index + 1} / {self.max_turns}[/dim]")
 
-            doctor_output, prompt_tokens, exemplar_ids = self._generate_turn_with_usage_logged(
+            doctor_output, usage, exemplar_ids = self._generate_turn_with_usage_logged(
                 turn_index, "next_question"
             )
             final_doctor_output = doctor_output
@@ -280,21 +340,21 @@ class Session:
                 retrieved_exemplar_ids=exemplar_ids,
                 timestamp=datetime.now(timezone.utc).isoformat(),
             )
-            self._log_turn(turn_record, prompt_tokens)
+            self._log_turn(turn_record, usage.prompt_tokens)
             self.history.append(turn_record)
 
-            delta = extract_profile_delta(
-                self.profile, doctor_output.chosen_question, answer
+            delta, _delta_usage = self._extract_profile_delta_logged(
+                doctor_output.chosen_question, answer, turn_index
             )
             self.profile = apply_delta(self.profile, delta)
 
-            self._maybe_compress()
+            self._maybe_compress(turn_index)
 
             self.console.print()
 
         else:
             # Exhausted max_turns without a break — generate final assessment
-            final_doctor_output, _, _exemplar_ids = self._generate_turn_with_usage_logged(
+            final_doctor_output, _usage, _exemplar_ids = self._generate_turn_with_usage_logged(
                 self.max_turns, "final_generation"
             )
             self._log_session_end(termination_reason, final_doctor_output)

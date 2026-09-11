@@ -223,17 +223,26 @@ Log in via the existing `/login.html` page like any other account; the
 returned JWT works against `/api/admin/*` the same way it already works
 against `/api/patient/*`/`/api/doctor/*`.
 
-**Auth model**: every `/api/admin/*` route — Phase 1's and Phase 2's —
-except `/api/admin/evidence`, `/api/admin/quality`, and `/api/admin/config`
-is behind `require_role("admin")`. Those three stay deliberately public
-(`Admin_Portal.md`: "if a judge has to log in to see accuracy numbers, they
-will not see them"). The `/admin_portal/*.html` page *shells* have no auth
-at all — same as `doctor-portal.html` today — because they're served by a
-generic static-file route, not an API endpoint. That's fine: the shell
-being public doesn't matter, because every number on those pages comes from
-an authenticated `/api/admin/*` call, and the frontend shows a real "sign in
-as an admin" prompt — not sample data — when that call 401s/403s
-(`admin-common.js`'s `renderAuthRequired`).
+**Auth model**: every `/api/admin/*` route — Phase 1's, Phase 2's, and
+Phase 3's — is behind `require_role("admin")`, including
+`/api/admin/evidence`, `/api/admin/quality`, and `/api/admin/config`.
+
+Those three were originally left deliberately public (`Admin_Portal.md`:
+"if a judge has to log in to see accuracy numbers, they will not see
+them"), and that's still the right default to revisit if judge/reviewer
+access without an account ever matters again — but the project owner
+explicitly asked for every `/api/admin/*` route to be consistently
+admin-gated (Phase 3), so they were locked down too. `evidence.js`/
+`quality.js`/`index.html`'s inline script were all updated accordingly —
+unauthenticated visitors get the real "sign in as an admin" prompt
+(`admin-common.js`'s `renderAuthRequired`), not sample data, on every page
+now, including Evidence and AI Quality.
+
+The `/admin_portal/*.html` page *shells* still have no auth at all — same
+as `doctor-portal.html` today — because they're served by a generic
+static-file route, not an API endpoint. That's fine: the shell being
+public doesn't matter, because every number on every page now comes from
+an authenticated `/api/admin/*` call.
 
 ## The corrected live-path coverage note
 

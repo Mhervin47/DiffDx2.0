@@ -63,7 +63,7 @@ def main(
         rng = random.Random(seed)
 
         console.print(f"[dim]Running {path.name} ...[/dim]")
-        result, prompt_tokens, exemplar_ids = generate_turn_with_usage(
+        result, usage, exemplar_ids = generate_turn_with_usage(
             patient, history=[], turn_index=turn_index, rng=rng
         )
 
@@ -83,7 +83,7 @@ def main(
             result.chosen_question,
             top_str,
             f"{result.confidence_to_stop:.2f}",
-            str(prompt_tokens),
+            str(usage.prompt_tokens),
         )
 
     console.print(table)

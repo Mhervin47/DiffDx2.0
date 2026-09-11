@@ -11,6 +11,7 @@ import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -28,6 +29,7 @@ from loop1.closing_turn import generate_closing_turn
 from loop1.compressor import compress_context
 from loop1.config import config
 from loop1.doctor import generate_turn_with_usage
+from loop1.llm import LlmUsage
 from loop1.logging_utils import log_event, write_final_record
 from loop1.safety import check_safety
 from loop1.schemas import (
@@ -77,7 +79,7 @@ class APISession:
         # Pending question state
         self._pending_turn_index: int = 0
         self._pending_doctor_output: DoctorTurnOutput | None = None
-        self._pending_prompt_tokens: int = 0
+        self._pending_usage: LlmUsage | None = None
         self._pending_exemplar_ids: list[str] = []
 
         self.complete: bool = False
@@ -115,7 +117,7 @@ class APISession:
                 "confidence_threshold": self.confidence_threshold,
             },
         )
-        doctor_output, prompt_tokens, exemplar_ids = self._generate_turn_with_usage_logged(
+        doctor_output, usage, exemplar_ids = self._generate_turn_with_usage_logged(
             0, "initialize"
         )
 
@@ -123,7 +125,7 @@ class APISession:
             self._finalize("confidence_threshold", doctor_output)
             return self._build_response(doctor_output, None)
 
-        self._set_pending(0, doctor_output, prompt_tokens, exemplar_ids)
+        self._set_pending(0, doctor_output, usage, exemplar_ids)
         return self._build_response(doctor_output, None)
 
     def submit_answer(self, patient_answer: str) -> dict:
@@ -151,7 +153,7 @@ class APISession:
             "doctor_output": doctor_output.model_dump(),
             "patient_answer": patient_answer,
             "profile_state": self.profile.model_dump(),
-            "prompt_tokens": self._pending_prompt_tokens,
+            "prompt_tokens": self._pending_usage.prompt_tokens if self._pending_usage else None,
             "timestamp": now,
         }
         self._live_events.append(event)
@@ -171,7 +173,7 @@ class APISession:
                 "doctor_output": doctor_output.model_dump(),
                 "patient_answer": patient_answer,
                 "retrieved_exemplar_ids": self._pending_exemplar_ids,
-                "prompt_tokens": self._pending_prompt_tokens,
+                "prompt_tokens": self._pending_usage.prompt_tokens if self._pending_usage else None,
                 "timestamp": now,
                 "profile_state": self.profile.model_dump(),
             },
@@ -191,14 +193,14 @@ class APISession:
 
         # Max turns reached — one more generation for the final differential, then close
         if next_index >= self.max_turns:
-            final_output, _, _ = self._generate_turn_with_usage_logged(
+            final_output, _usage, _ = self._generate_turn_with_usage_logged(
                 next_index, "final_generation"
             )
             self._finalize("max_turns", final_output)
             return self._build_response(final_output, None)
 
         # Generate next question
-        next_output, next_tokens, next_exemplar_ids = self._generate_turn_with_usage_logged(
+        next_output, next_usage, next_exemplar_ids = self._generate_turn_with_usage_logged(
             next_index, "next_question"
         )
 
@@ -206,7 +208,7 @@ class APISession:
             self._finalize("confidence_threshold", next_output)
             return self._build_response(next_output, None)
 
-        self._set_pending(next_index, next_output, next_tokens, next_exemplar_ids)
+        self._set_pending(next_index, next_output, next_usage, next_exemplar_ids)
         return self._build_response(next_output, None)
 
     def get_report(self) -> dict | None:
@@ -271,7 +273,9 @@ class APISession:
                 self._pending_doctor_output.model_dump(mode="json")
                 if self._pending_doctor_output is not None else None
             ),
-            "_pending_prompt_tokens": self._pending_prompt_tokens,
+            "_pending_usage": (
+                asdict(self._pending_usage) if self._pending_usage is not None else None
+            ),
             "_pending_exemplar_ids": self._pending_exemplar_ids,
             "complete": self.complete,
             "termination_reason": self.termination_reason,
@@ -305,7 +309,9 @@ class APISession:
             DoctorTurnOutput.model_validate(data["_pending_doctor_output"])
             if data["_pending_doctor_output"] is not None else None
         )
-        obj._pending_prompt_tokens = data["_pending_prompt_tokens"]
+        obj._pending_usage = (
+            LlmUsage(**data["_pending_usage"]) if data.get("_pending_usage") is not None else None
+        )
         obj._pending_exemplar_ids = data["_pending_exemplar_ids"]
         obj.complete = data["complete"]
         obj.termination_reason = data["termination_reason"]
@@ -344,12 +350,15 @@ class APISession:
         finally:
             if _usage_logger is not None:
                 latency_ms = (time.perf_counter() - t0) * 1000
-                doctor_output, prompt_tokens = (result[0], result[1]) if result is not None else (None, None)
+                doctor_output, usage = (result[0], result[1]) if result is not None else (None, None)
                 _usage_logger.log_turn_usage(
                     session_id=self.session_id,
                     turn_index=turn_index,
                     call_site=call_site,
-                    prompt_tokens=prompt_tokens,
+                    prompt_tokens=usage.prompt_tokens if usage else None,
+                    completion_tokens=usage.completion_tokens if usage else None,
+                    total_tokens=usage.total_tokens if usage else None,
+                    model_actual=usage.model_actual if usage else None,
                     doctor_output=doctor_output,
                     latency_ms=latency_ms,
                     ok=ok,
@@ -359,7 +368,30 @@ class APISession:
     def _maybe_compress(self) -> None:
         if len(self.history) <= self.keep_recent:
             return
-        self.profile = compress_context(self.profile, self.history, self.keep_recent)
+        t0 = time.perf_counter()
+        ok, error_type, usage = True, None, None
+        try:
+            self.profile, usage = compress_context(self.profile, self.history, self.keep_recent)
+        except Exception as exc:
+            ok = False
+            error_type = type(exc).__name__
+            raise
+        finally:
+            if _usage_logger is not None:
+                latency_ms = (time.perf_counter() - t0) * 1000
+                _usage_logger.log_turn_usage(
+                    session_id=self.session_id,
+                    turn_index=self._pending_turn_index,
+                    call_site="compressor",
+                    prompt_tokens=usage.prompt_tokens if usage else None,
+                    completion_tokens=usage.completion_tokens if usage else None,
+                    total_tokens=usage.total_tokens if usage else None,
+                    model_actual=usage.model_actual if usage else None,
+                    doctor_output=None,
+                    latency_ms=latency_ms,
+                    ok=ok,
+                    error_type=error_type,
+                )
         log_event(
             session_id=self.session_id,
             event_type="compression_complete",
@@ -373,12 +405,12 @@ class APISession:
         self,
         turn_index: int,
         doctor_output: DoctorTurnOutput,
-        prompt_tokens: int,
+        usage: LlmUsage,
         exemplar_ids: list[str],
     ) -> None:
         self._pending_turn_index = turn_index
         self._pending_doctor_output = doctor_output
-        self._pending_prompt_tokens = prompt_tokens
+        self._pending_usage = usage
         self._pending_exemplar_ids = exemplar_ids
 
     def _finalize(self, termination_reason: str, final_doctor_output: DoctorTurnOutput) -> None:
@@ -427,14 +459,34 @@ class APISession:
         def _run() -> None:
             import time
             time.sleep(turn_index * 2)  # stagger calls so they don't all hit rate limits together
+            t0 = time.perf_counter()
+            ok, error_type, usage = True, None, None
             try:
-                result = critique_turn(event, self._live_events, self.session_id)
+                result, usage = critique_turn(event, self._live_events, self.session_id)
                 if result:
                     self._critiques.append(result)
                     if self._on_change is not None:
                         self._on_change()
             except Exception as exc:
+                ok = False
+                error_type = type(exc).__name__
                 _log.warning("Critic failed for turn %d: %s", turn_index, exc)
+            finally:
+                if _usage_logger is not None:
+                    latency_ms = (time.perf_counter() - t0) * 1000
+                    _usage_logger.log_turn_usage(
+                        session_id=self.session_id,
+                        turn_index=turn_index,
+                        call_site="critic",
+                        prompt_tokens=usage.prompt_tokens if usage else None,
+                        completion_tokens=usage.completion_tokens if usage else None,
+                        total_tokens=usage.total_tokens if usage else None,
+                        model_actual=usage.model_actual if usage else None,
+                        doctor_output=None,
+                        latency_ms=latency_ms,
+                        ok=ok,
+                        error_type=error_type,
+                    )
 
         try:
             pool = ThreadPoolExecutor(max_workers=1)

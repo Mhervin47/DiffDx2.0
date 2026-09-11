@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from loop1.llm import LlmUsage
 from loop1.profile_updater import apply_delta, extract_profile_delta
 from loop1.schemas import (
     Demographics,
@@ -286,25 +287,29 @@ VALID_DELTA_JSON = json.dumps(
 )
 
 
+_USAGE = LlmUsage(prompt_tokens=100, completion_tokens=None, total_tokens=None, model_actual=None)
+
+
 def test_extract_profile_delta_returns_valid_delta():
     profile = make_profile()
-    with patch("loop1.profile_updater.call_llm", return_value=VALID_DELTA_JSON):
-        result = extract_profile_delta(profile, "Any night symptoms?", "Yes, worse at night. I take ibuprofen.")
+    with patch("loop1.profile_updater.call_llm_with_usage", return_value=(VALID_DELTA_JSON, _USAGE)):
+        result, usage = extract_profile_delta(profile, "Any night symptoms?", "Yes, worse at night. I take ibuprofen.")
     assert isinstance(result, ProfileDelta)
     assert result.history_additions.medications == ["ibuprofen"]
+    assert usage is _USAGE
 
 
 def test_extract_profile_delta_retries_on_bad_json():
     profile = make_profile()
-    responses = ["}{not json", VALID_DELTA_JSON]
-    with patch("loop1.profile_updater.call_llm", side_effect=responses) as mock_llm:
-        result = extract_profile_delta(profile, "Any night symptoms?", "Yes.", max_retries=3)
+    responses = [("}{not json", _USAGE), (VALID_DELTA_JSON, _USAGE)]
+    with patch("loop1.profile_updater.call_llm_with_usage", side_effect=responses) as mock_llm:
+        result, usage = extract_profile_delta(profile, "Any night symptoms?", "Yes.", max_retries=3)
     assert isinstance(result, ProfileDelta)
     assert mock_llm.call_count == 2
 
 
 def test_extract_profile_delta_raises_after_max_retries():
     profile = make_profile()
-    with patch("loop1.profile_updater.call_llm", return_value="}{bad"):
+    with patch("loop1.profile_updater.call_llm_with_usage", return_value=("}{bad", _USAGE)):
         with pytest.raises(ValueError, match="Failed to get a valid ProfileDelta"):
             extract_profile_delta(profile, "Q?", "A.", max_retries=3)

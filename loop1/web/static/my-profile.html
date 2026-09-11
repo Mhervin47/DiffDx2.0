@@ -1568,6 +1568,24 @@
         <div id="dependents-list" style="display:flex;flex-direction:column;gap:12px;"></div>
       </div>
 
+      <!-- Section 5: Privacy & Data -->
+      <div class="profile-section" id="section-privacy">
+        <div class="profile-section-header">
+          <div class="ps-icon-wrap" style="background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(239,68,68,0.05));">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+            </svg>
+          </div>
+          <div class="ps-title-wrap">
+            <div class="ps-title">Privacy &amp; Data</div>
+            <div class="ps-desc">Ask that your account and medical data be deleted. An administrator reviews every request before anything is removed.</div>
+          </div>
+        </div>
+
+        <div id="privacy-loading" style="font-size:13px;color:var(--text-muted);">Loading…</div>
+        <div id="privacy-content" style="display:none;"></div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -1637,6 +1655,39 @@
     <div style="display:flex;gap:12px;margin-top:22px;">
       <button type="button" class="btn-ghost" style="flex:1;" onclick="closeDepModal()">Cancel</button>
       <button type="button" class="btn-primary" style="flex:1;justify-content:center;" onclick="saveDependent()" id="dep-save-btn">Save Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- DSR Deletion Request Confirmation Modal -->
+<div class="modal-overlay" id="dsr-overlay" style="display:none;" onclick="if(event.target===this)closeDsrModal()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-icon-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+      </div>
+      <div>
+        <div class="modal-title">Request Data Deletion</div>
+        <div class="modal-subtitle">This does not delete anything immediately</div>
+      </div>
+    </div>
+
+    <p style="font-size:13px;line-height:1.6;color:var(--text-muted);margin:16px 0;">
+      Submitting this request notifies an administrator, who will review it before taking any action.
+      Your account, appointments, sessions, and messages are <strong>not</strong> deleted at this step.
+      You can check the status of your request here at any time.
+    </p>
+
+    <div class="form-group">
+      <label for="dsr-reason">Reason (optional)</label>
+      <textarea id="dsr-reason" class="form-control no-icon" rows="3" placeholder="Let us know why you're requesting this — optional"></textarea>
+    </div>
+
+    <div id="dsr-error" style="font-size:12px;color:#EF4444;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;display:none;"></div>
+
+    <div style="display:flex;gap:12px;margin-top:22px;">
+      <button type="button" class="btn-ghost" style="flex:1;" onclick="closeDsrModal()">Cancel</button>
+      <button type="button" class="btn-danger-outline" style="flex:1;justify-content:center;" onclick="submitDsrRequest()" id="dsr-submit-btn">Submit Request</button>
     </div>
   </div>
 </div>
@@ -1958,6 +2009,82 @@ async function deleteDependent(id) {
   await loadDependents();
 }
 
+// ── Privacy & Data (DSR deletion request) ────────────────────────────
+async function loadDsrRequest() {
+  const loadingEl = document.getElementById('privacy-loading');
+  const contentEl = document.getElementById('privacy-content');
+  try {
+    const res = await fetch('/api/patient/dsr-request', { headers: { ...authHeaders() } });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    renderPrivacySection(data.request || { status: 'none' });
+  } catch {
+    contentEl.innerHTML = '<div style="font-size:13px;color:var(--text-muted);">Could not load request status.</div>';
+  } finally {
+    loadingEl.style.display = 'none';
+    contentEl.style.display = 'block';
+  }
+}
+
+function renderPrivacySection(req) {
+  const contentEl = document.getElementById('privacy-content');
+  if (req.status === 'pending') {
+    const since = req.requested_at ? new Date(req.requested_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }) : '';
+    contentEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.25);border-radius:10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div style="font-size:13px;">
+          <strong>Request pending review</strong>${since ? ' — submitted ' + escHtml(since) : ''}.
+          An administrator will review this request; you'll see an update here once they do.
+        </div>
+      </div>`;
+    return;
+  }
+  if (req.status === 'denied') {
+    contentEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;margin-bottom:14px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <div style="font-size:13px;">
+          <strong>Previous request denied.</strong>${req.admin_note ? ' ' + escHtml(req.admin_note) : ''}
+        </div>
+      </div>
+      <button type="button" class="btn-danger-outline" onclick="openDsrModal()">Request Again</button>`;
+    return;
+  }
+  contentEl.innerHTML = `<button type="button" class="btn-danger-outline" onclick="openDsrModal()">Request My Data Be Deleted</button>`;
+}
+
+function openDsrModal() {
+  document.getElementById('dsr-reason').value = '';
+  document.getElementById('dsr-error').style.display = 'none';
+  document.getElementById('dsr-overlay').style.display = 'flex';
+}
+function closeDsrModal() { document.getElementById('dsr-overlay').style.display = 'none'; }
+
+async function submitDsrRequest() {
+  const btn = document.getElementById('dsr-submit-btn');
+  const errEl = document.getElementById('dsr-error');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    const reason = document.getElementById('dsr-reason').value.trim();
+    const res = await fetch('/api/patient/dsr-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ reason: reason || null }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Request failed');
+    const data = await res.json();
+    closeDsrModal();
+    renderPrivacySection(data.request);
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit Request';
+  }
+}
+
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 async function downloadHealthSummary() {
@@ -2107,6 +2234,7 @@ async function downloadHealthSummary() {
 initAuthNav();
 loadProfile();
 loadDependents();
+loadDsrRequest();
 </script>
 </body>
 </html>

@@ -4,8 +4,10 @@ Option B (Postgres, not JSONL — durable across restarts/deploys, unlike the
 ephemeral container filesystem every log/ and data/ path in this repo lives
 on).
 
-Writes one row to diffdx.db.models.usage.LlmUsageEvent per doctor-model
-call. No FK to diagnostic_sessions (see that model's docstring for why).
+Writes one row to diffdx.db.models.usage.LlmUsageEvent per LLM call —
+doctor, compressor, profile-update, or critic (Phase 3's Item 12 extension;
+call_site distinguishes them, no schema change needed). No FK to
+diagnostic_sessions (see that model's docstring for why).
 
 Contract, matching diffdx.audit.log_audit_event's existing one exactly:
 never raises. A telemetry failure must not fail a live patient interview —
@@ -35,16 +37,40 @@ def _resolve_source() -> str:
 def _estimate_completion_tokens(doctor_output: Any) -> int | None:
     """Phase 1's convention: len(json.dumps(doctor_output.model_dump())) // 4.
     Returns None (not 0, and not a meaningless estimate from some other
-    object's repr) whenever doctor_output isn't a real pydantic model —
-    loop1.llm never returns a completion-token count for any model call in
-    this codebase, so this has always been an estimate, and an unavailable
-    estimate is unmeasured, not a number derived from junk input."""
+    object's repr) whenever doctor_output isn't a real pydantic model. Only
+    used as a fallback now — Phase 3 threads the real completion_tokens
+    through from the provider's response when call_llm_with_usage() is the
+    caller, so this estimate only fires when that value is unavailable
+    (e.g. the provider omitted it, or a call site hasn't been upgraded)."""
     if doctor_output is None or not hasattr(doctor_output, "model_dump"):
         return None
     try:
         return len(json.dumps(doctor_output.model_dump(), default=str)) // 4
     except Exception:
         return None
+
+
+def _resolve_model_configured(call_site: str) -> str | None:
+    """Which config entry describes this call_site's *intended* model — not
+    necessarily what actually served it (that's model_actual). Each call
+    site reads a different config key, so this must not just always return
+    config["models"]["doctor"] once compressor/profile_update/critic rows
+    exist too, or their configured-model field would silently lie."""
+    try:
+        from loop1.config import config
+
+        if call_site in ("initialize", "next_question", "final_generation"):
+            return config["models"]["doctor"]
+        if call_site == "compressor":
+            return config["models"]["compressor"]
+        if call_site == "profile_update":
+            return config["models"]["profile_updater"]
+        if call_site == "critic":
+            from loop2.critic.critic import _critic_model
+            return _critic_model()
+    except Exception:
+        return None
+    return None
 
 
 def log_turn_usage(
@@ -55,24 +81,36 @@ def log_turn_usage(
     prompt_tokens: int | None,
     doctor_output: Any,
     latency_ms: float | None,
+    completion_tokens: int | None = None,
+    total_tokens: int | None = None,
+    model_actual: str | None = None,
     ok: bool = True,
     error_type: str | None = None,
 ) -> None:
-    """Log one doctor-model call. Keyword-only so a future signature change
-    can never silently reorder positional arguments at a call site.
+    """Log one LLM call (doctor turn, compressor, profile update, or
+    critic — see call_site). Keyword-only so a future signature change can
+    never silently reorder positional arguments at a call site.
+
+    completion_tokens/total_tokens/model_actual are real, measured values
+    when the caller has them (every call site now goes through
+    call_llm_with_usage(), which returns them from the provider's own
+    response — see loop1.llm.LlmUsage). When completion_tokens is None,
+    this falls back to _estimate_completion_tokens(doctor_output) and marks
+    the row as estimated; total_tokens has no column of its own (it's
+    trivially prompt + completion wherever needed, and adding one would
+    require a migration this change doesn't need).
 
     Never raises — see module docstring.
     """
     try:
-        from loop1.config import config
         from diffdx.db.engine import get_sessionmaker
         from diffdx.db.models.usage import LlmUsageEvent
 
-        completion_tokens_estimated = _estimate_completion_tokens(doctor_output)
-        try:
-            model_configured = config["models"]["doctor"]
-        except Exception:
-            model_configured = None
+        is_estimate = completion_tokens is None
+        completion_tokens_value = (
+            completion_tokens if not is_estimate else _estimate_completion_tokens(doctor_output)
+        )
+        model_configured = _resolve_model_configured(call_site)
 
         session = get_sessionmaker()()
         try:
@@ -82,10 +120,10 @@ def log_turn_usage(
                     turn_index=int(turn_index),
                     call_site=str(call_site),
                     model_configured=model_configured,
-                    model_actual=None,  # always null — see LlmUsageEvent's own docstring
+                    model_actual=model_actual,
                     prompt_tokens=prompt_tokens,
-                    completion_tokens_estimated=completion_tokens_estimated,
-                    completion_tokens_is_estimate=True,
+                    completion_tokens_estimated=completion_tokens_value,
+                    completion_tokens_is_estimate=is_estimate,
                     latency_ms=latency_ms,
                     source=_resolve_source(),
                     ok=bool(ok),

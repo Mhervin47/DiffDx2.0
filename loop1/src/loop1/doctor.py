@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from loop1.config import config
-from loop1.llm import call_llm_with_usage
+from loop1.llm import LlmUsage, call_llm_with_usage
 from loop1.retrieval import get_exemplar_by_id, get_exemplars, get_exemplars_for_profile
 from loop1.schemas import DoctorTurnOutput, Exemplar, PatientProfile, TurnRecord
 
@@ -88,10 +88,10 @@ def generate_turn_with_usage(
     max_retries: int = 3,
     rng: random.Random | None = None,
     forced_exemplars: list[Exemplar] | None = None,
-) -> tuple[DoctorTurnOutput, int, list[str]]:
+) -> tuple[DoctorTurnOutput, LlmUsage, list[str]]:
     """
-    Returns (DoctorTurnOutput, prompt_tokens, exemplar_ids).
-    prompt_tokens is from the final successful API call.
+    Returns (DoctorTurnOutput, LlmUsage, exemplar_ids).
+    LlmUsage is from the final successful API call.
     exemplar_ids are the IDs of exemplars injected into this turn's prompt.
     Pass a seeded rng for reproducible exemplar selection.
     Pass forced_exemplars to bypass retrieval entirely (useful for ablation runs).
@@ -105,11 +105,11 @@ def generate_turn_with_usage(
     messages = build_doctor_prompt(profile, history or [], turn_index, exemplars)
     model = config["models"]["doctor"]
     last_err: Exception | None = None
-    last_prompt_tokens: int = 0
+    last_usage: LlmUsage | None = None
 
     for attempt in range(max_retries):
-        raw, prompt_tokens = call_llm_with_usage(model=model, messages=messages)
-        last_prompt_tokens = prompt_tokens
+        raw, usage = call_llm_with_usage(model=model, messages=messages)
+        last_usage = usage
         cleaned = _strip_fences(raw)
 
         try:
@@ -130,7 +130,7 @@ def generate_turn_with_usage(
             continue
 
         try:
-            return DoctorTurnOutput(**data), last_prompt_tokens, exemplar_ids
+            return DoctorTurnOutput(**data), last_usage, exemplar_ids
         except ValidationError as exc:
             last_err = exc
             messages = messages + [
@@ -158,7 +158,7 @@ def generate_turn(
     max_retries: int = 3,
     rng: random.Random | None = None,
 ) -> DoctorTurnOutput:
-    output, _tokens, _exemplar_ids = generate_turn_with_usage(
+    output, _usage, _exemplar_ids = generate_turn_with_usage(
         profile, history, turn_index, max_retries, rng=rng
     )
     return output

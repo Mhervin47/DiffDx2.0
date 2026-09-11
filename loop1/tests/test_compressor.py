@@ -12,6 +12,7 @@ from loop1.compressor import (
     _dedup_symptoms,
     compress_context,
 )
+from loop1.llm import LlmUsage
 from loop1.schemas import (
     Demographics,
     DoctorTurnOutput,
@@ -286,13 +287,17 @@ def test_dedup_profile_preserves_running_summary():
 # compress_context — no LLM needed (history <= keep_recent)
 # ---------------------------------------------------------------------------
 
+_USAGE = LlmUsage(prompt_tokens=100, completion_tokens=None, total_tokens=None, model_actual=None)
+
+
 def test_compress_context_no_llm_when_history_short():
     profile = _profile()
     history = [_turn(0), _turn(1), _turn(2)]  # exactly keep_recent=3
     with patch("loop1.compressor._llm_recategorize_and_summarize") as mock_llm:
-        result = compress_context(profile, history, keep_recent=3)
+        result, usage = compress_context(profile, history, keep_recent=3)
     mock_llm.assert_not_called()
     assert result.running_summary == ""
+    assert usage is None
 
 
 def test_compress_context_no_llm_when_history_empty():
@@ -312,10 +317,11 @@ def test_compress_context_calls_llm_when_history_exceeds_keep_recent():
     corrected_history = History()
     with patch(
         "loop1.compressor._llm_recategorize_and_summarize",
-        return_value=(corrected_history, "Patient confirmed chest pain onset 2 days ago."),
+        return_value=(corrected_history, "Patient confirmed chest pain onset 2 days ago.", _USAGE),
     ) as mock_llm:
-        result = compress_context(profile, history, keep_recent=3)
+        result, usage = compress_context(profile, history, keep_recent=3)
     mock_llm.assert_called_once()
+    assert usage is _USAGE
     call_turns = mock_llm.call_args[0][1]
     assert len(call_turns) == 1
     assert call_turns[0].turn_index == 0
@@ -327,9 +333,9 @@ def test_compress_context_sets_running_summary():
     summary = "Patient reported sharp chest pain radiating to left arm, onset 2 days ago."
     with patch(
         "loop1.compressor._llm_recategorize_and_summarize",
-        return_value=(History(), summary),
+        return_value=(History(), summary, _USAGE),
     ):
-        result = compress_context(profile, history, keep_recent=3)
+        result, usage = compress_context(profile, history, keep_recent=3)
     assert result.running_summary == summary
 
 
@@ -344,9 +350,9 @@ def test_compress_context_applies_corrected_history():
     corrected_history = History(medical=["blood clots"], social=[])
     with patch(
         "loop1.compressor._llm_recategorize_and_summarize",
-        return_value=(corrected_history, "Summary text."),
+        return_value=(corrected_history, "Summary text.", _USAGE),
     ):
-        result = compress_context(profile, history, keep_recent=3)
+        result, usage = compress_context(profile, history, keep_recent=3)
     assert result.history.medical == ["blood clots"]
     assert result.history.social == []
 
@@ -363,7 +369,7 @@ def test_compress_context_dedup_runs_before_llm():
 
     def capture_call(cleaned_profile, turns):
         captured["symptoms"] = cleaned_profile.symptoms
-        return History(), "Summary."
+        return History(), "Summary.", _USAGE
 
     with patch("loop1.compressor._llm_recategorize_and_summarize", side_effect=capture_call):
         compress_context(profile, history, keep_recent=3)
@@ -378,7 +384,7 @@ def test_compress_context_passes_correct_turns_to_llm():
 
     def capture_call(p, turns):
         captured["turns"] = turns
-        return History(), "Summary."
+        return History(), "Summary.", _USAGE
 
     with patch("loop1.compressor._llm_recategorize_and_summarize", side_effect=capture_call):
         compress_context(profile, history, keep_recent=3)

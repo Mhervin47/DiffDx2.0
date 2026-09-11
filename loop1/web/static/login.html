@@ -1296,7 +1296,8 @@
 <script>
 if (typeof getAuthToken === 'function' && getAuthToken()) {
   const _u = typeof getAuthUser === 'function' ? getAuthUser() : null;
-  window.location.replace(_u?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html');
+  const _dest = _u?.role === 'admin' ? '/admin_portal/index.html' : _u?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html';
+  window.location.replace(_dest);
 }
 
 const _redirect = new URLSearchParams(location.search).get('next') || '/patient-overview.html';
@@ -1354,7 +1355,8 @@ async function doSignIn() {
     if (!res.ok) { showAlert('signin-error', data.detail || 'Sign in failed.'); return; }
     if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
     const nextParam = new URLSearchParams(location.search).get('next');
-    const dest = (nextParam && nextParam !== '/' && nextParam !== '/index.html') ? nextParam : (data.user?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html');
+    const roleDest = data.user?.role === 'admin' ? '/admin_portal/index.html' : data.user?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html';
+    const dest = (nextParam && nextParam !== '/' && nextParam !== '/index.html') ? nextParam : roleDest;
     window.location.replace(dest);
   } catch (e) { showAlert('signin-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Sign In'; }
@@ -1393,7 +1395,8 @@ async function doRegister() {
     if (!res.ok) { showAlert('reg-error', data.detail || 'Registration failed.'); return; }
     if (typeof setAuth === 'function') setAuth(data.access_token, data.refresh_token, data.user);
     const nextParam = new URLSearchParams(location.search).get('next');
-    const dest = (nextParam && nextParam !== '/' && nextParam !== '/index.html') ? nextParam : (data.user?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html');
+    const roleDest = data.user?.role === 'admin' ? '/admin_portal/index.html' : data.user?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html';
+    const dest = (nextParam && nextParam !== '/' && nextParam !== '/index.html') ? nextParam : roleDest;
     window.location.replace(dest);
   } catch (e) { showAlert('reg-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Create Account'; }

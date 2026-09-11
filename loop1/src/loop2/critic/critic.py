@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from loop1.llm import call_llm
+from loop1.llm import LlmUsage, call_llm_with_usage
 from loop2.critic.critique_schema import TurnCritique
 
 _log = logging.getLogger(__name__)
@@ -70,17 +70,17 @@ def _render_conversation_history(session_events: list[dict], up_to_turn: int) ->
     return "\n".join(lines) if lines else "(no prior turns)"
 
 
-def _call_critic_raw(messages: list[dict]) -> str:
+def _call_critic_raw(messages: list[dict]) -> tuple[str, LlmUsage]:
     """Call the critic model using the same httpx path as the doctor LLM."""
     model = _critic_model()
-    return call_llm(model, messages, temperature=0, max_tokens=1024)
+    return call_llm_with_usage(model, messages, temperature=0, max_tokens=1024)
 
 
 def critique_turn(
     turn_event: dict[str, Any],
     session_events: list[dict[str, Any]],
     session_id: str,
-) -> TurnCritique:
+) -> tuple[TurnCritique, LlmUsage | None]:
     """
     Critique a single doctor turn. One LLM call per turn.
 
@@ -90,7 +90,9 @@ def critique_turn(
         session_id: Session identifier for the output record.
 
     Returns:
-        TurnCritique with all scores and metadata populated.
+        (TurnCritique with all scores and metadata populated, LlmUsage from
+        the final successful call — None if every attempt failed to call
+        the API at all, e.g. _call_critic_raw raised before returning).
     """
     doc = turn_event.get("doctor_output", {})
     # Use the log event's turn_index — it's set by the session loop and is always correct.
@@ -116,10 +118,12 @@ def critique_turn(
     messages = [{"role": "user", "content": prompt}]
     model = _critic_model()
     last_err: Exception | None = None
+    last_usage: LlmUsage | None = None
 
     for attempt in range(_MAX_RETRIES):
         try:
-            raw = _call_critic_raw(messages)
+            raw, usage = _call_critic_raw(messages)
+            last_usage = usage
         except Exception as exc:
             last_err = exc
             _log.warning("Critic API call failed on attempt %d: %s", attempt + 1, exc)
@@ -148,7 +152,7 @@ def critique_turn(
                 turn=turn_index,
                 critic_model=model,
                 **data,
-            )
+            ), last_usage
         except ValidationError as exc:
             last_err = exc
             messages = messages + [
@@ -177,7 +181,7 @@ def critique_session(
     turn_events = [e for e in session_events if e.get("event_type") == "turn_complete"]
 
     for event in turn_events:
-        critique = critique_turn(event, session_events, session_id)
+        critique, _usage = critique_turn(event, session_events, session_id)
         critiques.append(critique)
         _log.info(
             "Critiqued turn %d: q=%.2f diff=%.2f cat=%s",

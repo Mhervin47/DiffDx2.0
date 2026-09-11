@@ -7,6 +7,64 @@
 
   let selectedSubject = null;
 
+  // ── Pending Requests panel ──────────────────────────────────────────
+  // A thin front door: no "approve" here — approving a request IS an
+  // admin running the search -> inventory -> erase flow below on that
+  // subject, unchanged. This panel only lists requests and denies them.
+  function renderPendingRequests(items) {
+    const list = document.getElementById("dsr-pending-list");
+    list.innerHTML = "";
+    if (!items.length) {
+      list.appendChild(el("p", { class: "muted" }, "No pending requests."));
+      return;
+    }
+    for (const item of items) {
+      const info = el("div", { class: "dsr-pending-info" }, [
+        el("div", {}, [el("strong", {}, item.name), el("span", { class: "muted" }, ` — ${item.email}`)]),
+        el("div", { class: "muted dsr-pending-reason" }, item.reason ? `"${item.reason}"` : "(no reason given)"),
+        el("div", { class: "muted" }, `requested ${item.requested_at || "—"}`),
+      ]);
+      info.addEventListener("click", () => {
+        document.getElementById("dsr-search-input").value = item.email;
+        search();
+        window.scrollTo({ top: document.querySelector(".card:nth-of-type(2)")?.offsetTop ?? 0, behavior: "smooth" });
+      });
+      const denyBtn = el("button", { class: "dsr-deny-btn" }, "Deny");
+      denyBtn.addEventListener("click", () => denyRequest(item.id));
+      list.appendChild(el("div", { class: "dsr-pending-row" }, [info, denyBtn]));
+    }
+  }
+
+  async function loadPendingRequests() {
+    const result = await fetchWithMockFallback("/api/admin/dsr-requests?status=pending", AdminPortalMock.dsrRequestsList);
+    if (result.authRequired) {
+      renderAuthRequired(document.getElementById("dsr-pending-list"), { what: "pending requests" });
+      return;
+    }
+    renderPendingRequests(result.data.items || []);
+  }
+
+  async function denyRequest(requestId) {
+    const note = prompt("Reason for denying this request (shown to the patient):");
+    if (note === null) return;
+    try {
+      const token = typeof getAuthToken === "function" ? getAuthToken() : null;
+      const res = await fetch(`/api/admin/dsr-requests/${requestId}/deny`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ note }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(`Deny failed: ${data.detail || res.status}`);
+        return;
+      }
+      await loadPendingRequests();
+    } catch (err) {
+      alert(`Deny failed: ${err.message}`);
+    }
+  }
+
   function renderSearchResults(items) {
     const list = document.getElementById("dsr-results");
     list.innerHTML = "";
@@ -164,4 +222,6 @@
       receiptBox.appendChild(el("p", { class: "dsr-error" }, `Request failed: ${err.message}`));
     }
   });
+
+  loadPendingRequests();
 })();

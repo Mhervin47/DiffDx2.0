@@ -16,7 +16,13 @@ const AdminPortal = (() => {
         const t = getAuthToken();
         if (t) return { Authorization: `Bearer ${t}` };
       }
-    } catch (e) { /* auth.js not loaded on this page — fine, unauthenticated fetch */ }
+    } catch (e) {
+      // getAuthToken() itself threw — degrade to an unauthenticated fetch
+      // rather than breaking the page. Every admin_portal page loads
+      // /auth.js before this file (evidence.html/quality.html included,
+      // now that their data is admin-gated too), so getAuthToken existing
+      // is the expected case, not an exception to plan around.
+    }
     return {};
   }
 

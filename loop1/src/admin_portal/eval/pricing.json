@@ -1,5 +1,5 @@
 {
-  "_readme": "These are placeholder public list-price estimates (USD per 1,000 tokens), hand-entered at the time this file was written. They are NOT pulled from any live billing API and have NOT been verified against actual provider invoices. Verify against real provider billing before using any cost figure derived from this file in a hospital-facing or funding claim. '_default' is used for any model not explicitly listed below.",
+  "_readme": "These are public list-price estimates (USD per 1,000 tokens). They are NOT pulled from any live billing API and have NOT been verified against actual provider invoices — verify against real provider billing before using any cost figure derived from this file in a hospital-facing or funding claim. Rates are per-model, not per-account, so a discount or negotiated rate on your own OpenRouter/Groq account won't be reflected here. '_default' is used for any model not explicitly listed below.",
   "gemini/gemini-2.5-flash-lite": {
     "input_usd_per_1k": 0.0001,
     "output_usd_per_1k": 0.0004
@@ -7,6 +7,16 @@
   "openrouter/nvidia/nemotron-3-super-120b-a12b:free": {
     "input_usd_per_1k": 0.0,
     "output_usd_per_1k": 0.0
+  },
+  "openrouter/meta-llama/llama-3.1-8b-instruct": {
+    "input_usd_per_1k": 0.00002,
+    "output_usd_per_1k": 0.00004,
+    "_source": "https://openrouter.ai/meta-llama/llama-3.1-8b-instruct/pricing — looked up Sept 2026, currently the live doctor model (config.yaml's models.doctor)"
+  },
+  "openrouter/meta-llama/llama-3.3-70b-instruct": {
+    "input_usd_per_1k": 0.0001,
+    "output_usd_per_1k": 0.00032,
+    "_source": "https://openrouter.ai/meta-llama/llama-3.3-70b-instruct/pricing — looked up Sept 2026, currently the live critic model (CRITIC_MODEL default)"
   },
   "groq/openai/gpt-oss-120b": {
     "input_usd_per_1k": 0.00015,

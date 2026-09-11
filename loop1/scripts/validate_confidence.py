@@ -88,9 +88,9 @@ def run_scripted_session(
     original_generate = None
 
     def capturing_generate(p, h, turn_index, **kwargs):
-        out, tokens, ids = original_generate(p, h, turn_index, **kwargs)
+        out, usage, ids = original_generate(p, h, turn_index, **kwargs)
         confidence_trajectory.append(out.confidence_to_stop)
-        return out, tokens, ids
+        return out, usage, ids
 
     import loop1.session as session_module
     original_generate = session_module.generate_turn_with_usage
@@ -123,8 +123,10 @@ def run_scripted_session(
 
     # Patch profile updater to avoid hitting the 6000 TPM rate limit on
     # llama-3.1-8b-instant — profile updates are irrelevant to confidence testing.
+    # extract_profile_delta now returns (ProfileDelta, LlmUsage) — this stub
+    # matches that 2-tuple shape; the delta itself ({}) is unchanged.
     def no_delta(patient_answer, profile, model=None):
-        return {}
+        return {}, None
 
     def no_apply(profile, delta):
         return profile

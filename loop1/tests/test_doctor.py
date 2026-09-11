@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from loop1.doctor import build_doctor_prompt, generate_turn
+from loop1.llm import LlmUsage
 from loop1.schemas import (
     Demographics,
     DiagnosisEntry,
@@ -36,12 +37,14 @@ VALID_OUTPUT: dict = {
 
 VALID_JSON = json.dumps(VALID_OUTPUT)
 
-# call_llm_with_usage returns (content, prompt_tokens)
+# call_llm_with_usage returns (content, LlmUsage)
 _TOKEN_COUNT = 100
 
 
-def _ok(content: str) -> tuple[str, int]:
-    return (content, _TOKEN_COUNT)
+def _ok(content: str) -> tuple[str, LlmUsage]:
+    return (content, LlmUsage(
+        prompt_tokens=_TOKEN_COUNT, completion_tokens=None, total_tokens=None, model_actual=None,
+    ))
 
 
 def make_profile() -> PatientProfile:

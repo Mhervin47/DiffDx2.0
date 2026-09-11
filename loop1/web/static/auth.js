@@ -154,7 +154,29 @@ function initAuthNav() {
   if (!el) return;
   const user = getAuthUser();
   if (user) {
-    if (user.role === 'doctor') {
+    if (user.role === 'admin') {
+      el.innerHTML = `
+        <div class="nav-user-menu" id="nav-user-menu">
+          <button class="nav-user-btn" onclick="_toggleUserMenu(event)" aria-expanded="false">
+            <span class="nav-user-avatar">${_escHtml(user.name.charAt(0).toUpperCase())}</span>
+            <span class="nav-user-name">${_escHtml(user.name)}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="nav-user-dropdown" id="nav-user-dropdown">
+            <div class="nav-user-dropdown-header">
+              <div style="font-weight:600;font-size:13px;">${_escHtml(user.name)}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${_escHtml(user.email || '')}</div>
+            </div>
+            <a class="nav-user-dropdown-item" href="/admin_portal/index.html">Overview</a>
+            <a class="nav-user-dropdown-item" href="/admin_portal/evidence.html">Evidence</a>
+            <a class="nav-user-dropdown-item" href="/admin_portal/quality.html">AI Quality</a>
+            <a class="nav-user-dropdown-item" href="/admin_portal/audit.html">Audit</a>
+            <a class="nav-user-dropdown-item" href="/admin_portal/dsr.html">DSR</a>
+            <button class="nav-user-dropdown-item nav-user-dropdown-item--danger" onclick="logout()">Sign Out</button>
+          </div>
+        </div>
+      `;
+    } else if (user.role === 'doctor') {
       el.innerHTML = `
         <div class="nav-user-menu" id="nav-user-menu">
           <button class="nav-user-btn" onclick="_toggleUserMenu(event)" aria-expanded="false">

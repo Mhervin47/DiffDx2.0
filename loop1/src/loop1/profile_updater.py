@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from loop1.config import config
-from loop1.llm import call_llm
+from loop1.llm import LlmUsage, call_llm_with_usage
 from loop1.schemas import (
     History,
     HistoryAdditions,
@@ -59,13 +59,15 @@ def extract_profile_delta(
     question: str,
     answer: str,
     max_retries: int = 3,
-) -> ProfileDelta:
+) -> tuple[ProfileDelta, LlmUsage]:
     messages = _build_updater_prompt(profile, question, answer)
     model = config["models"]["profile_updater"]
     last_err: Exception | None = None
+    last_usage: LlmUsage | None = None
 
     for attempt in range(max_retries):
-        raw = call_llm(model=model, messages=messages)
+        raw, usage = call_llm_with_usage(model=model, messages=messages)
+        last_usage = usage
         cleaned = _strip_fences(raw)
 
         try:
@@ -86,7 +88,7 @@ def extract_profile_delta(
             continue
 
         try:
-            return ProfileDelta(**data)
+            return ProfileDelta(**data), last_usage
         except ValidationError as exc:
             last_err = exc
             messages = messages + [

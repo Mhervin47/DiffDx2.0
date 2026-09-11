@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
+from loop1.llm import LlmUsage
 from loop1.schemas import (
     Demographics,
     DiagnosisEntry,
@@ -17,6 +18,10 @@ from loop1.schemas import (
     TurnRecord,
 )
 from loop1.session import Session
+
+
+def _usage(prompt_tokens: int) -> LlmUsage:
+    return LlmUsage(prompt_tokens=prompt_tokens, completion_tokens=None, total_tokens=None, model_actual=None)
 
 
 # ---------------------------------------------------------------------------
@@ -94,17 +99,17 @@ def test_session_logs_prompt_tokens(tmp_path, monkeypatch):
 
     with (
         patch("loop1.session.generate_turn_with_usage", side_effect=[
-            (turn0, 512, []),
-            (turn1, 750, []),
+            (turn0, _usage(512), []),
+            (turn1, _usage(750), []),
         ]),
-        patch("loop1.session.extract_profile_delta", return_value=MagicMock(
+        patch("loop1.session.extract_profile_delta", return_value=(MagicMock(
             new_symptoms=[], symptom_updates=[], history_additions=MagicMock(
                 medical=[], medications=[], allergies=[], family=[], social=[]
             ),
             append_ruled_out=[], append_ruled_in=[], free_notes_append="",
-        )),
+        ), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", side_effect=lambda p, h, k: p),
+        patch("loop1.session.compress_context", side_effect=lambda p, h, k: (p, None)),
         patch("loop1.session.Prompt.ask", return_value="it gets worse with light"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=None),
@@ -157,13 +162,13 @@ def test_session_compression_not_triggered_before_threshold(tmp_path, monkeypatc
     ]
 
     with (
-        patch("loop1.session.generate_turn_with_usage", side_effect=[(o, 400, []) for o in outputs]),
-        patch("loop1.session.extract_profile_delta", return_value=MagicMock(
+        patch("loop1.session.generate_turn_with_usage", side_effect=[(o, _usage(400), []) for o in outputs]),
+        patch("loop1.session.extract_profile_delta", return_value=(MagicMock(
             new_symptoms=[], symptom_updates=[], history_additions=MagicMock(
                 medical=[], medications=[], allergies=[], family=[], social=[]
             ),
             append_ruled_out=[], append_ruled_in=[], free_notes_append="",
-        )),
+        ), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
         patch("loop1.session.compress_context") as mock_compress,
         patch("loop1.session.Prompt.ask", return_value="some answer"),
@@ -210,15 +215,15 @@ def test_session_compression_triggered_after_keep_recent_plus_one(tmp_path, monk
     profile = _profile()
 
     with (
-        patch("loop1.session.generate_turn_with_usage", side_effect=[(o, 400, []) for o in outputs]),
-        patch("loop1.session.extract_profile_delta", return_value=MagicMock(
+        patch("loop1.session.generate_turn_with_usage", side_effect=[(o, _usage(400), []) for o in outputs]),
+        patch("loop1.session.extract_profile_delta", return_value=(MagicMock(
             new_symptoms=[], symptom_updates=[], history_additions=MagicMock(
                 medical=[], medications=[], allergies=[], family=[], social=[]
             ),
             append_ruled_out=[], append_ruled_in=[], free_notes_append="",
-        )),
+        ), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", return_value=profile) as mock_compress,
+        patch("loop1.session.compress_context", return_value=(profile, None)) as mock_compress,
         patch("loop1.session.Prompt.ask", return_value="some answer"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=None),
@@ -266,18 +271,18 @@ def test_session_passes_full_history_before_compression(tmp_path, monkeypatch):
 
     def capture_generate(profile, history, turn_index):
         history_args.append(list(history))
-        return outputs[turn_index], 400, []
+        return outputs[turn_index], _usage(400), []
 
     with (
         patch("loop1.session.generate_turn_with_usage", side_effect=capture_generate),
-        patch("loop1.session.extract_profile_delta", return_value=MagicMock(
+        patch("loop1.session.extract_profile_delta", return_value=(MagicMock(
             new_symptoms=[], symptom_updates=[], history_additions=MagicMock(
                 medical=[], medications=[], allergies=[], family=[], social=[]
             ),
             append_ruled_out=[], append_ruled_in=[], free_notes_append="",
-        )),
+        ), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
-        patch("loop1.session.compress_context", side_effect=lambda p, h, k: p),
+        patch("loop1.session.compress_context", side_effect=lambda p, h, k: (p, None)),
         patch("loop1.session.Prompt.ask", return_value="some answer"),
         patch("loop1.session.write_final_record", return_value=tmp_path / "final.json"),
         patch("loop1.session.generate_closing_turn", return_value=None),
@@ -332,21 +337,21 @@ def test_session_passes_trimmed_history_after_compression(tmp_path, monkeypatch)
             ruled_in=profile.ruled_in,
             free_notes=profile.free_notes,
             running_summary="Summary of early turns.",
-        )
+        ), None
 
     def capture_generate(profile, history, turn_index):
         history_args.append(list(history))
         idx = min(turn_index, len(outputs) - 1)
-        return outputs[idx], 400, []
+        return outputs[idx], _usage(400), []
 
     with (
         patch("loop1.session.generate_turn_with_usage", side_effect=capture_generate),
-        patch("loop1.session.extract_profile_delta", return_value=MagicMock(
+        patch("loop1.session.extract_profile_delta", return_value=(MagicMock(
             new_symptoms=[], symptom_updates=[], history_additions=MagicMock(
                 medical=[], medications=[], allergies=[], family=[], social=[]
             ),
             append_ruled_out=[], append_ruled_in=[], free_notes_append="",
-        )),
+        ), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
         patch("loop1.session.compress_context", side_effect=fake_compress),
         patch("loop1.session.Prompt.ask", return_value="some answer"),
@@ -404,16 +409,16 @@ def test_session_logs_compression_complete_event(tmp_path, monkeypatch):
             ruled_in=profile.ruled_in,
             free_notes=profile.free_notes,
             running_summary="Summary.",
-        )
+        ), None
 
     with (
-        patch("loop1.session.generate_turn_with_usage", side_effect=[(o, 400, []) for o in outputs]),
-        patch("loop1.session.extract_profile_delta", return_value=MagicMock(
+        patch("loop1.session.generate_turn_with_usage", side_effect=[(o, _usage(400), []) for o in outputs]),
+        patch("loop1.session.extract_profile_delta", return_value=(MagicMock(
             new_symptoms=[], symptom_updates=[], history_additions=MagicMock(
                 medical=[], medications=[], allergies=[], family=[], social=[]
             ),
             append_ruled_out=[], append_ruled_in=[], free_notes_append="",
-        )),
+        ), None)),
         patch("loop1.session.apply_delta", side_effect=lambda p, d: p),
         patch("loop1.session.compress_context", side_effect=fake_compress),
         patch("loop1.session.Prompt.ask", return_value="some answer"),

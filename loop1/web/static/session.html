@@ -589,10 +589,10 @@
        flex-basis isn't auto). Using the `flex` shorthand so this
        actually overrides it, both here and in the collapsed state below. */
     .session-right {
-      flex: 0 0 340px;
+      flex: 0 0 420px;
       background: rgba(0,0,0,.2);
       border-left: 1px solid rgba(255,255,255,.06);
-      padding: 20px 18px;
+      padding: 26px 24px;
       overflow-y: auto; display: flex; flex-direction: column;
       transition: flex-basis .25s ease, padding .25s ease, opacity .2s ease;
     }
@@ -630,36 +630,36 @@
     .complaint-block {
       background: rgba(16,185,129,.05);
       border: 1px solid rgba(16,185,129,.15);
-      border-radius: 14px; padding: 14px 16px;
-      margin-bottom: 24px;
+      border-radius: 16px; padding: 18px 20px;
+      margin-bottom: 28px;
     }
     .complaint-label {
       font-family: 'Sora', sans-serif;
-      font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
-      color: rgba(16,185,129,.7); margin-bottom: 6px;
+      font-size: 11.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+      color: rgba(16,185,129,.7); margin-bottom: 8px;
       display: flex; align-items: center; gap: 7px;
     }
     .complaint-text {
       font-family: 'Sora', sans-serif;
-      font-size: 15px; font-weight: 700; color: #f1f5f9;
-      letter-spacing: -.02em; line-height: 1.3;
+      font-size: 19px; font-weight: 700; color: #f1f5f9;
+      letter-spacing: -.02em; line-height: 1.35;
     }
 
     .diff-header {
       font-family: 'Sora', sans-serif;
-      font-size: 10px; font-weight: 800; letter-spacing: .12em;
-      text-transform: uppercase; color: rgba(100,116,139,.7); margin-bottom: 18px;
+      font-size: 11.5px; font-weight: 800; letter-spacing: .12em;
+      text-transform: uppercase; color: rgba(100,116,139,.7); margin-bottom: 20px;
     }
-    .diff-list { display: flex; flex-direction: column; gap: 12px; }
-    
+    .diff-list { display: flex; flex-direction: column; gap: 14px; }
+
     .diff-card {
       display: flex;
       align-items: center;
-      gap: 14px;
-      padding: 12px 14px;
+      gap: 16px;
+      padding: 16px 18px;
       background: rgba(30, 41, 59, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.04);
-      border-radius: 12px;
+      border-radius: 14px;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .diff-card:hover {
@@ -680,12 +680,12 @@
     }
     
     .diff-icon-box {
-      width: 40px;
-      height: 40px;
+      width: 46px;
+      height: 46px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 10px;
+      border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.06);
       background: rgba(255, 255, 255, 0.02);
       color: #94a3b8;
@@ -719,29 +719,29 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 7px;
     }
-    
+
     .diff-bar-header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
     }
     .diff-bar-name {
-      font-size: 13.5px;
+      font-size: 15.5px;
       font-weight: 600;
       color: #e2e8f0;
       font-family: 'Sora', sans-serif;
     }
     .diff-bar-prob {
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 700;
       color: #94a3b8;
       font-family: 'Sora', sans-serif;
     }
-    
+
     .diff-bar-track {
-      height: 4px;
+      height: 6px;
       background: rgba(255, 255, 255, 0.06);
       border-radius: 99px;
       overflow: hidden;
@@ -797,22 +797,22 @@
 
     .confidence-section {
       border-top: 1px solid rgba(255,255,255,.06);
-      padding-top: 16px; margin-top: 24px;
+      padding-top: 20px; margin-top: 28px;
     }
-    .conf-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+    .conf-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
     .conf-label {
       font-family: 'Sora', sans-serif;
-      font-size: 10px; font-weight: 800; letter-spacing: .1em;
+      font-size: 11.5px; font-weight: 800; letter-spacing: .1em;
       text-transform: uppercase; color: rgba(100,116,139,.8);
     }
     .conf-val {
       font-family: 'Sora', sans-serif;
-      font-size: 24px; font-weight: 900;
+      font-size: 30px; font-weight: 900;
       background: linear-gradient(135deg, #10b981, #34d399);
       -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
       letter-spacing: -.04em;
     }
-    .conf-track { height: 4px; background: rgba(255,255,255,.07); border-radius: 99px; overflow: hidden; }
+    .conf-track { height: 6px; background: rgba(255,255,255,.07); border-radius: 99px; overflow: hidden; }
     .conf-fill  {
       height: 100%; border-radius: 99px;
       background: linear-gradient(90deg, #059669, #10b981, #34d399);
@@ -834,8 +834,8 @@
 
     .session-meta {
       border-top: 1px solid rgba(255,255,255,.05);
-      padding-top: 12px; margin-top: auto;
-      font-size: 11px; color: #94a3b8;
+      padding-top: 14px; margin-top: auto;
+      font-size: 12px; color: #94a3b8;
       display: flex; flex-direction: column; gap: 4px;
       padding-bottom: 4px;
     }
@@ -1689,7 +1689,7 @@ function init() {
   const _langLabel = _isIndianLang ? ` · ${_langNames[_sessionLang] || _sessionLang}` : '';
   document.getElementById('session-meta').innerHTML =
     `<div style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:8px;">
-      <span style="font-family:'Sora',sans-serif; font-size:10px; font-weight:600; letter-spacing:0.02em;">Session ID: <span style="font-family:monospace; font-size:11px; font-weight:500; opacity:0.85;">${sessionId}</span>${_langLabel}</span>
+      <span style="font-family:'Sora',sans-serif; font-size:11.5px; font-weight:600; letter-spacing:0.02em;">Session ID: <span style="font-family:monospace; font-size:12.5px; font-weight:500; opacity:0.85;">${sessionId}</span>${_langLabel}</span>
       <button onclick="navigator.clipboard.writeText('${sessionId}'); showCopyTooltip(this);" 
               style="background:none; border:none; color:inherit; cursor:pointer; padding:2px; display:inline-flex; align-items:center; justify-content:center; position:relative; opacity:0.75; transition:opacity 0.2s;" 
               onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.75'"
@@ -1978,7 +1978,7 @@ function appendError(msg) {
 function getDiagnosisIcon(dxName) {
   const name = dxName.toLowerCase();
   if (name.includes('viral') || name.includes('flu') || name.includes('cold') || name.includes('covid') || name.includes('measles') || name.includes('infection') || name.includes('sle') || name.includes('shingles')) {
-    return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    return `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="6" />
       <line x1="12" y1="2" x2="12" y2="4" />
       <line x1="12" y1="20" x2="12" y2="22" />
@@ -1991,34 +1991,34 @@ function getDiagnosisIcon(dxName) {
     </svg>`;
   }
   if (name.includes('allergy') || name.includes('allergic') || name.includes('rhinitis') || name.includes('sinusitis') || name.includes('croup') || name.includes('bronchitis')) {
-    return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    return `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 3a2.5 2.5 0 0 0-2.5 2.5v5.8a1.5 1.5 0 0 1-1.5 1.5H7.5A2.5 2.5 0 0 0 5 15.3v.7a2.5 2.5 0 0 0 2.5 2.5h9A2.5 2.5 0 0 0 19 16v-.7a2.5 2.5 0 0 0-2.5-2.5h-.5a1.5 1.5 0 0 1-1.5-1.5V5.5A2.5 2.5 0 0 0 12 3z"/>
       <path d="M10 18.5a1.5 1.5 0 0 0 4 0"/>
     </svg>`;
   }
   if (name.includes('bacterial') || name.includes('pneumonia') || name.includes('strep') || name.includes('otitis') || name.includes('appendicitis') || name.includes('uti') || name.includes('cellulitis') || name.includes('dvt') || name.includes('peritonitis')) {
-    return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    return `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <rect x="6" y="9" width="12" height="6" rx="3" />
       <path d="M3 12h3M18 12h3M9 6v3M15 6v3M9 15v3M15 15v3" />
     </svg>`;
   }
   if (name.includes('anxiety') || name.includes('panic') || name.includes('headache') || name.includes('migraine') || name.includes('stroke') || name.includes('cvst') || name.includes('neurological') || name.includes('dementia') || name.includes('concussion')) {
-    return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    return `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-3.12 3 3 0 0 1 0-4.88 2.5 2.5 0 0 1 0-3.12A2.5 2.5 0 0 1 9.5 2zM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-3.12 3 3 0 0 0 0-4.88 2.5 2.5 0 0 0 0-3.12A2.5 2.5 0 0 0 14.5 2z"/>
       <path d="M12 12h2.5M12 7.5h1.5M12 16.5h1.5M9.5 12H12M12 12h-2.5M8 7.5h1.5M8 16.5h1.5"/>
     </svg>`;
   }
   if (name.includes('heart') || name.includes('cardiac') || name.includes('mi') || name.includes('pericarditis') || name.includes('angina') || name.includes('gerd')) {
-    return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    return `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>`;
   }
   if (name.includes('lung') || name.includes('pulmonary') || name.includes('pe') || name.includes('pneumothorax') || name.includes('asthma') || name.includes('copd')) {
-    return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    return `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M7 3c-1.5 0-3 1.5-3 3.5S5.5 10 7 10h1v9c0 1 1 2 2 2h1a2 2 0 0 0 2-2V4a1 1 0 0 0-1-1H7zm10 0c1.5 0 3 1.5 3 3.5S18.5 10 17 10h-1v9c0 1-1 2-2 2h-1a2 2 0 0 0-2-2V4a1 1 0 0 1 1-1h3z" />
     </svg>`;
   }
-  return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  return `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
   </svg>`;
 }

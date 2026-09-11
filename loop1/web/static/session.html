@@ -150,6 +150,7 @@
     }
     .session-layout {
       display: flex; flex: 1; overflow: hidden;
+      position: relative;
     }
 
     /* ── left panel ── */
@@ -587,9 +588,34 @@
       border-left: 1px solid rgba(255,255,255,.06);
       padding: 20px 18px;
       overflow-y: auto; display: flex; flex-direction: column;
+      transition: width .25s ease, padding .25s ease, opacity .2s ease;
     }
     .session-right::-webkit-scrollbar { width: 4px; }
     .session-right::-webkit-scrollbar-track { background: transparent; }
+
+    /* collapsed state — sidebar shrinks to 0, chat reclaims the space */
+    .session-layout.right-collapsed .session-right {
+      width: 0; padding-left: 0; padding-right: 0; opacity: 0;
+      overflow: hidden; border-left-color: transparent;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .session-right, .diff-panel-toggle svg { transition: none !important; }
+    }
+
+    /* toggle tab — sits on the seam between chat and sidebar, always visible */
+    .diff-panel-toggle {
+      position: absolute; top: 50%; right: 340px; transform: translate(50%, -50%);
+      width: 22px; height: 44px; z-index: 20;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(30,41,59,.85); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px; cursor: pointer; color: rgba(203,213,225,.8);
+      transition: right .25s ease, background .15s ease, color .15s ease;
+    }
+    .diff-panel-toggle:hover { background: rgba(16,185,129,.18); color: #4ede9e; }
+    .diff-panel-toggle:focus-visible { outline: 2px solid #4ede9e; outline-offset: 2px; }
+    .diff-panel-toggle svg { transition: transform .25s ease; }
+    .session-layout.right-collapsed .diff-panel-toggle { right: 0; }
+    .session-layout.right-collapsed .diff-panel-toggle svg { transform: rotate(180deg); }
     .session-right::-webkit-scrollbar-thumb { background: rgba(255,255,255,.07); border-radius: 4px; }
 
     /* chief complaint block (right panel) */
@@ -1399,7 +1425,19 @@
 
 <!-- main -->
 <div class="session-shell">
-  <div class="session-layout">
+  <div class="session-layout" id="session-layout">
+    <script>
+      // Applied inline, before the rest of the panel renders, so a
+      // previously-collapsed choice doesn't flash open on load.
+      if (localStorage.getItem('sessionRightCollapsed') === '1') {
+        document.getElementById('session-layout').classList.add('right-collapsed');
+      }
+    </script>
+
+    <button class="diff-panel-toggle" id="diff-panel-toggle" onclick="toggleDiffPanel()"
+      aria-expanded="true" aria-label="Collapse live differential panel">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
 
     <!-- LEFT: conversation -->
     <div class="session-left">
@@ -2197,6 +2235,15 @@ function toggleVoice() {
 function onVoiceChange(val) { _selectedVoiceURI = val; localStorage.setItem(_VOICE_URI_KEY, val); }
 function onAutoplayChange(val) { _autoplay = val; localStorage.setItem(_VOICE_AUTO_KEY, val ? '1' : '0'); }
 
+function toggleDiffPanel() {
+  const layout = document.getElementById('session-layout');
+  const btn = document.getElementById('diff-panel-toggle');
+  const collapsed = layout.classList.toggle('right-collapsed');
+  localStorage.setItem('sessionRightCollapsed', collapsed ? '1' : '0');
+  btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  btn.setAttribute('aria-label', collapsed ? 'Expand live differential panel' : 'Collapse live differential panel');
+}
+
 let _userInteracted  = false;
 let _prefetchedAudio = null;
 let _pendingSpeech   = null;
@@ -2514,6 +2561,15 @@ function _replayBubble(bubbleId) {
 
 _applyVoiceUI();
 init();
+
+// Sync the toggle button's a11y attrs with the collapsed class the
+// pre-paint inline script (right after #session-layout's opening tag)
+// already applied, to avoid a flash of the expanded panel.
+if (document.getElementById('session-layout').classList.contains('right-collapsed')) {
+  const t = document.getElementById('diff-panel-toggle');
+  t.setAttribute('aria-expanded', 'false');
+  t.setAttribute('aria-label', 'Expand live differential panel');
+}
 </script>
 </body>
 </html>

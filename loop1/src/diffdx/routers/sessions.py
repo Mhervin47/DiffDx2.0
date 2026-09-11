@@ -173,8 +173,10 @@ async def tts_proxy(request: Request):
     # Translate English → target language first
     translated = _sarvam_translate(text, "en-IN", lang) if lang != "en-IN" else text
     audio_b64 = _sarvam_tts_b64(translated, lang)
-    if not audio_b64:
-        raise HTTPException(status_code=503, detail="TTS unavailable")
+    # Audio synthesis is best-effort: if it fails, still return the translated
+    # text so the UI can show it even without a voiceover (see
+    # _prefetchSarvamAudio's !data.audio_b64 branch in session.html, which
+    # already handles this shape).
     return {"audio_b64": audio_b64, "translated_text": translated}
 
 

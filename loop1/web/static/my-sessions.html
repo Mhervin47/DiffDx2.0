@@ -2246,12 +2246,15 @@ async function uploadTestOrderResult(event, apptId, testOrderId) {
     if (!res.ok) throw new Error((await res.json()).detail || 'Upload failed');
     // Full refresh — the test's results_uploaded flag lives on the
     // appointment object loadSessions() re-fetches, same source of truth
-    // the Records tab and the badge counts already depend on.
+    // the Records tab and the badge counts already depend on. This
+    // replaces the upload button with the "Uploaded" badge, which is easy
+    // to miss on its own — the toast is the actual confirmation.
     await loadSessions();
+    showToast('Test result uploaded');
   } catch (e) {
     if (label) label.innerHTML = prevHtml;
     input.value = '';
-    alert('Upload failed: ' + e.message);
+    showToast('Upload failed: ' + e.message, '#ef4444');
   }
 }
 async function removeFile(apptId, filename) {

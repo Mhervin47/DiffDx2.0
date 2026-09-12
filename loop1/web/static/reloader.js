@@ -105,11 +105,6 @@
           </svg>
         </div>
 
-        <!-- Dynamic Shimmer Track -->
-        <div class="reloader-track">
-          <div class="reloader-bar"></div>
-        </div>
-
         <!-- Dynamic Live Telemetry Status -->
         <div class="reloader-status-pill">
           <span class="reloader-dot-live"></span>

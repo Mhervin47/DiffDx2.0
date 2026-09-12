@@ -428,7 +428,7 @@
 
     .hero-3d-wrapper {
       position: relative; z-index: 2;
-      width: 290px; height: 210px;
+      width: 310px; height: 210px;
       border-radius: 18px; overflow: hidden;
       box-shadow: 0 20px 50px rgba(0,0,0,0.2), 0 0 30px rgba(25, 198, 173, 0.18);
       border: 1px solid var(--teal-primary);
@@ -438,6 +438,23 @@
     .hero-3d-img {
       width: 100%; height: 100%; object-fit: cover; object-position: center;
       display: block;
+    }
+
+    .dark-theme .img-theme-light {
+      display: none !important;
+    }
+    .dark-theme .img-theme-dark {
+      display: block !important;
+    }
+    :root:not(.dark-theme) .img-theme-dark,
+    html:not(.dark-theme) .img-theme-dark,
+    body:not(.dark-theme) .img-theme-dark {
+      display: none !important;
+    }
+    :root:not(.dark-theme) .img-theme-light,
+    html:not(.dark-theme) .img-theme-light,
+    body:not(.dark-theme) .img-theme-light {
+      display: block !important;
     }
 
     /* Floating Mini Visual Cards */
@@ -538,7 +555,7 @@
       -webkit-backdrop-filter: blur(24px) saturate(1.4);
       border: 1px solid var(--border-card);
       border-radius: 20px; padding: 24px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      box-shadow: none;
       position: relative; overflow: hidden;
       display: flex; flex-direction: column; justify-content: space-between;
       transition: border-color .3s ease, box-shadow .3s ease, background 0.3s ease;
@@ -570,7 +587,7 @@
 
     .section-card:focus-within {
       border-color: rgba(25, 198, 173, 0.25);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 18px rgba(25, 198, 173, 0.06);
+      box-shadow: none;
     }
 
     .sec-head {
@@ -1115,9 +1132,8 @@
         </svg>
 
         <div class="hero-3d-wrapper">
-          <video class="hero-3d-img" src="/video.mov" poster="/doctor_patient_3d.jpg" autoplay loop muted playsinline aria-label="Doctor Patient Consultation Video">
-            <img class="hero-3d-img" src="/doctor_patient_3d.jpg" alt="Doctor Patient Consultation" />
-          </video>
+          <img class="hero-3d-img img-theme-dark" src="/doctor_xray_dark.png" alt="Doctor Analyzing Chest X-Ray" />
+          <img class="hero-3d-img img-theme-light" src="/doctor_xray_light.png" alt="Doctor Analyzing Chest X-Ray" />
         </div>
 
         <!-- Floating Card 1: Clinical Intake -->

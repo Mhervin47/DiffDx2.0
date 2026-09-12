@@ -1636,7 +1636,8 @@
 
     document.getElementById('history-form').addEventListener('submit', async e => {
       e.preventDefault();
-      if (window.DiffDxConsent && !window.DiffDxConsent.hasConsented()) {
+      // Always show consent modal before starting diagnosis
+      if (window.DiffDxConsent) {
         window.DiffDxConsent.show({
           onAccept: () => {
             _startDiagnosisSession();
@@ -1646,9 +1647,9 @@
             if (btn) btn.disabled = false;
           }
         });
-        return;
+      } else {
+        _startDiagnosisSession();
       }
-      _startDiagnosisSession();
     });
   </script>
   <script src="/auth.js"></script>

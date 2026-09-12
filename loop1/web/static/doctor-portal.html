@@ -7641,13 +7641,13 @@ function buildRationales(turns, turnHistory) {
   const items = source.map(t => `
     <div class="rationale-block">
       <button class="rationale-toggle">
-        <span>Turn ${t.turn + 1}: AI Reasoning</span>
+        <span>Turn ${t.turn + 1}: Diagnostic Rationale</span>
         <svg class="chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:auto;flex-shrink:0;transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="rationale-body">${escHtml(t.rationale)}</div>
     </div>`).join('');
   return `<div class="portal-section">
-    <div class="portal-section-title">AI Reasoning (per turn)</div>${items}
+    <div class="portal-section-title">Diagnostic Reasoning (per turn)</div>${items}
   </div>`;
 }
 

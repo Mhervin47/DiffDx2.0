@@ -415,11 +415,11 @@
     }
     .diagnosis-name {
       font-family: var(--font-heading);
-      font-size: 44px;
+      font-size: 36px;
       font-weight: 900;
       letter-spacing: -.03em;
-      line-height: 1.15;
-      margin-bottom: 16px;
+      line-height: 1.2;
+      margin-bottom: 10px;
       color: #00b4d8;
       background: linear-gradient(90deg, #00b4d8, #38bdf8);
       -webkit-background-clip: text;
@@ -433,6 +433,24 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
+    .diagnosis-subline {
+      font-size: 15px;
+      color: var(--text-dim);
+      max-width: 480px;
+      margin: 0 auto 18px;
+      line-height: 1.5;
+    }
+    .diagnosis-name.is-loading {
+      background: none; -webkit-text-fill-color: initial;
+      color: var(--text-muted); font-size: 22px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .diagnosis-name.is-loading .hero-spinner {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2.5px solid var(--border-card); border-top-color: var(--teal-primary);
+      animation: hero-spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes hero-spin { to { transform: rotate(360deg); } }
     .diagnosis-chips {
       display: flex;
       justify-content: center;
@@ -502,6 +520,50 @@
       justify-content: space-between;
       border-bottom: 1px solid var(--border-card);
     }
+
+    /* ── Technical Details (collapsed by default) ──
+       Holds the AI's raw differential, confidence scores, and eval-harness
+       metrics — real, but not something a patient should be led with. Native
+       <details>/<summary> for built-in keyboard support and no JS needed to
+       toggle. */
+    .technical-details-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      margin-bottom: 30px;
+      overflow: hidden;
+    }
+    .technical-details-summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      user-select: none;
+    }
+    .technical-details-summary::-webkit-details-marker { display: none; }
+    .td-icon {
+      width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+      background: var(--surface-2); border: 1px solid var(--border-card);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+    }
+    .td-text { flex: 1; min-width: 0; }
+    .td-title {
+      font-family: var(--font-heading); font-size: 14px; font-weight: 800;
+      color: var(--text); letter-spacing: -.01em;
+    }
+    .td-hint {
+      font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4;
+    }
+    .td-chevron { color: var(--text-muted); transition: transform .2s ease; flex-shrink: 0; }
+    .technical-details-section[open] .td-chevron { transform: rotate(180deg); }
+    .technical-details-body {
+      padding: 4px 24px 24px;
+      border-top: 1px solid var(--border-card);
+    }
+    .technical-details-body .report-section:last-child { margin-bottom: 0; }
 
     /* ── Patient Summary Card ── */
     .patient-summary-card {
@@ -1633,6 +1695,20 @@ function _printTestList() {
   w.document.close();
 }
 
+function _heroFallback() {
+  // Routing failed or is unavailable — get the hero out of its loading
+  // spinner state with something calm and generic rather than leaving it
+  // spinning forever or falling back to a raw diagnosis name.
+  const nameEl = document.getElementById('hero-diagnosis-name');
+  const sublineEl = document.getElementById('hero-diagnosis-subline');
+  const eyebrowEl = document.getElementById('hero-diagnosis-eyebrow');
+  if (!nameEl) return;
+  nameEl.classList.remove('is-loading');
+  eyebrowEl.textContent = 'Your Report Is Ready';
+  nameEl.textContent = 'See Recommendations Below';
+  if (sublineEl) sublineEl.textContent = "We couldn't load a specialist recommendation automatically — see the sections below for details, or contact support.";
+}
+
 async function loadRouting() {
   const el = document.getElementById('next-steps-section');
   if (!el) return;
@@ -1641,12 +1717,15 @@ async function loadRouting() {
     if (!res.ok) {
       const detail = await res.text();
       el.innerHTML = `<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">Specialist routing unavailable (${res.status}: ${escHtml(detail)})</div>`;
+      _heroFallback();
       return;
     }
     const r = await res.json();
     el.innerHTML = buildNextSteps(r);
+    updateHeroSpecialty(r);
   } catch (e) {
     el.innerHTML = `<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">Specialist routing unavailable: ${escHtml(e.message)}</div>`;
+    _heroFallback();
   }
 }
 
@@ -1937,7 +2016,7 @@ function buildNextSteps(r) {
     <div class="report-section-title">Next Steps</div>
     <div style="margin-bottom:18px;">
       <div style="font-size:14px;color:var(--text-dim);margin-bottom:10px;">
-        Based on your diagnosis, we recommend seeing a specialist in <strong style="color:var(--text);">${escHtml(r.specialty)}</strong>.
+        Based on your symptoms, we recommend seeing a specialist in <strong style="color:var(--text);">${escHtml(r.specialty)}</strong>.
       </div>
       <span class="urgency-badge ${urgencyClass}">${urgencyLabel}</span>
       <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">${escHtml(r.reasoning)}</div>
@@ -2236,6 +2315,55 @@ function bookReferralDoctor(doctorName, specialty) {
   window.location.href = `/find-doctors.html?${params}`;
 }
 
+// Specialty -> plain-language body-system phrase, used only for the hero
+// subline (§3a of REPORT_PAGE_REDESIGN.md) — never names a disease, just
+// grounds "why this specialist" in the body system involved. Static lookup
+// rather than model-generated text, specifically so it can never leak a
+// disease name (see that doc's open-questions section).
+const SPECIALTY_BODY_SYSTEM = {
+  'Cardiology': 'your heart and circulation',
+  'Dermatology': 'your skin',
+  'Emergency Medicine': 'urgent, immediate care',
+  'Endocrinology': 'your hormones and metabolism',
+  'Gastroenterology': 'your digestive system',
+  'General Practice': 'your general health',
+  'General Surgery': 'a surgical evaluation',
+  'Gynecology': 'your reproductive health',
+  'Hematology': 'your blood',
+  'Infectious Disease': 'a possible infection',
+  'Internal Medicine': 'your general health',
+  'Nephrology': 'your kidneys',
+  'Neurology': 'your brain and nervous system',
+  'Ophthalmology': 'your eyes',
+  'Pulmonology': 'your lungs and breathing',
+  'Rheumatology': 'your joints and immune system',
+  'Urology': 'your urinary system',
+};
+
+// Called from loadRouting() once specialty routing resolves, to swap the
+// hero out of its loading state — kept separate from buildNextSteps() since
+// the hero renders synchronously (buildReport()) well before routing data
+// exists.
+function updateHeroSpecialty(r) {
+  const nameEl = document.getElementById('hero-diagnosis-name');
+  const sublineEl = document.getElementById('hero-diagnosis-subline');
+  const eyebrowEl = document.getElementById('hero-diagnosis-eyebrow');
+  if (!nameEl) return;
+  nameEl.classList.remove('is-loading');
+  if (r.is_emergency) {
+    eyebrowEl.textContent = 'Urgent';
+    nameEl.textContent = 'Seek Emergency Care Now';
+    if (sublineEl) sublineEl.textContent = 'See the emergency guidance below — do not wait for a routine appointment.';
+    return;
+  }
+  eyebrowEl.textContent = 'Your Recommended Next Step';
+  nameEl.textContent = `See a ${r.specialty} Specialist`;
+  if (sublineEl) {
+    const bodySystem = SPECIALTY_BODY_SYSTEM[r.specialty] || 'your symptoms';
+    sublineEl.textContent = `Based on your symptoms, we're recommending a ${r.urgency === 'urgent' ? 'prompt' : 'routine'} consultation related to ${bodySystem}. A licensed doctor will confirm what's actually going on.`;
+  }
+}
+
 function buildReport(d) {
   const agg = d.aggregate || {};
   const turns = d.turns || [];
@@ -2243,10 +2371,15 @@ function buildReport(d) {
   const diff = d.final_differential || [];
 
   return `
-    <!-- HERO -->
+    <!-- HERO — specialty-first; starts in a loading state and is filled in
+         by updateHeroSpecialty() once loadRouting() resolves, since routing
+         data isn't available at initial render time. -->
     <div class="diagnosis-hero">
-      <div class="diagnosis-eyebrow">Primary Diagnosis</div>
-      <div class="diagnosis-name">${escHtml(d.final_diagnosis || '—')}</div>
+      <div class="diagnosis-eyebrow" id="hero-diagnosis-eyebrow">Analyzing</div>
+      <div class="diagnosis-name is-loading" id="hero-diagnosis-name">
+        <span class="hero-spinner"></span> Finding the right specialist for you…
+      </div>
+      <div class="diagnosis-subline" id="hero-diagnosis-subline"></div>
       <div class="diagnosis-chips">
         <span class="badge badge-teal">${d.total_turns} turn${d.total_turns !== 1 ? 's' : ''}</span>
         <span class="badge badge-dim">Terminated: ${escHtml(d.termination_reason || '—')}</span>
@@ -2257,36 +2390,19 @@ function buildReport(d) {
     <!-- PATIENT SUMMARY -->
     ${closing ? buildPatientSummary(closing, d.final_diagnosis) : ''}
 
-    <!-- CLOSING STATEMENT -->
-    ${closing ? buildClosing(closing) : ''}
-
-    <!-- AGGREGATE METRICS -->
-    <div class="report-section">
-      <div class="report-section-title">Performance Overview</div>
-      <div class="metric-cards">
-        ${metricCard('Mean Q-Quality', agg.mean_question_quality)}
-        ${metricCard('Mean Diff-Quality', agg.mean_differential_quality)}
-        ${metricCard('Mean Reasoning', agg.mean_reasoning_quality)}
+    <!-- NEXT STEPS (routing + booking) — populated async after load -->
+    <div class="report-section routing-block" id="next-steps-section">
+      <div class="thinking-row" style="padding:16px 0;">
+        <div class="spinner"></div> Loading specialist recommendation…
       </div>
     </div>
 
-    <!-- WEAKNESS BREAKDOWN -->
-    ${buildWeaknessSection(agg.weakness_category_counts)}
-
-    <!-- TURN TABLE -->
-    <div class="report-section">
-      <div class="report-section-title">Turn-by-Turn Critique</div>
-      ${buildTable(turns, agg)}
+    <!-- SUGGESTED TESTS — populated async after load -->
+    <div class="report-section suggested-tests-section" id="suggested-tests-section">
+      <div class="sug-loading">
+        <div class="spinner"></div> Analysing test requirements…
+      </div>
     </div>
-
-    <!-- CONVERSATION VIEWER -->
-    ${buildConversation(d.turn_history || [])}
-
-    <!-- DIFFERENTIAL EVOLUTION -->
-    ${buildDiffEvolution(d.turn_history || [])}
-
-    <!-- FINAL DIFFERENTIAL -->
-    ${diff.length > 0 ? buildFinalDiff(diff) : ''}
 
     <!-- DOCTOR'S NOTE — populated async after load -->
     <div id="doctors-note-section"></div>
@@ -2300,19 +2416,54 @@ function buildReport(d) {
     <!-- REFERRAL — populated async after load -->
     <div id="referral-section"></div>
 
-    <!-- SUGGESTED TESTS — populated async after load -->
-    <div class="report-section suggested-tests-section" id="suggested-tests-section">
-      <div class="sug-loading">
-        <div class="spinner"></div> Analysing test requirements…
-      </div>
-    </div>
+    <!-- CONVERSATION VIEWER — the patient's own Q&A, kept visible (not the
+         AI's diagnostic claim, just a transcript of what they said) -->
+    ${buildConversation(d.turn_history || [])}
 
-    <!-- NEXT STEPS (routing + booking) — populated async after load -->
-    <div class="report-section routing-block" id="next-steps-section">
-      <div class="thinking-row" style="padding:16px 0;">
-        <div class="spinner"></div> Loading specialist recommendation…
+    <!-- TECHNICAL DETAILS — collapsed by default. The AI's raw differential,
+         confidence/quality scores, and full critique — real and useful for a
+         clinician or reviewer, but not something to lead a patient with. -->
+    <details class="technical-details-section" id="technical-details">
+      <summary class="technical-details-summary">
+        <div class="td-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div class="td-text">
+          <div class="td-title">Technical Details</div>
+          <div class="td-hint">For clinicians &amp; reviewers — the AI's internal differential and confidence scores. Not a confirmed diagnosis.</div>
+        </div>
+        <svg class="td-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="technical-details-body">
+        <!-- CLOSING STATEMENT -->
+        ${closing ? buildClosing(closing) : ''}
+
+        <!-- AGGREGATE METRICS -->
+        <div class="report-section">
+          <div class="report-section-title">Performance Overview</div>
+          <div class="metric-cards">
+            ${metricCard('Mean Q-Quality', agg.mean_question_quality)}
+            ${metricCard('Mean Diff-Quality', agg.mean_differential_quality)}
+            ${metricCard('Mean Reasoning', agg.mean_reasoning_quality)}
+          </div>
+        </div>
+
+        <!-- WEAKNESS BREAKDOWN -->
+        ${buildWeaknessSection(agg.weakness_category_counts)}
+
+        <!-- TURN TABLE -->
+        <div class="report-section">
+          <div class="report-section-title">Turn-by-Turn Critique</div>
+          ${buildTable(turns, agg)}
+        </div>
+
+        <!-- DIFFERENTIAL EVOLUTION -->
+        ${buildDiffEvolution(d.turn_history || [])}
+
+        <!-- FINAL DIFFERENTIAL -->
+        ${diff.length > 0 ? buildFinalDiff(diff) : ''}
       </div>
-    </div>
+    </details>
 
     <!-- SYMPTOM HISTORY — populated async -->
     <div id="symptom-history-section" style="display:none;"></div>
@@ -2342,10 +2493,12 @@ let _psSpeaking = false;
 let _psUtterance = null;
 
 function _buildSummaryText(c, finalDx) {
-  const dx = finalDx || c.leading_diagnosis || 'a condition';
+  // Deliberately doesn't name the diagnosis (finalDx/c.leading_diagnosis) —
+  // see REPORT_PAGE_REDESIGN.md §3b. This is also the text read aloud by
+  // the "Listen" button, so it must stay in sync with buildPatientSummary()'s
+  // on-screen copy below.
   const steps = (c.recommended_next_steps || []);
-  let text = `Based on your answers, the most likely explanation for your symptoms is ${dx}. `;
-  if (c.differential_summary) text += c.differential_summary + ' ';
+  let text = `Based on your answers, we've identified the specialist and tests that make sense for your symptoms. `;
   if (steps.length) {
     text += 'Here are the recommended next steps: ';
     text += steps.map((s, i) => `${i + 1}. ${s}`).join('. ') + '.';
@@ -2445,7 +2598,6 @@ function _updatePsBtn(speaking) {
 }
 
 function buildPatientSummary(c, finalDx) {
-  const dx = finalDx || c.leading_diagnosis || 'a condition';
   const steps = (c.recommended_next_steps || []);
   const summaryText = _buildSummaryText(c, finalDx);
 
@@ -2495,8 +2647,7 @@ function buildPatientSummary(c, finalDx) {
         </button>
       </div>
       <div class="patient-summary-text">
-        The most likely explanation for your symptoms is <strong style="color:#10b981;">${escHtml(dx)}</strong>.
-        ${c.differential_summary ? `<span style="color:var(--text-dim);"> ${escHtml(c.differential_summary)}</span>` : ''}
+        Based on your answers, we've identified the specialist and tests that make sense for your symptoms — see the recommendations below. A licensed doctor will confirm the underlying cause at your appointment.
       </div>
       ${stepsHtml}
       <div class="ps-lang-row">

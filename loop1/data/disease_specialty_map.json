@@ -3,570 +3,570 @@
     "specialty": "Pulmonology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Spontaneous pneumothorax requires immediate chest decompression assessment"
+    "reasoning": "This presentation requires immediate chest decompression assessment"
   },
   "Cluster headache": {
     "specialty": "Neurology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Cluster headache requires neurological evaluation and preventive therapy initiation"
+    "reasoning": "This presentation requires neurological evaluation and preventive therapy initiation"
   },
   "Boerhaave syndrome": {
     "specialty": "General Surgery",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Boerhaave syndrome is a surgical emergency requiring immediate intervention"
+    "reasoning": "This presentation is a surgical emergency requiring immediate intervention"
   },
   "SLE": {
     "specialty": "Rheumatology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "SLE requires rheumatological evaluation for immunosuppressive therapy"
+    "reasoning": "This presentation requires rheumatological evaluation for immunosuppressive therapy"
   },
   "Pulmonary embolism": {
     "specialty": "Pulmonology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Pulmonary embolism is a life-threatening emergency requiring immediate anticoagulation"
+    "reasoning": "This presentation is a life-threatening emergency requiring immediate anticoagulation"
   },
   "Anemia": {
     "specialty": "Hematology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Anemia requires hematological workup to determine underlying cause"
+    "reasoning": "This presentation requires hematological workup to determine underlying cause"
   },
   "Viral pharyngitis": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "telehealth_consultation",
-    "reasoning": "Viral pharyngitis is self-limiting and manageable via telehealth"
+    "reasoning": "This presentation is self-limiting and manageable via telehealth"
   },
   "Tuberculosis": {
     "specialty": "Infectious Disease",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Tuberculosis requires infectious disease evaluation and contact tracing"
+    "reasoning": "This presentation requires infectious disease evaluation and contact tracing"
   },
   "Myocarditis": {
     "specialty": "Cardiology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Myocarditis can cause fatal arrhythmias and requires immediate cardiac monitoring"
+    "reasoning": "This presentation can cause fatal arrhythmias and requires immediate cardiac monitoring"
   },
   "Pneumonia": {
     "specialty": "Pulmonology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Pneumonia requires prompt antibiotic therapy and severity assessment"
+    "reasoning": "This presentation requires prompt antibiotic therapy and severity assessment"
   },
   "Acute COPD exacerbation / infection": {
     "specialty": "Pulmonology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "COPD exacerbation requires bronchodilator therapy and infection management"
+    "reasoning": "This presentation requires bronchodilator therapy and infection management"
   },
   "GERD": {
     "specialty": "Gastroenterology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "GERD requires gastroenterological evaluation for acid suppression therapy"
+    "reasoning": "This presentation requires gastroenterological evaluation for acid suppression therapy"
   },
   "Bronchitis": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "telehealth_consultation",
-    "reasoning": "Acute bronchitis is typically self-limiting and manageable via telehealth"
+    "reasoning": "This presentation is typically self-limiting and manageable via telehealth"
   },
   "Bronchospasm / acute asthma exacerbation": {
     "specialty": "Pulmonology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Asthma exacerbation requires pulmonological assessment and inhaler therapy adjustment"
+    "reasoning": "This presentation requires pulmonological assessment and inhaler therapy adjustment"
   },
   "Allergic sinusitis": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "telehealth_consultation",
-    "reasoning": "Allergic sinusitis is manageable with antihistamines via telehealth"
+    "reasoning": "This presentation is manageable with antihistamines via telehealth"
   },
   "Chagas disease": {
     "specialty": "Infectious Disease",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Chagas disease requires antiparasitic therapy and cardiac monitoring"
+    "reasoning": "This presentation requires antiparasitic therapy and cardiac monitoring"
   },
   "Scombroid food poisoning": {
     "specialty": "Internal Medicine",
     "urgency": "urgent",
     "appointment_type": "same_day_appointment",
-    "reasoning": "Scombroid poisoning requires antihistamine treatment and monitoring"
+    "reasoning": "This presentation requires antihistamine treatment and monitoring"
   },
   "Acute laryngitis": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "telehealth_consultation",
-    "reasoning": "Acute laryngitis is self-limiting and manageable via telehealth"
+    "reasoning": "This presentation is self-limiting and manageable via telehealth"
   },
   "Possible NSTEMI / STEMI": {
     "specialty": "Cardiology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Possible MI is a cardiac emergency requiring immediate ECG and troponin assessment"
+    "reasoning": "This presentation is a cardiac emergency requiring immediate ECG and troponin assessment"
   },
   "Unstable angina": {
     "specialty": "Cardiology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Unstable angina requires immediate cardiac monitoring and intervention assessment"
+    "reasoning": "This presentation requires immediate cardiac monitoring and intervention assessment"
   },
   "Stable angina": {
     "specialty": "Cardiology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Stable angina requires cardiological evaluation and anti-ischemic therapy"
+    "reasoning": "This presentation requires cardiological evaluation and anti-ischemic therapy"
   },
   "Pericarditis": {
     "specialty": "Cardiology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Pericarditis requires cardiac evaluation for anti-inflammatory therapy"
+    "reasoning": "This presentation requires cardiac evaluation for anti-inflammatory therapy"
   },
   "Acute pulmonary edema": {
     "specialty": "Cardiology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Acute pulmonary edema is a cardiac emergency requiring immediate diuresis"
+    "reasoning": "This presentation is a cardiac emergency requiring immediate diuresis"
   },
   "Panic attack": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "telehealth_consultation",
-    "reasoning": "Panic attack requires initial assessment and referral to mental health if recurrent"
+    "reasoning": "This presentation requires initial assessment and referral to mental health if recurrent"
   },
   "Guillain-Barr\u00e9 syndrome": {
     "specialty": "Neurology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Guillain-Barr\u00e9 can cause respiratory failure and requires immediate neurological care"
+    "reasoning": "This presentation can cause respiratory failure and requires immediate neurological care"
   },
   "Atrial fibrillation": {
     "specialty": "Cardiology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Atrial fibrillation requires rate control and stroke risk assessment"
+    "reasoning": "This presentation requires rate control and stroke risk assessment"
   },
   "Larygospasm": {
     "specialty": "Internal Medicine",
     "urgency": "urgent",
     "appointment_type": "same_day_appointment",
-    "reasoning": "Laryngospasm requires same-day evaluation to rule out airway compromise"
+    "reasoning": "This presentation requires same-day evaluation to rule out airway compromise"
   },
   "Acute otitis media": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Acute otitis media requires antibiotic evaluation"
+    "reasoning": "This presentation requires antibiotic evaluation"
   },
   "Ruptured appendix": {
     "specialty": "General Surgery",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Ruptured appendix is a surgical emergency requiring immediate intervention"
+    "reasoning": "This presentation is a surgical emergency requiring immediate intervention"
   },
   "Appendicitis": {
     "specialty": "General Surgery",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Appendicitis requires urgent surgical evaluation to prevent rupture"
+    "reasoning": "This presentation requires urgent surgical evaluation to prevent rupture"
   },
   "Acute dystonic reactions": {
     "specialty": "Neurology",
     "urgency": "urgent",
     "appointment_type": "same_day_appointment",
-    "reasoning": "Acute dystonic reactions require neurological assessment and anticholinergic therapy"
+    "reasoning": "These findings require neurological assessment and anticholinergic therapy"
   },
   "Myasthenia gravis": {
     "specialty": "Neurology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Myasthenia gravis requires neurological evaluation and immunosuppressive therapy"
+    "reasoning": "This presentation requires neurological evaluation and immunosuppressive therapy"
   },
   "Epiglottitis": {
     "specialty": "Emergency Medicine",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Epiglottitis can cause complete airway obstruction and is a medical emergency"
+    "reasoning": "This presentation can cause complete airway obstruction and is a medical emergency"
   },
   "Whooping cough": {
     "specialty": "Infectious Disease",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Whooping cough requires antibiotic therapy and contact tracing"
+    "reasoning": "This presentation requires antibiotic therapy and contact tracing"
   },
   "Pulmonary neoplasm": {
     "specialty": "Pulmonology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Pulmonary neoplasm requires oncological staging workup"
+    "reasoning": "This presentation requires oncological staging workup"
   },
   "Sarcoidosis": {
     "specialty": "Pulmonology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Sarcoidosis requires pulmonological evaluation for systemic involvement"
+    "reasoning": "This presentation requires pulmonological evaluation for systemic involvement"
   },
   "PSVT": {
     "specialty": "Cardiology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "PSVT requires electrophysiological evaluation and rhythm management"
+    "reasoning": "This presentation requires electrophysiological evaluation and rhythm management"
   },
   "Anaphylaxis": {
     "specialty": "Emergency Medicine",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Anaphylaxis is a life-threatening emergency requiring immediate epinephrine"
+    "reasoning": "This presentation is a life-threatening emergency requiring immediate epinephrine"
   },
   "Acute rhinosinusitis": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "telehealth_consultation",
-    "reasoning": "Acute rhinosinusitis is typically self-limiting and manageable via telehealth"
+    "reasoning": "This presentation is typically self-limiting and manageable via telehealth"
   },
   "Chronic rhinosinusitis": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Chronic rhinosinusitis requires evaluation for underlying allergy or anatomical cause"
+    "reasoning": "This presentation requires evaluation for underlying allergy or anatomical cause"
   },
   "HIV (initial infection)": {
     "specialty": "Infectious Disease",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "HIV initial infection requires immediate infectious disease evaluation and ART initiation"
+    "reasoning": "This presentation requires immediate infectious disease evaluation and ART initiation"
   },
   "Influenza": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "telehealth_consultation",
-    "reasoning": "Influenza is manageable with antivirals via telehealth in non-high-risk patients"
+    "reasoning": "This presentation is manageable with antivirals via telehealth in non-high-risk patients"
   },
   "Pancreatic neoplasm": {
     "specialty": "Gastroenterology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Pancreatic neoplasm requires urgent oncological workup"
+    "reasoning": "This presentation requires urgent oncological workup"
   },
   "Acute pancreatitis": {
     "specialty": "Gastroenterology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Acute pancreatitis requires immediate IV fluids and monitoring for complications"
+    "reasoning": "This presentation requires immediate IV fluids and monitoring for complications"
   },
   "Chronic kidney disease": {
     "specialty": "Nephrology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "CKD requires nephrology evaluation for disease progression management"
+    "reasoning": "This presentation requires nephrology evaluation for disease progression management"
   },
   "Urinary tract infection": {
     "specialty": "Internal Medicine",
     "urgency": "routine",
     "appointment_type": "telehealth_consultation",
-    "reasoning": "Uncomplicated UTI is manageable with antibiotics via telehealth"
+    "reasoning": "This presentation is manageable with antibiotics via telehealth"
   },
   "Pyelonephritis": {
     "specialty": "Internal Medicine",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Pyelonephritis requires IV antibiotic evaluation to prevent sepsis"
+    "reasoning": "This presentation requires IV antibiotic evaluation to prevent sepsis"
   },
   "Nephrotic syndrome": {
     "specialty": "Nephrology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Nephrotic syndrome requires nephrology evaluation for biopsy and immunosuppression"
+    "reasoning": "This presentation requires nephrology evaluation for biopsy and immunosuppression"
   },
   "Celiac disease": {
     "specialty": "Gastroenterology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Celiac disease requires gastroenterological confirmation and dietary counseling"
+    "reasoning": "This presentation requires gastroenterological confirmation and dietary counseling"
   },
   "Crohn's disease": {
     "specialty": "Gastroenterology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Crohn's disease requires gastroenterological evaluation for immunosuppressive therapy"
+    "reasoning": "This presentation requires gastroenterological evaluation for immunosuppressive therapy"
   },
   "Acute nephritis": {
     "specialty": "Nephrology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Acute nephritis requires nephrology evaluation to prevent progression to renal failure"
+    "reasoning": "This presentation requires nephrology evaluation to prevent progression to renal failure"
   },
   "Pulmonary fibrosis": {
     "specialty": "Pulmonology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Pulmonary fibrosis requires pulmonological evaluation for antifibrotic therapy"
+    "reasoning": "This presentation requires pulmonological evaluation for antifibrotic therapy"
   },
   "Hypothyroidism": {
     "specialty": "Endocrinology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Hypothyroidism requires endocrine evaluation and thyroid hormone replacement"
+    "reasoning": "This presentation requires endocrine evaluation and thyroid hormone replacement"
   },
   "Hyperthyroidism": {
     "specialty": "Endocrinology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Hyperthyroidism requires endocrine evaluation to prevent thyroid storm"
+    "reasoning": "This presentation requires endocrine evaluation to prevent thyroid storm"
   },
   "Diabetes mellitus": {
     "specialty": "Endocrinology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Diabetes requires endocrinological evaluation for glycemic management"
+    "reasoning": "This presentation requires endocrinological evaluation for glycemic management"
   },
   "Systemic vasculitis": {
     "specialty": "Rheumatology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Systemic vasculitis requires rheumatological evaluation for immunosuppressive therapy"
+    "reasoning": "This presentation requires rheumatological evaluation for immunosuppressive therapy"
   },
   "Phlebitis": {
     "specialty": "Internal Medicine",
     "urgency": "urgent",
     "appointment_type": "same_day_appointment",
-    "reasoning": "Phlebitis requires evaluation to rule out DVT extension"
+    "reasoning": "This presentation requires evaluation to rule out DVT extension"
   },
   "DVT": {
     "specialty": "Hematology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "DVT requires anticoagulation initiation and PE risk assessment"
+    "reasoning": "This presentation requires anticoagulation initiation and PE risk assessment"
   },
   "Pulmonary arterial hypertension": {
     "specialty": "Pulmonology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "PAH requires pulmonological evaluation for vasodilator therapy"
+    "reasoning": "This presentation requires pulmonological evaluation for vasodilator therapy"
   },
   "CVST": {
     "specialty": "Neurology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "CVST requires immediate anticoagulation to prevent venous infarction"
+    "reasoning": "This presentation requires immediate anticoagulation to prevent venous infarction"
   },
   "Measles": {
     "specialty": "Infectious Disease",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Measles requires isolation, supportive care, and contact tracing"
+    "reasoning": "This presentation requires isolation, supportive care, and contact tracing"
   },
   "Cauda equina syndrome": {
     "specialty": "Neurology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Cauda equina syndrome is a surgical emergency to prevent permanent paralysis"
+    "reasoning": "This presentation is a surgical emergency to prevent permanent paralysis"
   },
   "Inflammatory back pain": {
     "specialty": "Rheumatology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "Inflammatory back pain requires rheumatological evaluation for spondyloarthropathy"
+    "reasoning": "This presentation requires rheumatological evaluation for spondyloarthropathy"
   },
   "Cellulitis": {
     "specialty": "Internal Medicine",
     "urgency": "urgent",
     "appointment_type": "same_day_appointment",
-    "reasoning": "Cellulitis requires antibiotic therapy and monitoring for systemic spread"
+    "reasoning": "This presentation requires antibiotic therapy and monitoring for systemic spread"
   },
   "Biliary colic": {
     "specialty": "Gastroenterology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Biliary colic requires gastroenterological evaluation for cholecystectomy planning"
+    "reasoning": "This presentation requires gastroenterological evaluation for cholecystectomy planning"
   },
   "Acute Coronary Syndrome": {
     "specialty": "Cardiology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Acute coronary syndrome requires immediate cardiac intervention assessment"
+    "reasoning": "This presentation requires immediate cardiac intervention assessment"
   },
   "ACS": {
     "specialty": "Cardiology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "ACS requires immediate cardiac intervention assessment"
+    "reasoning": "This presentation requires immediate cardiac intervention assessment"
   },
   "Aortic Dissection": {
     "specialty": "Cardiology",
     "urgency": "emergency",
     "appointment_type": "emergency_visit",
-    "reasoning": "Aortic dissection is a surgical emergency requiring immediate vascular intervention"
+    "reasoning": "This presentation is a surgical emergency requiring immediate vascular intervention"
   },
   "Cardiomyopathy": {
     "specialty": "Cardiology",
     "urgency": "urgent",
     "appointment_type": "urgent_appointment_within_48h",
-    "reasoning": "Cardiomyopathy requires cardiac evaluation for heart failure management"
+    "reasoning": "This presentation requires cardiac evaluation for heart failure management"
   },
   "Gastroesophageal Reflux Disease": {
     "specialty": "Gastroenterology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "GERD requires gastroenterological evaluation for acid suppression therapy"
+    "reasoning": "This presentation requires gastroenterological evaluation for acid suppression therapy"
   },
   "Gastroesophageal Reflux Disease (GERD)": {
     "specialty": "Gastroenterology",
     "urgency": "routine",
     "appointment_type": "routine_appointment",
-    "reasoning": "GERD requires gastroenterological evaluation for acid suppression therapy"
+    "reasoning": "This presentation requires gastroenterological evaluation for acid suppression therapy"
   },
   "Upper respiratory tract infection": {
     "specialty": "General Practice",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "URTI is typically managed by a general practitioner"
+    "reasoning": "This presentation is typically managed by a general practitioner"
   },
   "Common cold": {
     "specialty": "General Practice",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Common cold requires basic GP assessment and symptomatic treatment"
+    "reasoning": "This presentation requires basic GP assessment and symptomatic treatment"
   },
   "Tension headache": {
     "specialty": "General Practice",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Tension headache is a primary care diagnosis"
+    "reasoning": "This presentation is a primary care diagnosis"
   },
   "Type 2 diabetes mellitus": {
     "specialty": "General Practice",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Uncomplicated T2DM is managed in primary care"
+    "reasoning": "This presentation is managed in primary care"
   },
   "Hypertension": {
     "specialty": "General Practice",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Essential hypertension is a core GP condition"
+    "reasoning": "This presentation is a core GP condition"
   },
   "Kidney stones": {
     "specialty": "Urology",
     "urgency": "urgent",
     "appointment_type": "in_person",
-    "reasoning": "Nephrolithiasis requires urological management"
+    "reasoning": "This presentation requires urological management"
   },
   "Benign prostatic hyperplasia": {
     "specialty": "Urology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "BPH is a core urological condition"
+    "reasoning": "This presentation is a core urological condition"
   },
   "Bladder infection": {
     "specialty": "Urology",
     "urgency": "urgent",
     "appointment_type": "in_person",
-    "reasoning": "Bladder infection requires urological assessment"
+    "reasoning": "This presentation requires urological assessment"
   },
   "Prostatitis": {
     "specialty": "Urology",
     "urgency": "urgent",
     "appointment_type": "in_person",
-    "reasoning": "Prostatitis requires urology review and culture-guided treatment"
+    "reasoning": "This presentation requires urology review and culture-guided treatment"
   },
   "Polycystic ovary syndrome": {
     "specialty": "Gynecology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "PCOS requires gynaecological and endocrine evaluation"
+    "reasoning": "This presentation requires gynaecological and endocrine evaluation"
   },
   "Endometriosis": {
     "specialty": "Gynecology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Endometriosis is managed by a gynaecologist"
+    "reasoning": "This presentation is managed by a gynaecologist"
   },
   "Pelvic inflammatory disease": {
     "specialty": "Gynecology",
     "urgency": "urgent",
     "appointment_type": "in_person",
-    "reasoning": "PID requires prompt gynaecological treatment to prevent complications"
+    "reasoning": "This presentation requires prompt gynaecological treatment to prevent complications"
   },
   "Menstrual irregularities": {
     "specialty": "Gynecology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Menstrual disorders are assessed by a gynaecologist"
+    "reasoning": "These findings are assessed by a gynaecologist"
   },
   "Ovarian cyst": {
     "specialty": "Gynecology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Ovarian cysts require gynaecological imaging and follow-up"
+    "reasoning": "These findings require gynaecological imaging and follow-up"
   },
   "Conjunctivitis": {
     "specialty": "Ophthalmology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Conjunctivitis requires ophthalmological evaluation to rule out keratitis"
+    "reasoning": "This presentation requires ophthalmological evaluation to rule out keratitis"
   },
   "Glaucoma": {
     "specialty": "Ophthalmology",
     "urgency": "urgent",
     "appointment_type": "in_person",
-    "reasoning": "Glaucoma requires urgent IOP measurement and specialist management"
+    "reasoning": "This presentation requires urgent IOP measurement and specialist management"
   },
   "Diabetic retinopathy": {
     "specialty": "Ophthalmology",
     "urgency": "urgent",
     "appointment_type": "in_person",
-    "reasoning": "Diabetic retinopathy requires ophthalmological screening and laser therapy"
+    "reasoning": "This presentation requires ophthalmological screening and laser therapy"
   },
   "Cataract": {
     "specialty": "Ophthalmology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Cataracts are surgically managed by an ophthalmologist"
+    "reasoning": "These findings are surgically managed by an ophthalmologist"
   },
   "Dry eye syndrome": {
     "specialty": "Ophthalmology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Dry eye requires ophthalmological assessment and treatment"
+    "reasoning": "This presentation requires ophthalmological assessment and treatment"
   },
   "Eczema": {
     "specialty": "Dermatology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Eczema requires dermatological assessment and topical therapy"
+    "reasoning": "This presentation requires dermatological assessment and topical therapy"
   },
   "Psoriasis": {
     "specialty": "Dermatology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Psoriasis requires dermatological treatment and monitoring"
+    "reasoning": "This presentation requires dermatological treatment and monitoring"
   },
   "Acne vulgaris": {
     "specialty": "Dermatology",
     "urgency": "routine",
     "appointment_type": "in_person",
-    "reasoning": "Acne requires dermatological evaluation and prescription treatment"
+    "reasoning": "This presentation requires dermatological evaluation and prescription treatment"
   },
   "Urticaria": {
     "specialty": "Dermatology",
     "urgency": "urgent",
     "appointment_type": "in_person",
-    "reasoning": "Chronic urticaria requires dermatological allergy workup"
+    "reasoning": "This presentation requires dermatological allergy workup"
   },
   "Skin infection": {
     "specialty": "Dermatology",
     "urgency": "urgent",
     "appointment_type": "in_person",
-    "reasoning": "Skin infections require dermatological culture and antibiotic treatment"
+    "reasoning": "These findings require dermatological culture and antibiotic treatment"
   }
 }

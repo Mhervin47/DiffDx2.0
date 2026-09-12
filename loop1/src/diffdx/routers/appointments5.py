@@ -130,6 +130,12 @@ async def get_symptom_history(request: Request, db: Session = Depends(get_sessio
                 "appointment_id": appt["appointment_id"],
                 "slot": appt.get("slot", ""),
                 "doctor_name": appt.get("doctor_name", ""),
+                "specialty": appt.get("specialty", ""),
+                # Still sent (some other caller may want it) but the web UI
+                # no longer displays this — it's the AI's own generated
+                # label from booking time, not something a doctor confirmed,
+                # same reasoning as the report page's redesign (see
+                # REPORT_PAGE_REDESIGN.md).
                 "primary_diagnosis": appt.get("primary_diagnosis", ""),
                 "symptoms": symptoms,
                 "status": appt.get("status", ""),

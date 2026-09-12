@@ -221,10 +221,20 @@ async def download_patient_file(appt_id: str, filename: str, request: Request):
     if not raw_b64:
         raise HTTPException(status_code=404, detail="File data not found.")
     data = base64.b64decode(raw_b64)
+    # A raw non-Latin-1 filename (emoji, many non-English scripts — e.g. a
+    # phone camera roll name) crashes header construction outright:
+    # Response.init_headers encodes header values as latin-1, so this
+    # raised an unhandled UnicodeEncodeError (500) with no meaningful
+    # message reaching the client. Same fix already applied to the
+    # doctor-side equivalent (routers/appointments2.py's
+    # doctor_download_patient_file), found live there via a macOS
+    # screenshot's narrow no-break space (U+202F) — this route just never
+    # got the same treatment.
+    safe_name = filename.encode("ascii", "replace").decode("ascii")
     return Response(
         content=data,
         media_type=rec.get("mime_type", "application/octet-stream"),
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
     )
 
 

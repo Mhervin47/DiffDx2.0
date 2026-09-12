@@ -2111,6 +2111,7 @@
           <a href="#how-it-works" class="footer-link">How it works</a>
           <a href="#why-diffdx" class="footer-link">Features</a>
           <a href="#faq" class="footer-link">FAQ</a>
+          <button type="button" id="footer-terms-link" class="footer-link" style="background:none;border:none;padding:0;margin:0;cursor:pointer;font-family:inherit;">Terms &amp; Conditions</button>
           <div class="footer-sep"></div>
 
           <!-- FOOTER THEME TOGGLE -->
@@ -2153,6 +2154,7 @@
 
   <!-- AUTH LOGIC & THEME SWITCHER -->
   <script src="/auth.js"></script>
+  <script src="/consent-modal.js"></script>
   <script>
     initAuthNav();
 
@@ -2177,6 +2179,17 @@
     const footerToggleBtn = document.getElementById('footer-theme-toggle');
     if (footerToggleBtn) {
       footerToggleBtn.addEventListener('click', handleThemeToggle);
+    }
+
+    // Footer "Terms & Conditions" — reuses the same consent modal shown
+    // before starting a diagnosis (single source of truth for the legal
+    // text), opened here purely for reading: no onAccept/onCancel means
+    // closing it (Cancel, Escape, backdrop click) has no side effects.
+    const footerTermsBtn = document.getElementById('footer-terms-link');
+    if (footerTermsBtn) {
+      footerTermsBtn.addEventListener('click', () => {
+        if (window.DiffDxConsent) window.DiffDxConsent.show();
+      });
     }
   </script>
 

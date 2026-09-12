@@ -776,9 +776,11 @@
     .record-block { margin-bottom: 14px; }
     .record-block:last-child { margin-bottom: 0; }
     .record-block-label {
+      display: flex; align-items: center; gap: 6px;
       font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
       color: var(--text-muted); margin-bottom: 8px;
     }
+    .record-block-label svg { flex-shrink: 0; }
     .record-note-text { font-size: 13.5px; color: var(--text-dim); line-height: 1.55; }
     .record-rx-row { padding: 8px 0; border-bottom: 1px dashed var(--border-card); }
     .record-rx-row:last-child { border-bottom: none; }
@@ -942,6 +944,20 @@
     .test-priority.stat { background: rgba(239,68,68,.15); color: #ef4444; }
     .test-priority.urgent { background: rgba(245,158,11,.15); color: #f59e0b; }
     .test-priority.routine { background: rgba(16,185,129,.12); color: var(--success); }
+    .test-upload-btn {
+      display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 700; padding: 5px 12px;
+      border-radius: 9999px; border: 1px solid var(--border-card);
+      background: var(--bg-card); color: var(--text-dim);
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .test-upload-btn:hover { border-color: var(--teal-primary); color: var(--teal-primary); }
+    .test-uploaded-badge {
+      display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 700; padding: 4px 12px;
+      border-radius: 9999px; border: 1px solid rgba(13, 148, 136, 0.3);
+      background: rgba(13, 148, 136, 0.1); color: var(--teal-primary); white-space: nowrap;
+    }
 
     /* Modals */
     .modal-overlay {
@@ -1617,11 +1633,29 @@ async function loadSessions() {
                 other: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31"/><path d="M14 9.3V2"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>`,
               };
               const cat = t.category || 'other';
+              // Each test order needs its own upload control tied to
+              // test_order_id — the generic "Upload Test Results" dropzone
+              // at the bottom of the card only sends the file with no
+              // test_order_id, so it can never actually mark a specific
+              // ordered test as done (results_uploaded stays false forever,
+              // which is why doctors never saw it reflected).
+              const uploadCtl = t.results_uploaded
+                ? `<span class="test-uploaded-badge">
+                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                     Uploaded
+                   </span>`
+                : `<label class="test-upload-btn" title="Upload result for this test">
+                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                     Upload
+                     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.heic,image/*,application/pdf"
+                       style="display:none" onchange="uploadTestOrderResult(event,'${apptId}','${escHtml(t.id)}')">
+                   </label>`;
               return `<div class="test-card">
                 <div class="test-icon ${cat}">${iconMap[cat] || iconMap.other}</div>
                 <div class="test-name">${escHtml(t.test||'')}</div>
                 ${t.notes ? `<div style="font-size:11px;color:var(--text-muted);">${escHtml(t.notes)}</div>` : ''}
                 <span class="test-priority ${t.priority||'routine'}">${escHtml(t.priority||'routine')}</span>
+                ${uploadCtl}
               </div>`;
             }).join('')}
           </div>
@@ -1777,7 +1811,7 @@ function _buildRecordsPanel(appts) {
   listEl.innerHTML = sorted.map(a => {
     const rxHtml = (a.prescriptions || []).length ? `
       <div class="record-block">
-        <div class="record-block-label">💊 Prescriptions</div>
+        <div class="record-block-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v11m0 0H5m4 0h10m-10 0a2 2 0 002 2h10a2 2 0 002-2m0-11v4"/></svg> Prescriptions</div>
         ${a.prescriptions.map(p => `
           <div class="record-rx-row">
             <div class="record-rx-drug">${escHtml(p.drug || '')}</div>
@@ -1788,7 +1822,7 @@ function _buildRecordsPanel(appts) {
 
     const testsHtml = (a.test_orders || []).length ? `
       <div class="record-block">
-        <div class="record-block-label">🧪 Test Orders</div>
+        <div class="record-block-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/></svg> Test Orders</div>
         ${a.test_orders.map(t => `
           <div class="record-test-row">
             <span>${escHtml(t.test || '')}</span>
@@ -1798,7 +1832,7 @@ function _buildRecordsPanel(appts) {
 
     const noteHtml = a.doctor_summary ? `
       <div class="record-block">
-        <div class="record-block-label">📝 Doctor's Note</div>
+        <div class="record-block-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Doctor's Note</div>
         <div class="record-note-text">${escHtml(a.doctor_summary)}</div>
       </div>` : '';
 
@@ -1807,13 +1841,13 @@ function _buildRecordsPanel(appts) {
     // on the page" precedence as report.html gives it.
     const confirmedDxHtml = a.confirmed_diagnosis ? `
       <div class="record-block">
-        <div class="record-block-label">✅ Confirmed Diagnosis</div>
+        <div class="record-block-label" style="color:var(--teal-primary);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Confirmed Diagnosis</div>
         <div class="record-note-text">${escHtml(a.confirmed_diagnosis)}</div>
       </div>` : '';
 
     const referralHtml = a.referral ? `
       <div class="record-block">
-        <div class="record-block-label">➜ Referral</div>
+        <div class="record-block-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> Referral</div>
         <div class="record-note-text">${a.referral.to_doctor ? `Referred to Dr. ${escHtml(a.referral.to_doctor)}` : `Referred to any available ${escHtml(a.referral.specialty || '')} specialist`}${a.referral.notes ? ' — ' + escHtml(a.referral.notes) : ''}</div>
       </div>` : '';
 
@@ -2183,6 +2217,41 @@ async function onFilePicked(apptId, files) {
   } finally {
     dz.innerHTML = prev;
     document.getElementById('fi-' + apptId).value = '';
+  }
+}
+async function uploadTestOrderResult(event, apptId, testOrderId) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!_ALLOWED_FILE_TYPES.has(file.type)) {
+    alert('Only PDF and image files (JPEG, PNG, GIF, WebP, HEIC) are allowed.');
+    input.value = '';
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    alert('File is too large. Maximum size is 10 MB.');
+    input.value = '';
+    return;
+  }
+  const label = input.closest('.test-upload-btn');
+  const prevHtml = label ? label.innerHTML : '';
+  if (label) label.innerHTML = '<div class="spinner" style="width:12px;height:12px;margin:0;"></div>';
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('test_order_id', testOrderId);
+  try {
+    const res = await fetch(`/api/patient/appointments/${apptId}/files`, {
+      method: 'POST', headers: { ...authHeaders() }, body: fd,
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Upload failed');
+    // Full refresh — the test's results_uploaded flag lives on the
+    // appointment object loadSessions() re-fetches, same source of truth
+    // the Records tab and the badge counts already depend on.
+    await loadSessions();
+  } catch (e) {
+    if (label) label.innerHTML = prevHtml;
+    input.value = '';
+    alert('Upload failed: ' + e.message);
   }
 }
 async function removeFile(apptId, filename) {

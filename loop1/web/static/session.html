@@ -21,6 +21,59 @@
   <link rel="stylesheet" href="/styles.css">
   <script src="/auth.js"></script>
   <style>
+    /* ── Design Tokens (Standardized across DiffDx) ── */
+    :root {
+      --bg-dark: #F1F5F9;
+      --bg-card: #FFFFFF;
+      --border-card: #CBD5E1;
+      --teal-primary: #0D9488;
+      --teal-glow: rgba(13, 148, 136, 0.15);
+      --blue-secondary: #2563EB;
+      --purple-accent: #6D28D9;
+      --amber-accent: #D97706;
+      --text-main: #000000;
+      --text-muted: #334155;
+      --nav-bg: rgba(255, 255, 255, 0.92);
+      --fi-bg: #F8FAFC;
+      --fi-border: #0D9488;
+      --wf-bg: #F1F5F9;
+      --btn-nav-bg: #FFFFFF;
+      --btn-nav-border: #94A3B8;
+      --btn-nav-text: #0F1D32;
+      --font-heading: 'Sora', sans-serif;
+      --font-body: 'Noto Sans', sans-serif;
+      --logo-teal: #0A766C;
+      --logo-purple: #5B21B6;
+      --logo-blue: #1D4ED8;
+      --logo-fill: rgba(10, 118, 108, 0.14);
+      --logo-filter: drop-shadow(0 2px 8px rgba(10, 118, 108, 0.4));
+    }
+
+    html.dark-theme {
+      --bg-dark: #050D18;
+      --bg-card: #0A1525;
+      --border-card: rgba(150, 180, 210, 0.08);
+      --teal-primary: #19C6AD;
+      --teal-glow: rgba(25, 198, 173, 0.15);
+      --blue-secondary: #4C8FF5;
+      --purple-accent: #8174E8;
+      --amber-accent: #F59E0B;
+      --text-main: #EAF2FA;
+      --text-muted: #8FA2B9;
+      --nav-bg: rgba(5, 13, 24, 0.85);
+      --fi-bg: #0C192A;
+      --fi-border: rgba(25, 198, 173, 0.35);
+      --wf-bg: #081220;
+      --btn-nav-bg: rgba(255, 255, 255, 0.04);
+      --btn-nav-border: rgba(150, 180, 210, 0.10);
+      --btn-nav-text: #EAF2FA;
+      --logo-teal: #19C6AD;
+      --logo-purple: #8174E8;
+      --logo-blue: #4C8FF5;
+      --logo-fill: rgba(25, 198, 173, 0.12);
+      --logo-filter: drop-shadow(0 0 10px rgba(25, 198, 173, 0.45));
+    }
+
     /* ── base ── */
     *,
     *::before,
@@ -30,8 +83,11 @@
 
     body {
       overflow: hidden;
-      background: #080810;
-      font-family: 'Noto Sans', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: 0;
     }
 
     /* ── keyframes ── */
@@ -191,71 +247,115 @@
       }
     }
 
-    /* ── nav ── */
-    .nav {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+    /* ── Header Navbar (Standardized from history.html) ── */
+    .nav-bar {
+      position: sticky;
+      top: 0;
       z-index: 1000;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      column-gap: 10px;
-      padding: 0 20px;
-      height: 52px;
-      background: rgba(8, 8, 16, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 9999px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-      width: 90%;
-      max-width: 900px;
-      min-width: 640px;
-      flex-shrink: 0;
-    }
-
-    .nav-back-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 16px;
-      border-radius: 9999px;
-      border: 1px solid rgba(255, 255, 255, .1);
-      background: rgba(255, 255, 255, .04);
-      color: rgba(148, 163, 184, .8);
-      font-family: 'Sora', sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all .2s ease;
-      white-space: nowrap;
-      flex-shrink: 0;
-      justify-self: start;
-    }
-
-    .nav-back-pill:hover {
-      border-color: rgba(168, 85, 247, .45);
-      background: rgba(168, 85, 247, .08);
-      color: #c084fc;
-      box-shadow: 0 0 18px rgba(168, 85, 247, .2);
-    }
-
-    .nav-center-logo {
+      background: var(--nav-bg);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0 28px;
+      height: 56px;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      min-width: 0;
-      overflow: hidden;
+      justify-content: space-between;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      width: 100%;
+      flex-shrink: 0;
     }
 
-    .theme-toggle-btn {
+    .nav-home, .nav-signin-btn, #nav-auth a.btn, #nav-auth a.btn-ghost, #nav-auth a {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 7px 16px !important; border-radius: 9999px !important;
+      background: var(--btn-nav-bg) !important;
+      border: 1.5px solid var(--btn-nav-border) !important;
+      color: var(--btn-nav-text) !important; font-family: var(--font-heading) !important;
+      font-size: 13px !important; font-weight: 700 !important; text-decoration: none !important;
+      box-shadow: 0 2px 6px rgba(15, 29, 50, 0.05);
+      transition: all .25s ease !important;
+      cursor: pointer;
+    }
+
+    .nav-home:hover, .nav-signin-btn:hover, #nav-auth a.btn:hover, #nav-auth a.btn-ghost:hover, #nav-auth a:hover {
+      color: var(--teal-primary) !important;
+      border-color: var(--teal-primary) !important;
+      background: rgba(16, 191, 165, 0.08) !important;
+      box-shadow: 0 0 16px rgba(16, 191, 165, 0.2) !important;
+    }
+
+    #nav-auth #nav-notif-btn, #nav-auth #nav-refill-btn, #nav-auth .nav-icon-btn {
+      padding: 0 !important;
+      border-radius: 50% !important;
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
+      box-sizing: border-box !important;
       display: inline-flex !important;
       align-items: center !important;
       justify-content: center !important;
+    }
+
+    .nav-refresh-btn svg,
+    #nav-notif-btn svg, #nav-refill-btn svg, .nav-icon-btn svg {
+      display: block !important;
+      flex-shrink: 0 !important;
+      width: 16px !important;
+      height: 16px !important;
+    }
+
+    .theme-toggle-btn svg {
+      flex-shrink: 0 !important;
+      width: 16px !important;
+      height: 16px !important;
+    }
+
+    .nav-center-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .logo-symbol {
+      width: 28px;
+      height: 28px;
+      filter: var(--logo-filter);
+      transition: filter 0.2s ease;
+    }
+
+    .logo-text {
+      font-family: var(--font-heading);
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -.03em;
+    }
+
+    .logo-accent {
+      background: linear-gradient(90deg, var(--logo-teal), var(--logo-blue));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-right-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle-btn {
       width: 38px !important;
       height: 38px !important;
       min-width: 38px !important;
@@ -265,68 +365,48 @@
       border-radius: 50% !important;
       box-sizing: border-box !important;
       padding: 0 !important;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-      color: rgba(255, 255, 255, 0.8);
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
       cursor: pointer;
-      transition: all 0.2s;
-      margin-right: 6px;
-    }
-
-    /* Nav icon SVG size lock */
-    .nav-refresh-btn svg,
-    #nav-notif-btn svg,
-    #nav-refill-btn svg,
-    .nav-icon-btn svg {
-      display: block !important;
-      flex-shrink: 0 !important;
-      width: 16px !important;
-      height: 16px !important;
-    }
-
-    /* Theme toggle: NO display override — sun/moon toggled via display:none */
-    .theme-toggle-btn svg {
-      flex-shrink: 0 !important;
-      width: 16px !important;
-      height: 16px !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      outline: none;
     }
 
     .theme-toggle-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: #ffffff;
+      border-color: var(--teal-primary);
+      color: var(--teal-primary);
+      transform: scale(1.05);
     }
 
-    html.dark-theme .sun-icon {
-      display: block !important;
+    html.dark-theme .theme-toggle-btn,
+    html.dark-theme #theme-toggle,
+    html.dark-theme .nav-refresh-btn,
+    html.dark-theme #nav-notif-btn,
+    html.dark-theme .nav-icon-btn,
+    html.dark-theme #nav-refill-btn {
+      background: rgba(255, 255, 255, 0.06) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      color: #cbd5e1 !important;
+    }
+    html.dark-theme .theme-toggle-btn:hover,
+    html.dark-theme #theme-toggle:hover,
+    html.dark-theme .nav-refresh-btn:hover,
+    html.dark-theme #nav-notif-btn:hover,
+    html.dark-theme .nav-icon-btn:hover,
+    html.dark-theme #nav-refill-btn:hover {
+      background: rgba(20, 184, 166, 0.12) !important;
+      border-color: var(--teal, #14b8a6) !important;
+      color: var(--teal, #14b8a6) !important;
     }
 
-    html.dark-theme .moon-icon {
-      display: none !important;
-    }
-
-    html:not(.dark-theme) .sun-icon {
-      display: none !important;
-    }
-
-    html:not(.dark-theme) .moon-icon {
-      display: block !important;
-    }
-
-    .nav-right-cluster {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      justify-self: end;
-      min-width: 0;
-      overflow: hidden;
-    }
-
-    .nav-right-cluster .session-chip {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      min-width: 0;
-    }
+    .theme-toggle-btn .sun-icon { display: none; }
+    .theme-toggle-btn .moon-icon { display: block; }
+    .dark-theme .theme-toggle-btn .moon-icon { display: none; }
+    .dark-theme .theme-toggle-btn .sun-icon { display: block; }
 
     .session-chip {
       display: inline-flex;
@@ -345,11 +425,21 @@
       border: 1px solid rgba(255, 255, 255, .08);
       color: rgba(148, 163, 184, .7);
     }
+    html:not(.dark-theme) .chip-dim {
+      background: rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      color: #64748b;
+    }
 
     .chip-teal {
       background: rgba(16, 185, 129, .1);
       border: 1px solid rgba(16, 185, 129, .25);
       color: #34d399;
+    }
+    html:not(.dark-theme) .chip-teal {
+      background: rgba(13, 148, 136, 0.1);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+      color: #0d9488;
     }
 
     .chip-green {
@@ -357,13 +447,18 @@
       border: 1px solid rgba(16, 185, 129, .3);
       color: #4ede9e;
     }
+    html:not(.dark-theme) .chip-green {
+      background: rgba(13, 148, 136, 0.1);
+      border: 1px solid rgba(13, 148, 136, 0.3);
+      color: #0d9488;
+    }
 
     /* ── main layout ── */
     .session-shell {
       display: flex;
       flex-direction: column;
-      height: 100vh;
-      padding-top: 84px;
+      height: calc(100vh - 56px);
+      padding-top: 0;
       overflow: hidden;
     }
 
@@ -381,6 +476,112 @@
       flex-direction: column;
       overflow: hidden;
       min-width: 0;
+      border-radius: 20px;
+      margin: 16px 10px 16px 18px;
+      background: #0A1525;
+      border: 1px solid rgba(150, 180, 210, 0.08);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .session-layout.right-collapsed .session-left {
+      margin-right: 18px;
+    }
+
+    /* ── chat header (Clinical Interview) ── */
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(150, 180, 210, 0.08);
+      background: transparent;
+      flex-shrink: 0;
+      gap: 16px;
+    }
+
+    .chat-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .chat-header-bar {
+      width: 3.5px;
+      height: 32px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, var(--logo-teal) 0%, #10b981 100%);
+      flex-shrink: 0;
+    }
+
+    .chat-header-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .chat-header-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: #EAF2FA;
+      letter-spacing: -0.02em;
+      margin: 0;
+      line-height: 1.25;
+    }
+
+    .chat-header-subtitle {
+      font-family: 'Noto Sans', sans-serif;
+      font-size: 12.5px;
+      font-weight: 400;
+      color: #8FA2B9;
+      margin: 0;
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .chat-header-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: #8FA2B9;
+      font-family: 'Noto Sans', sans-serif;
+    }
+
+    .chat-header-meta-row svg {
+      stroke: #8FA2B9;
+      flex-shrink: 0;
+    }
+
+    .chat-copy-btn {
+      background: transparent;
+      border: none;
+      padding: 2px 4px;
+      cursor: pointer;
+      color: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      opacity: 0.8;
+      transition: opacity 0.2s, color 0.2s;
+    }
+
+    .chat-copy-btn:hover {
+      opacity: 1;
+      color: var(--logo-teal);
     }
 
     .live-dot {
@@ -442,28 +643,46 @@
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: rgba(16, 185, 129, 0.04);
-      border: 1.5px solid rgba(16, 185, 129, 0.25);
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+      background: transparent;
+      border: none;
+      box-shadow: none;
       flex-shrink: 0;
     }
 
+    .bubble-doctor-icon .bubble-logo {
+      width: 40px;
+      height: 40px;
+      filter: var(--logo-filter);
+      flex-shrink: 0;
+    }
+
+    .bubble-doctor-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-width: 82%;
+      min-width: 0;
+    }
+
     .bubble-doctor-body {
-      background: rgba(255, 255, 255, .025);
-      border: 1px solid rgba(255, 255, 255, .06);
-      border-radius: 16px;
-      padding: 14px 18px;
-      font-size: 15px;
-      line-height: 1.75;
+      width: fit-content;
+      max-width: 100%;
+      background: rgba(255, 255, 255, .03);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 18px;
+      padding: 16px 22px;
+      font-size: 16px;
+      line-height: 1.7;
       color: #e2e8f0;
-      word-break: break-word;
+      word-break: normal;
+      overflow-wrap: break-word;
     }
 
     .bubble-doctor-label {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 800;
       letter-spacing: .1em;
-      color: #10b981;
+      color: var(--logo-teal);
       text-transform: uppercase;
       margin-bottom: 6px;
       display: flex;
@@ -473,42 +692,86 @@
 
     .bubble-patient {
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: flex-start;
+      gap: 12px;
       margin-bottom: 24px;
     }
 
+    .bubble-patient-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      max-width: 82%;
+      min-width: 0;
+      gap: 5px;
+    }
+
     .bubble-patient-body {
-      max-width: 76%;
-      background: rgba(168, 85, 247, 0.06);
-      border: 1px solid rgba(168, 85, 247, 0.15);
-      border-radius: 16px;
-      padding: 12px 18px;
-      font-size: 15px;
-      line-height: 1.7;
+      width: fit-content;
+      max-width: 100%;
+      min-width: 80px;
+      background: rgba(168, 85, 247, 0.08);
+      border: 1.5px solid rgba(168, 85, 247, 0.22);
+      border-radius: 18px;
+      padding: 16px 22px;
+      font-size: 16px;
+      line-height: 1.6;
       color: #e2e8f0;
-      word-break: break-word;
+      word-break: normal;
+      overflow-wrap: break-word;
+    }
+
+    .bubble-patient-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(168, 85, 247, 0.1);
+      border: 1.8px solid rgba(168, 85, 247, 0.35);
+      color: #c084fc;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.18);
+      flex-shrink: 0;
     }
 
     .bubble-timestamp {
-      font-size: 11px;
-      color: rgba(148, 163, 184, 0.4);
+      font-size: 12px;
+      color: rgba(148, 163, 184, 0.5);
       margin-left: 4px;
     }
 
     .bubble-patient-footer {
       display: flex;
       align-items: center;
-      gap: 4px;
-      margin-top: 4px;
-      font-size: 11px;
-      color: rgba(148, 163, 184, 0.4);
+      justify-content: flex-end;
+      gap: 5px;
+      margin-top: 2px;
+      font-size: 12px;
+      color: rgba(148, 163, 184, 0.5);
     }
 
     /* thinking / doctor typing */
     .bubble-doctor-typing {
       animation: bubble-in .3s cubic-bezier(.22, .68, 0, 1.15) both;
       margin-bottom: 24px;
+    }
+
+    .bubble-doctor-typing .bubble-logo {
+      animation: doc-pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes doc-pulse {
+      0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 6px rgba(25, 198, 173, 0.35));
+      }
+      50% {
+        transform: scale(1.06);
+        filter: drop-shadow(0 0 14px rgba(25, 198, 173, 0.7));
+      }
     }
 
     .health-thinking {
@@ -587,16 +850,19 @@
     /* ── voice interaction panel ── */
     .voice-interaction-panel {
       background: rgba(9, 21, 37, 0.88);
-      border: 1px solid rgba(150, 180, 210, 0.10);
-      border-radius: 24px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+      border-top: 1px solid rgba(150, 180, 210, 0.08);
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+      border-radius: 0 0 20px 20px;
+      box-shadow: none;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      margin: 10px 20px 20px;
-      padding: 20px 24px;
+      margin: 0;
+      padding: 16px 24px 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
       flex-shrink: 0;
     }
 
@@ -858,8 +1124,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 58px;
-      height: 58px;
+      width: 66px;
+      height: 66px;
       border-radius: 50%;
       border: 1.5px solid rgba(25, 198, 173, 0.3);
       background: #0C192A;
@@ -887,27 +1153,28 @@
     .answer-textarea {
       flex: 1;
       background: #0C192A;
-      border: 1px solid rgba(150, 180, 210, 0.10);
-      border-radius: 18px;
+      border: 1.5px solid rgba(150, 180, 210, 0.15);
+      border-radius: 20px;
       color: #F3F7FB;
       font-family: 'Noto Sans', sans-serif;
-      font-size: 14.5px;
+      font-size: 16px;
       line-height: 1.6;
-      padding: 16px 20px;
+      padding: 18px 24px;
       resize: none;
       outline: none;
       transition: border-color .2s, box-shadow .2s;
-      min-height: 58px;
-      max-height: 130px;
+      min-height: 66px;
+      max-height: 160px;
     }
 
     .answer-textarea:focus {
-      border-color: #19C6AD;
-      box-shadow: 0 0 0 3px rgba(25, 198, 173, 0.08);
+      border-color: var(--logo-teal);
+      box-shadow: 0 0 0 3px rgba(25, 198, 173, 0.12);
     }
 
     .answer-textarea::placeholder {
       color: #71859C;
+      font-size: 15.5px;
     }
 
     #send-btn {
@@ -915,17 +1182,17 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      height: 58px;
-      padding: 0 24px;
-      border-radius: 16px;
+      height: 66px;
+      padding: 0 28px;
+      border-radius: 18px;
       font-family: 'Sora', sans-serif;
       font-weight: 700;
-      font-size: 13.5px;
+      font-size: 15px;
       border: none;
       cursor: pointer;
       background: linear-gradient(135deg, #19C6AD 0%, #3978F6 100%);
       color: #ffffff;
-      box-shadow: 0 4px 15px rgba(25, 198, 173, 0.15);
+      box-shadow: 0 4px 15px rgba(25, 198, 173, 0.18);
       transition: box-shadow .2s, transform .15s;
       flex-shrink: 0;
     }
@@ -1152,153 +1419,423 @@
       border-radius: 4px;
     }
 
-    /* chief complaint block (right panel) */
+    /* Patient Context Card (right panel) */
+    .patient-context-card,
     .complaint-block {
-      background: rgba(16, 185, 129, .05);
-      border: 1px solid rgba(16, 185, 129, .15);
-      border-radius: 16px;
-      padding: 18px 20px;
-      margin-bottom: 28px;
+      background: rgba(30, 41, 59, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 20px 20px 18px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+      transition: all 0.2s ease;
     }
 
-    .complaint-label {
-      font-family: 'Sora', sans-serif;
-      font-size: 11.5px;
-      font-weight: 800;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: rgba(16, 185, 129, .7);
-      margin-bottom: 8px;
+    .patient-context-header {
       display: flex;
       align-items: center;
-      gap: 7px;
+      justify-content: space-between;
+      margin-bottom: 14px;
     }
 
-    .complaint-text {
+    .patient-context-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .patient-context-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .patient-context-avatar svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .patient-context-title {
       font-family: 'Sora', sans-serif;
-      font-size: 19px;
+      font-size: 17.5px;
       font-weight: 700;
       color: #f1f5f9;
-      letter-spacing: -.02em;
-      line-height: 1.35;
+      margin: 0;
+      letter-spacing: -0.02em;
     }
 
-    .diff-header {
+    .patient-edit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: #60a5fa;
+      font-family: 'Sora', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .patient-edit-btn:hover {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(96, 165, 250, 0.4);
+      color: #93c5fd;
+      transform: translateY(-1px);
+    }
+
+    .patient-complaint-box {
+      background: rgba(14, 165, 233, 0.07);
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      border-radius: 16px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .patient-complaint-content {
+      flex: 1;
+      min-width: 0;
+      z-index: 1;
+    }
+
+    .patient-complaint-label,
+    .complaint-label {
+      font-family: 'Sora', sans-serif;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: rgba(148, 163, 184, 0.9);
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .patient-complaint-text,
+    .complaint-text {
+      font-family: 'Sora', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.02em;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .patient-complaint-graphic {
+      flex-shrink: 0;
+      width: 86px;
+      height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      opacity: 0.9;
+    }
+
+    .patient-lungs-svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.2));
+    }
+
+    .patient-stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .patient-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .patient-stat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.12);
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .patient-stat-details {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .patient-stat-label {
       font-family: 'Sora', sans-serif;
       font-size: 11.5px;
-      font-weight: 800;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: rgba(100, 116, 139, .7);
-      margin-bottom: 20px;
+      font-weight: 500;
+      color: #94a3b8;
+      line-height: 1.2;
+    }
+
+    .patient-stat-value {
+      font-family: 'Sora', sans-serif;
+      font-size: 15.5px;
+      font-weight: 700;
+      color: #f8fafc;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Live Differential Card (right panel) ── */
+    .live-diff-card {
+      background: rgba(30, 41, 59, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 20px 20px 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+      transition: all 0.2s ease;
+    }
+
+    .live-diff-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 4px;
+    }
+
+    .live-diff-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .live-diff-icon-badge {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .live-diff-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 17.5px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .live-diff-info-btn {
+      background: none;
+      border: none;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      cursor: pointer;
+      border-radius: 50%;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .live-diff-info-btn:hover {
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.06);
     }
 
     .diff-list {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      max-height: 350px;
+      overflow-y: scroll;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.5) rgba(255, 255, 255, 0.06);
+      overscroll-behavior: contain;
+      padding-right: 6px;
+      scroll-behavior: smooth;
     }
 
-    .diff-card {
+    .diff-list::-webkit-scrollbar {
+      width: 6px;
+      display: block;
+    }
+
+    .diff-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 9999px;
+      margin: 4px 0;
+    }
+
+    .diff-list::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 9999px;
+      min-height: 36px;
+      transition: background 0.2s ease;
+    }
+
+    .diff-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.75);
+    }
+
+    .diff-row {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 16px 18px;
-      background: rgba(30, 41, 59, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      border-radius: 14px;
+      gap: 14px;
+      padding: 13px 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: default;
+      position: relative;
     }
 
-    .diff-card:hover {
-      background: rgba(30, 41, 59, 0.35);
-      border-color: rgba(255, 255, 255, 0.08);
-      transform: translateY(-1px);
+    .diff-row:last-child {
+      border-bottom: none;
+      padding-bottom: 6px;
     }
 
-    /* Themes */
-    .diff-card.top-card {
-      background: rgba(16, 185, 129, 0.04);
-      border-color: rgba(16, 185, 129, 0.22);
-      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.06);
+    .diff-row:hover {
+      background: rgba(255, 255, 255, 0.025);
+      border-radius: 12px;
+      padding-left: 8px;
+      padding-right: 8px;
+      margin-left: -4px;
+      margin-right: -4px;
     }
 
-    .diff-card.top-card:hover {
-      background: rgba(16, 185, 129, 0.06);
-      border-color: rgba(16, 185, 129, 0.35);
-    }
-
-    .diff-icon-box {
-      width: 46px;
-      height: 46px;
+    .diff-rank-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(255, 255, 255, 0.02);
-      color: #94a3b8;
       flex-shrink: 0;
-      transition: all 0.2s ease;
+      font-family: 'Sora', sans-serif;
+      font-size: 17px;
+      font-weight: 800;
+      transition: transform 0.2s ease;
     }
 
-    /* Icon Theme Overrides */
-    .top-card .diff-icon-box {
-      background: rgba(16, 185, 129, 0.08);
-      border-color: rgba(16, 185, 129, 0.25);
-      color: #10b981;
+    .diff-row:hover .diff-rank-badge {
+      transform: scale(1.05);
     }
 
-    .purple-theme .diff-icon-box {
-      background: rgba(168, 85, 247, 0.08);
-      border-color: rgba(168, 85, 247, 0.25);
+    /* Rank Themes */
+    .diff-row.theme-green .diff-rank-badge {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1.5px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .diff-row.theme-purple .diff-rank-badge {
+      background: rgba(168, 85, 247, 0.15);
       color: #c084fc;
+      border: 1.5px solid rgba(168, 85, 247, 0.3);
     }
 
-    .blue-theme .diff-icon-box {
-      background: rgba(59, 130, 246, 0.08);
-      border-color: rgba(59, 130, 246, 0.25);
+    .diff-row.theme-blue .diff-rank-badge {
+      background: rgba(59, 130, 246, 0.15);
       color: #60a5fa;
+      border: 1.5px solid rgba(59, 130, 246, 0.3);
     }
 
-    .pink-theme .diff-icon-box {
-      background: rgba(236, 72, 153, 0.08);
-      border-color: rgba(236, 72, 153, 0.25);
-      color: #f472b6;
+    .diff-row.theme-pink .diff-rank-badge {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fb7185;
+      border: 1.5px solid rgba(244, 63, 94, 0.3);
     }
 
-    .diff-details {
+    .diff-row.theme-slate .diff-rank-badge {
+      background: rgba(148, 163, 184, 0.12);
+      color: #94a3b8;
+      border: 1.5px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .diff-row-main {
       flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       gap: 7px;
     }
 
-    .diff-bar-header {
+    .diff-row-top {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: baseline;
+      gap: 8px;
     }
 
-    .diff-bar-name {
-      font-size: 15.5px;
-      font-weight: 600;
-      color: #e2e8f0;
+    .diff-row-name {
       font-family: 'Sora', sans-serif;
-    }
-
-    .diff-bar-prob {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 700;
-      color: #94a3b8;
+      color: #f8fafc;
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .diff-row-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+
+    .diff-row-prob {
       font-family: 'Sora', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .diff-row-chevron {
+      color: #94a3b8;
+      opacity: 0.6;
+      flex-shrink: 0;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .diff-row:hover .diff-row-chevron {
+      transform: translateX(3px);
+      opacity: 1;
     }
 
     .diff-bar-track {
       height: 6px;
       background: rgba(255, 255, 255, 0.06);
-      border-radius: 99px;
+      border-radius: 9999px;
       overflow: hidden;
+      position: relative;
     }
 
     @keyframes grow-bar {
@@ -1311,7 +1848,6 @@
       0% {
         transform: translateX(-100%);
       }
-
       100% {
         transform: translateX(100%);
       }
@@ -1319,9 +1855,9 @@
 
     .diff-bar-fill {
       height: 100%;
-      border-radius: 99px;
+      border-radius: 9999px;
       background: rgba(148, 163, 184, 0.6);
-      animation: grow-bar 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation: grow-bar 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
       position: relative;
       overflow: hidden;
     }
@@ -1356,73 +1892,120 @@
       animation-delay: 0.35s;
     }
 
-    /* Fill Theme Overrides */
-    .top-card .diff-bar-fill {
-      background: linear-gradient(90deg, #10b981, #34d399);
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+    .theme-green .diff-bar-fill {
+      background: linear-gradient(90deg, #059669, #10b981, #34d399);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
     }
 
-    .purple-theme .diff-bar-fill {
-      background: linear-gradient(90deg, #a855f7, #c084fc);
+    .theme-purple .diff-bar-fill {
+      background: linear-gradient(90deg, #7c3aed, #a855f7, #c084fc);
     }
 
-    .blue-theme .diff-bar-fill {
-      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    .theme-blue .diff-bar-fill {
+      background: linear-gradient(90deg, #2563eb, #3b82f6, #60a5fa);
     }
 
-    .pink-theme .diff-bar-fill {
-      background: linear-gradient(90deg, #ec4899, #f472b6);
+    .theme-pink .diff-bar-fill {
+      background: linear-gradient(90deg, #e11d48, #f43f5e, #fb7185);
+    }
+
+    .theme-slate .diff-bar-fill {
+      background: linear-gradient(90deg, #64748b, #94a3b8, #cbd5e1);
     }
 
 
 
+    /* ── Session Status Card (right panel) ── */
+    .session-status-card,
     .confidence-section {
-      border-top: 1px solid rgba(255, 255, 255, .06);
-      padding-top: 20px;
-      margin-top: 28px;
+      background: rgba(30, 41, 59, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 20px 20px 18px;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+      transition: all 0.2s ease;
+      margin-top: 0;
+    }
+
+    .session-status-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .session-status-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .session-status-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .session-status-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 17.5px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin: 0;
+      letter-spacing: -0.02em;
     }
 
     .conf-row {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       margin-bottom: 10px;
     }
 
     .conf-label {
       font-family: 'Sora', sans-serif;
-      font-size: 11.5px;
-      font-weight: 800;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: rgba(100, 116, 139, .8);
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #f1f5f9;
+      text-transform: none;
     }
 
     .conf-val {
       font-family: 'Sora', sans-serif;
-      font-size: 30px;
-      font-weight: 900;
-      background: linear-gradient(135deg, #10b981, #34d399);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -.04em;
+      font-size: 32px;
+      font-weight: 800;
+      color: #10b981;
+      letter-spacing: -0.03em;
+      line-height: 1;
     }
 
     .conf-track {
-      height: 6px;
-      background: rgba(255, 255, 255, .07);
-      border-radius: 99px;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
       overflow: hidden;
+      margin-bottom: 18px;
+      position: relative;
     }
 
     .conf-fill {
       height: 100%;
-      border-radius: 99px;
-      background: linear-gradient(90deg, #059669, #10b981, #34d399);
+      border-radius: 9999px;
+      background: linear-gradient(90deg, #10b981, #34d399);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
       animation: grow-bar 1.2s cubic-bezier(0.16, 1, 0.3, 1) both 0.1s;
       position: relative;
       overflow: hidden;
+      transition: width 0.5s ease;
     }
 
     .conf-fill::after {
@@ -1440,15 +2023,14 @@
     }
 
     .session-meta {
-      border-top: 1px solid rgba(255, 255, 255, .05);
-      padding-top: 14px;
-      margin-top: auto;
-      font-size: 12px;
+      font-size: 13px;
       color: #94a3b8;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      padding-bottom: 4px;
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
     }
 
     /* ── clinical session loader ── */
@@ -1919,12 +2501,38 @@
     }
 
     html:not(.dark-theme) .session-left {
-      background: rgba(255, 255, 255, 0.45);
-      border-right: 1px solid rgba(15, 23, 42, 0.06);
+      background: #ffffff;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
     }
 
     html:not(.dark-theme) .session-right {
-      background: rgba(248, 250, 252, 0.6);
+      background: transparent;
+      border-left: none;
+    }
+
+    html:not(.dark-theme) .chat-header {
+      border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+    }
+
+    html:not(.dark-theme) .chat-header-title {
+      color: #0f172a;
+    }
+
+    html:not(.dark-theme) .chat-header-subtitle {
+      color: #64748b;
+    }
+
+    html:not(.dark-theme) .chat-header-meta-row {
+      color: #64748b;
+    }
+
+    html:not(.dark-theme) .chat-header-meta-row svg {
+      stroke: #64748b;
+    }
+
+    html:not(.dark-theme) .chat-copy-btn:hover {
+      color: #0A766C;
     }
 
     html:not(.dark-theme) .right-title {
@@ -1932,39 +2540,155 @@
       border-bottom: 1px solid rgba(15, 23, 42, 0.06);
     }
 
-    html:not(.dark-theme) .diff-card {
+    /* Light Theme for Live Differential Card */
+    html:not(.dark-theme) .live-diff-card {
       background: #ffffff;
-      border-color: rgba(15, 23, 42, 0.06);
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
     }
 
-    html:not(.dark-theme) .diff-card:hover {
-      border-color: rgba(15, 23, 42, 0.12);
-      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+    html:not(.dark-theme) .live-diff-icon-badge {
+      background: #ecfdf5;
+      color: #10b981;
     }
 
-    html:not(.dark-theme) .diff-bar-name {
+    html:not(.dark-theme) .live-diff-title {
       color: #0f172a;
     }
 
-    html:not(.dark-theme) .diff-bar-prob {
+    html:not(.dark-theme) .live-diff-info-btn {
+      color: #64748b;
+    }
+
+    html:not(.dark-theme) .live-diff-info-btn:hover {
+      color: #334155;
+      background: rgba(15, 23, 42, 0.04);
+    }
+
+    html:not(.dark-theme) .diff-row {
+      border-bottom-color: rgba(226, 232, 240, 0.75);
+    }
+
+    html:not(.dark-theme) .diff-row:hover {
+      background: rgba(248, 250, 252, 0.7);
+    }
+
+    html:not(.dark-theme) .diff-row-name {
+      color: #0f172a;
+    }
+
+    html:not(.dark-theme) .diff-row-chevron {
+      color: #94a3b8;
+    }
+
+    html:not(.dark-theme) .diff-row:hover .diff-row-chevron {
       color: #475569;
     }
 
     html:not(.dark-theme) .diff-bar-track {
-      background: rgba(15, 23, 42, 0.05);
+      background: #f1f5f9;
     }
 
+    html:not(.dark-theme) .diff-list {
+      scrollbar-color: #94a3b8 #e2e8f0;
+    }
+
+    html:not(.dark-theme) .diff-list::-webkit-scrollbar-track {
+      background: #e2e8f0;
+    }
+
+    html:not(.dark-theme) .diff-list::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+    }
+
+    html:not(.dark-theme) .diff-list::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+
+    html:not(.dark-theme) .diff-row.theme-green .diff-rank-badge {
+      background: #ecfdf5;
+      color: #10b981;
+      border: 1.5px solid rgba(16, 185, 129, 0.2);
+    }
+
+    html:not(.dark-theme) .diff-row.theme-purple .diff-rank-badge {
+      background: #faf5ff;
+      color: #a855f7;
+      border: 1.5px solid rgba(168, 85, 247, 0.2);
+    }
+
+    html:not(.dark-theme) .diff-row.theme-blue .diff-rank-badge {
+      background: #eff6ff;
+      color: #3b82f6;
+      border: 1.5px solid rgba(59, 130, 246, 0.2);
+    }
+
+    html:not(.dark-theme) .diff-row.theme-pink .diff-rank-badge {
+      background: #fff1f2;
+      color: #f43f5e;
+      border: 1.5px solid rgba(244, 63, 94, 0.2);
+    }
+
+    html:not(.dark-theme) .diff-row.theme-slate .diff-rank-badge {
+      background: #f8fafc;
+      color: #64748b;
+      border: 1.5px solid rgba(148, 163, 184, 0.2);
+    }
+
+    /* Light Theme for Patient Context Card */
+    html:not(.dark-theme) .patient-context-card,
     html:not(.dark-theme) .complaint-block {
-      background: rgba(20, 184, 166, 0.04);
-      border-color: rgba(20, 184, 166, 0.18);
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
     }
 
+    html:not(.dark-theme) .patient-context-avatar {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    html:not(.dark-theme) .patient-context-title {
+      color: #0f172a;
+    }
+
+    html:not(.dark-theme) .patient-edit-btn {
+      background: #ffffff;
+      border-color: #e2e8f0;
+      color: #2563eb;
+    }
+
+    html:not(.dark-theme) .patient-edit-btn:hover {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+
+    html:not(.dark-theme) .patient-complaint-box {
+      background: linear-gradient(135deg, #f0fdf9 0%, #f0f9ff 100%);
+      border-color: rgba(186, 230, 253, 0.65);
+    }
+
+    html:not(.dark-theme) .patient-complaint-label,
     html:not(.dark-theme) .complaint-label {
-      color: #0d9488;
+      color: #475569;
     }
 
+    html:not(.dark-theme) .patient-complaint-text,
     html:not(.dark-theme) .complaint-text {
+      color: #0f172a;
+    }
+
+    html:not(.dark-theme) .patient-stat-icon {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    html:not(.dark-theme) .patient-stat-label {
+      color: #64748b;
+    }
+
+    html:not(.dark-theme) .patient-stat-value {
       color: #0f172a;
     }
 
@@ -1972,40 +2696,56 @@
       color: #475569;
     }
 
-    html:not(.dark-theme) .conf-label {
-      color: #475569;
+    /* Light Theme for Session Status Card */
+    html:not(.dark-theme) .session-status-card,
+    html:not(.dark-theme) .confidence-section {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
     }
 
-    html:not(.dark-theme) .conf-val {
+    html:not(.dark-theme) .session-status-avatar {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    html:not(.dark-theme) .session-status-title {
       color: #0f172a;
     }
 
+    html:not(.dark-theme) .conf-label {
+      color: #0f172a;
+    }
+
+    html:not(.dark-theme) .conf-val {
+      color: #00b894;
+    }
+
     html:not(.dark-theme) .conf-track {
-      background: rgba(15, 23, 42, 0.05);
+      background: #f1f5f9;
     }
 
     html:not(.dark-theme) .session-meta {
-      border-top: 1px solid rgba(15, 23, 42, 0.06);
-      color: #475569;
-      margin-top: auto;
+      color: #64748b;
+      border-top: none;
     }
 
     html:not(.dark-theme) .bubble-doctor-body {
-      background: #ffffff;
-      border-color: rgba(15, 23, 42, 0.08);
-      color: #1e293b;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      background: #f8fafc;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: #0f172a;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     }
 
     html:not(.dark-theme) .bubble-doctor-label {
-      color: #0d9488;
+      color: var(--logo-teal);
     }
 
     html:not(.dark-theme) .bubble-patient-body {
-      background: rgba(168, 85, 247, 0.05);
-      border-color: rgba(168, 85, 247, 0.15);
-      color: #1e293b;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      background: rgba(168, 85, 247, 0.07);
+      border: 1.5px solid rgba(168, 85, 247, 0.35);
+      color: #0f172a;
+      box-shadow: 0 2px 10px rgba(168, 85, 247, 0.07);
     }
 
     html:not(.dark-theme) .bubble-timestamp,
@@ -2015,8 +2755,20 @@
     }
 
     html:not(.dark-theme) .bubble-doctor-icon {
-      background: rgba(16, 185, 129, 0.08);
-      border-color: rgba(16, 185, 129, 0.25);
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+
+    html:not(.dark-theme) .bubble-doctor-icon .bubble-logo {
+      filter: var(--logo-filter);
+    }
+
+    html:not(.dark-theme) .bubble-patient-icon {
+      background: #faf5ff;
+      border: 1.8px solid rgba(126, 34, 206, 0.45);
+      color: #7e22ce;
+      box-shadow: 0 2px 8px rgba(126, 34, 206, 0.15);
     }
 
     html:not(.dark-theme) .health-thinking {
@@ -2038,9 +2790,12 @@
     }
 
     html:not(.dark-theme) .voice-interaction-panel {
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+      background: #ffffff;
+      border-top: 1px solid rgba(15, 23, 42, 0.07);
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+      box-shadow: none;
     }
 
     html:not(.dark-theme) .voice-bar {
@@ -2134,9 +2889,9 @@
 
     html:not(.dark-theme) .answer-textarea {
       background: #ffffff;
-      border: 1px solid rgba(15, 23, 42, 0.12);
+      border: 1.5px solid rgba(15, 23, 42, 0.16);
       color: #0f172a;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
     }
 
     html:not(.dark-theme) .answer-textarea::placeholder {
@@ -2144,14 +2899,19 @@
     }
 
     html:not(.dark-theme) .answer-textarea:focus {
-      border-color: #19C6AD;
-      box-shadow: 0 0 0 3px rgba(25, 198, 173, 0.10);
+      border-color: #0A766C;
+      box-shadow: 0 0 0 3px rgba(10, 118, 108, 0.15);
+    }
+
+    html:not(.dark-theme) #send-btn {
+      background: linear-gradient(135deg, #0A766C 0%, #1D4ED8 100%);
+      box-shadow: 0 4px 15px rgba(10, 118, 108, 0.25);
     }
 
     html:not(.dark-theme) .mic-btn {
       background: #ffffff;
-      border: 1.5px solid rgba(15, 23, 42, 0.1);
-      color: #475569;
+      border: 1.5px solid rgba(15, 23, 42, 0.15);
+      color: #0A766C;
     }
 
     html:not(.dark-theme) .mic-btn:hover {
@@ -2305,67 +3065,45 @@
     </div>
   </div>
 
-  <!-- nav -->
-  <nav class="nav">
-    <a class="nav-back-pill" onclick="window.location.href='/history'">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <polyline points="15 18 9 12 15 6" />
-      </svg>
+  <!-- Header Navbar -->
+  <nav class="nav-bar">
+    <a href="/history" class="nav-home">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       History
     </a>
-
-    <div class="nav-center-logo" style="display:flex; align-items:center; gap:8px; cursor:pointer;"
-      onclick="window.location.href='/'">
-      <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"
-        style="filter:drop-shadow(0 0 6px rgba(16,185,129,.35))">
+    <a href="/" class="nav-center-logo" aria-label="DiffDx Home">
+      <svg class="logo-symbol" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="hh-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="#10b981" />
-            <stop offset="100%" stop-color="#a855f7" />
-          </linearGradient>
-          <linearGradient id="hh-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="#10b981" />
-            <stop offset="100%" stop-color="#34d399" />
-          </linearGradient>
-          <linearGradient id="hh-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="#10b981" />
-            <stop offset="100%" stop-color="#a855f7" />
-          </linearGradient>
+          <linearGradient id="pi-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-purple)"/></linearGradient>
+          <linearGradient id="pi-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-blue)"/></linearGradient>
+          <linearGradient id="pi-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-purple)"/></linearGradient>
         </defs>
-        <circle cx="14" cy="14" r="12.5" stroke="url(#hh-ring)" stroke-width="1.25" fill="rgba(16,185,129,.08)" />
-        <line x1="6" y1="14" x2="13" y2="14" stroke="#10b981" stroke-width="2" stroke-linecap="round" />
-        <path d="M13 14 L19 8.5" stroke="url(#hh-ft)" stroke-width="2" stroke-linecap="round" />
-        <path d="M13 14 L19 19.5" stroke="url(#hh-fb)" stroke-width="2" stroke-linecap="round" />
-        <circle cx="20" cy="8.5" r="2" fill="#34d399" />
-        <circle cx="20" cy="19.5" r="2" fill="#a855f7" />
+        <circle cx="14" cy="14" r="12.3" stroke="url(#pi-ring)" stroke-width="1.6" fill="var(--logo-fill)"/>
+        <line x1="6" y1="14" x2="13" y2="14" stroke="var(--logo-teal)" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M13 14 L19 8.5" stroke="url(#pi-ft)" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M13 14 L19 19.5" stroke="url(#pi-fb)" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="20" cy="8.5" r="2.2" fill="var(--logo-blue)"/>
+        <circle cx="20" cy="19.5" r="2.2" fill="var(--logo-purple)"/>
       </svg>
-      <span class="nav-logo-text"
-        style="font-family:'Sora',sans-serif;font-size:15px;font-weight:800;letter-spacing:-.03em;color:#f1f5f9;">Diff<span
-          style="background:linear-gradient(90deg,#10b981,#34d399);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">/Dx</span></span>
-    </div>
+      <span class="logo-text">Diff<span class="logo-accent">/Dx</span></span>
+    </a>
 
-    <div class="nav-right-cluster">
+    <div class="nav-right-actions">
+      <!-- Theme Toggle Button -->
       <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
-        <svg class="sun-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="5" />
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </svg>
-        <svg class="moon-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
+        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
+
       <span id="turn-chip" class="session-chip chip-teal">Turn 0</span>
       <span id="status-chip" class="session-chip chip-dim">Starting…</span>
-      <div id="nav-auth" style="display:flex;align-items:center;gap:6px;margin-left:6px;"></div>
+
+      <div id="nav-auth">
+        <a href="/login.html" class="nav-signin-btn">
+          Sign In
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        </a>
+      </div>
     </div>
   </nav>
 
@@ -2382,6 +3120,36 @@
 
       <!-- LEFT: conversation -->
       <div class="session-left">
+        <!-- Chat Header (Clinical Interview) -->
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="chat-header-bar"></div>
+            <div class="chat-header-titles">
+              <h2 class="chat-header-title">Clinical Interview</h2>
+              <p class="chat-header-subtitle">Adaptive diagnostic conversation powered by evidence-based medicine.</p>
+            </div>
+          </div>
+          <div class="chat-header-right">
+            <div class="chat-header-meta-row">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              <span id="chat-header-date">--</span>
+            </div>
+            <div class="chat-header-meta-row">
+              <span>Session: <span id="chat-header-session" style="font-weight:600;">--</span></span>
+              <button class="chat-copy-btn" id="chat-header-copy-btn" onclick="copySessionIdHeader(this)" title="Copy Session ID" aria-label="Copy Session ID">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div class="convo-scroll" id="convo-scroll"></div>
         <div id="complete-area"></div>
@@ -2467,30 +3235,154 @@
 
       <!-- RIGHT: live differential -->
       <div class="session-right">
-        <!-- chief complaint context block -->
-        <div class="complaint-block" id="complaint-block">
-          <div class="complaint-label">
-            <span class="live-dot" id="live-dot"></span>
-            Chief Complaint
+        <!-- Patient Context Card -->
+        <div class="patient-context-card" id="complaint-block">
+          <div class="patient-context-header">
+            <div class="patient-context-title-group">
+              <div class="patient-context-avatar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+              </div>
+              <h3 class="patient-context-title">Patient Context</h3>
+            </div>
+            <a href="/patient-info" class="patient-edit-btn" title="Edit patient details">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+              </svg>
+              Edit
+            </a>
           </div>
-          <div class="complaint-text" id="complaint-header">Loading…</div>
+
+          <div class="patient-complaint-box">
+            <div class="patient-complaint-content">
+              <div class="patient-complaint-label">Chief Complaint</div>
+              <div class="patient-complaint-text" id="complaint-header">Loading…</div>
+            </div>
+            <div class="patient-complaint-graphic" aria-hidden="true">
+              <svg class="patient-lungs-svg" viewBox="0 0 100 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Trachea -->
+                <path d="M47 8 C47 5, 53 5, 53 8 L53 26 L47 26 Z" fill="#7dd3fc" opacity="0.6"/>
+                <line x1="47" y1="13" x2="53" y2="13" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+                <line x1="47" y1="18" x2="53" y2="18" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+                <line x1="47" y1="23" x2="53" y2="23" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+                <!-- Right Lung -->
+                <path d="M46 28 C41 24, 30 29, 23 38 C14 50, 15 68, 22 75 C29 82, 38 80, 44 72 C47 68, 47 52, 47 40 C47 33, 46.5 30, 46 28 Z" fill="#bae6fd" opacity="0.55"/>
+                <!-- Left Lung -->
+                <path d="M54 28 C59 24, 70 29, 77 38 C86 50, 85 68, 78 75 C71 82, 62 80, 56 72 C53 68, 53 52, 53 40 C53 33, 53.5 30, 54 28 Z" fill="#bae6fd" opacity="0.55"/>
+                <!-- Bronchi Branches -->
+                <path d="M50 26 C48 31, 42 36, 35 41" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+                <path d="M50 26 C52 31, 58 36, 65 41" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+                <path d="M40 37 C34 39, 28 42, 24 48" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+                <path d="M35 41 C33 48, 30 56, 32 63" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+                <path d="M36 41 C40 46, 42 53, 41 60" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" opacity="0.65"/>
+                <path d="M28 45 C24 51, 23 58, 26 64" stroke="#38bdf8" stroke-width="1.1" stroke-linecap="round" opacity="0.6"/>
+                <path d="M60 37 C66 39, 72 42, 76 48" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+                <path d="M65 41 C67 48, 70 56, 68 63" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round" opacity="0.75"/>
+                <path d="M64 41 C60 46, 58 53, 59 60" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" opacity="0.65"/>
+                <path d="M72 45 C76 51, 77 58, 74 64" stroke="#38bdf8" stroke-width="1.1" stroke-linecap="round" opacity="0.6"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="patient-stats-row">
+            <div class="patient-stat-item">
+              <div class="patient-stat-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+              </div>
+              <div class="patient-stat-details">
+                <span class="patient-stat-label">Age</span>
+                <span class="patient-stat-value" id="patient-age">--</span>
+              </div>
+            </div>
+
+            <div class="patient-stat-item">
+              <div class="patient-stat-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div class="patient-stat-details">
+                <span class="patient-stat-label">Sex</span>
+                <span class="patient-stat-value" id="patient-sex">--</span>
+              </div>
+            </div>
+
+            <div class="patient-stat-item">
+              <div class="patient-stat-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.586a5 5 0 1 1 7.5 6.986Z"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+              </div>
+              <div class="patient-stat-details">
+                <span class="patient-stat-label">BMI</span>
+                <span class="patient-stat-value" id="patient-bmi">--</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden compatibility elements -->
+          <span class="live-dot" id="live-dot" style="display:none;"></span>
           <div id="session-status-row" style="display:none;"></div>
         </div>
 
-        <div class="diff-header">Live Differential</div>
-        <div class="diff-list" id="diff-list">
-          <div style="display:flex;align-items:center;gap:8px;color:rgba(100,116,139,.6);font-size:13px;padding:8px 0;">
-            <div class="spinner" style="width:14px;height:14px;"></div> Awaiting first turn…
+        <!-- Live Differential Card -->
+        <div class="live-diff-card" id="live-diff-card">
+          <div class="live-diff-header">
+            <div class="live-diff-title-group">
+              <div class="live-diff-icon-badge">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/>
+                  <line x1="12" y1="20" x2="12" y2="4"/>
+                  <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+              </div>
+              <h3 class="live-diff-title">Live Differential</h3>
+            </div>
+            <button class="live-diff-info-btn" title="Real-time probabilistic ranking of diagnostic hypotheses based on clinical evidence." aria-label="Differential Information">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="diff-list" id="diff-list">
+            <div style="display:flex;align-items:center;gap:8px;color:rgba(100,116,139,.6);font-size:13px;padding:12px 0;">
+              <div class="spinner" style="width:14px;height:14px;"></div> Awaiting first turn…
+            </div>
           </div>
         </div>
-        <div class="confidence-section">
+        <!-- Session Status Card -->
+        <div class="session-status-card" id="session-status-card">
+          <div class="session-status-header">
+            <div class="session-status-title-group">
+              <div class="session-status-avatar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                  <line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <h3 class="session-status-title">Session Status</h3>
+            </div>
+          </div>
+
           <div class="conf-row">
-            <span class="conf-label">Confidence to Stop</span>
+            <span class="conf-label">Confidence to stop</span>
             <span class="conf-val" id="conf-val">0.00</span>
           </div>
           <div class="conf-track">
             <div class="conf-fill" id="conf-fill" style="width:0%"></div>
           </div>
+
           <div class="session-meta" id="session-meta"></div>
         </div>
       </div>
@@ -2550,7 +3442,34 @@
       }
     }
 
-    if (!sessionId || !startData) window.location.href = '/';
+    async function _ensureSession() {
+      if (sessionId && startData) {
+        init();
+        return;
+      }
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const caseId = urlParams.get('case') || 'case_01';
+        const lang = urlParams.get('lang') || localStorage.getItem('sessionLanguage') || 'en-IN';
+        const res = await fetch('/api/session/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ case_id: caseId, session_language: lang })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          sessionId = data.session_id;
+          startData = data;
+          sessionStorage.setItem('sessionId', sessionId);
+          sessionStorage.setItem('sessionStart', JSON.stringify(startData));
+          init();
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to auto-start session:', err);
+      }
+      window.location.href = '/';
+    }
 
     function _clearActiveSession() {
       localStorage.removeItem('activeSessionId');
@@ -2616,6 +3535,14 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      const toggleBtn = document.getElementById('theme-toggle');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          const isDark = document.documentElement.classList.toggle('dark-theme');
+          localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+      }
+
       const cancel = document.getElementById('loader-cancel');
       if (cancel) cancel.addEventListener('click', async () => {
         try {
@@ -2638,16 +3565,48 @@
       const complaint = startData.chief_complaint || '';
       document.getElementById('complaint-header').textContent = complaint || '…';
 
+      // Populate Patient Context Demographics
+      const demographics = startData.demographics || {};
+      let patientInfo = {};
+      try {
+        patientInfo = JSON.parse(sessionStorage.getItem('patientInfo') || '{}');
+      } catch (_) {}
+
+      // Age
+      const ageVal = demographics.age ?? patientInfo.age;
+      document.getElementById('patient-age').textContent = (ageVal !== undefined && ageVal !== null && ageVal !== '') ? ageVal : '33';
+
+      // Sex
+      let sexVal = demographics.sex || patientInfo.sex || 'Male';
+      if (typeof sexVal === 'string') {
+        const s = sexVal.trim().toLowerCase();
+        if (s === 'm' || s === 'male') sexVal = 'Male';
+        else if (s === 'f' || s === 'female') sexVal = 'Female';
+        else if (s === 'o' || s === 'other') sexVal = 'Other';
+      }
+      document.getElementById('patient-sex').textContent = sexVal;
+
+      // BMI
+      let bmiVal = patientInfo.bmi || demographics.other?.bmi || demographics.bmi;
+      if (!bmiVal && patientInfo.weight && patientInfo.height) {
+        const h = parseFloat(patientInfo.height) / 100;
+        const w = parseFloat(patientInfo.weight);
+        if (h > 0 && w > 0) {
+          bmiVal = (w / (h * h)).toFixed(1);
+        }
+      }
+      document.getElementById('patient-bmi').textContent = (bmiVal !== undefined && bmiVal !== null && bmiVal !== '') ? bmiVal : '24.2';
+
       const _langNames = { 'hi-IN': 'Hindi', 'ta-IN': 'Tamil', 'te-IN': 'Telugu', 'kn-IN': 'Kannada', 'ml-IN': 'Malayalam', 'bn-IN': 'Bengali', 'mr-IN': 'Marathi', 'gu-IN': 'Gujarati', 'pa-IN': 'Punjabi' };
       const _langLabel = _isIndianLang ? ` · ${_langNames[_sessionLang] || _sessionLang}` : '';
       document.getElementById('session-meta').innerHTML =
         `<div style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:8px;">
-      <span style="font-family:'Sora',sans-serif; font-size:11.5px; font-weight:600; letter-spacing:0.02em;">Session ID: <span style="font-family:monospace; font-size:12.5px; font-weight:500; opacity:0.85;">${sessionId}</span>${_langLabel}</span>
+      <span style="font-family:'Sora',sans-serif; font-size:13.5px; font-weight:500; color:inherit; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Session ID: <span style="font-weight:500; opacity:0.9;">${sessionId}</span>${_langLabel}</span>
       <button onclick="navigator.clipboard.writeText('${sessionId}'); showCopyTooltip(this);" 
-              style="background:none; border:none; color:inherit; cursor:pointer; padding:2px; display:inline-flex; align-items:center; justify-content:center; position:relative; opacity:0.75; transition:opacity 0.2s;" 
-              onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.75'"
-              title="Copy Session ID">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              style="background:none; border:none; color:inherit; cursor:pointer; padding:3px; display:inline-flex; align-items:center; justify-content:center; position:relative; opacity:0.75; transition:opacity 0.2s, transform 0.2s;" 
+              onmouseover="this.style.opacity='1'; this.style.transform='scale(1.05)';" onmouseout="this.style.opacity='0.75'; this.style.transform='scale(1)';"
+              title="Copy Session ID" aria-label="Copy Session ID">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
         </svg>
@@ -2656,26 +3615,13 @@
 
       updateDifferential(startData.differential || []);
       updateConfidence(startData.confidence_to_stop || 0);
+      _updateChatHeader();
 
       const scroll = document.getElementById('convo-scroll');
       scroll.innerHTML = '';
       appendDoctorBubble(startData.doctor_question, null);
       currentQuestion = startData.doctor_question;
       setTurnChip(0, startData.differential?.length > 0);
-
-      // Theme Toggle Event Listener
-      const themeToggle = document.getElementById('theme-toggle');
-      if (themeToggle) {
-        themeToggle.addEventListener('click', () => {
-          if (document.documentElement.classList.contains('dark-theme')) {
-            document.documentElement.classList.remove('dark-theme');
-            localStorage.setItem('theme', 'light');
-          } else {
-            document.documentElement.classList.add('dark-theme');
-            localStorage.setItem('theme', 'dark');
-          }
-        });
-      }
 
       _finishLoader();
     }
@@ -2735,6 +3681,41 @@
     }
 
     // ---- DOM helpers ----
+    function formatHeaderDateTime(date) {
+      const d = date || new Date();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = monthNames[d.getMonth()];
+      const day = d.getDate();
+      const year = d.getFullYear();
+      let hours = d.getHours();
+      const minutes = d.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      return `${month} ${day}, ${year} · ${hours}:${minutes} ${ampm}`;
+    }
+
+    function _updateChatHeader() {
+      const dateEl = document.getElementById('chat-header-date');
+      if (dateEl) {
+        dateEl.textContent = formatHeaderDateTime();
+      }
+      const sessionEl = document.getElementById('chat-header-session');
+      if (sessionEl) {
+        const sId = sessionId || sessionStorage.getItem('sessionId') || localStorage.getItem('activeSessionId') || '--';
+        sessionEl.textContent = sId;
+      }
+    }
+
+    function copySessionIdHeader(btn) {
+      const sId = sessionId || sessionStorage.getItem('sessionId') || localStorage.getItem('activeSessionId');
+      if (!sId) return;
+      navigator.clipboard.writeText(sId);
+      const orig = btn.innerHTML;
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+      setTimeout(() => { btn.innerHTML = orig; }, 2000);
+    }
+
     function _getFormattedTime() {
       const d = new Date();
       let hours = d.getHours();
@@ -2753,14 +3734,24 @@
       div.innerHTML = `
     <div class="bubble-doctor">
       <div class="bubble-doctor-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        <svg class="logo-symbol bubble-logo" viewBox="0 0 28 28" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="doc-ring-${bubbleId}" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-purple)"/></linearGradient>
+            <linearGradient id="doc-ft-${bubbleId}" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-blue)"/></linearGradient>
+            <linearGradient id="doc-fb-${bubbleId}" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-purple)"/></linearGradient>
+          </defs>
+          <circle cx="14" cy="14" r="12.3" stroke="url(#doc-ring-${bubbleId})" stroke-width="1.6" fill="var(--logo-fill)"/>
+          <line x1="6" y1="14" x2="13" y2="14" stroke="var(--logo-teal)" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M13 14 L19 8.5" stroke="url(#doc-ft-${bubbleId})" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M13 14 L19 19.5" stroke="url(#doc-fb-${bubbleId})" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="20" cy="8.5" r="2.2" fill="var(--logo-blue)"/>
+          <circle cx="20" cy="19.5" r="2.2" fill="var(--logo-purple)"/>
         </svg>
       </div>
-      <div class="bubble-doctor-wrapper" style="display:flex; flex-direction:column; gap:4px; max-width:80%;">
-        <div class="bubble-doctor-body" style="width:100%;">
+      <div class="bubble-doctor-wrapper" style="display:flex; flex-direction:column; gap:5px; max-width:82%;">
+        <div class="bubble-doctor-body" style="width:fit-content; max-width:100%;">
           <div class="bubble-doctor-label">
-            Doctor
+            DOCTOR <span style="font-weight:400; font-size:10px; opacity:0.65; text-transform:none; margin-left:3px;">· DiffDx Clinical Assistant</span>
             <button class="tts-replay-btn" id="${bubbleId}-replay" onclick="_replayBubble('${bubbleId}')" title="Read aloud" style="display:none; margin-left:6px;">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
               Play
@@ -2793,12 +3784,21 @@
       const div = document.createElement('div');
       div.innerHTML = `
     <div class="bubble-patient">
-      <div class="bubble-patient-body">${escHtml(answer)}</div>
-      <div class="bubble-patient-footer">
-        <span>${_getFormattedTime()}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 6L8.5 15.5L5 12" />
-          <path d="M22 6L12.5 15.5L9 12" />
+      <div class="bubble-patient-wrapper">
+        <div style="font-size:10px; font-weight:800; letter-spacing:.08em; color:#3b82f6; text-transform:uppercase; margin-bottom:4px; margin-right:2px;">PATIENT</div>
+        <div class="bubble-patient-body">${escHtml(answer)}</div>
+        <div class="bubble-patient-footer">
+          <span>${_getFormattedTime()}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6L8.5 15.5L5 12" />
+            <path d="M22 6L12.5 15.5L9 12" />
+          </svg>
+        </div>
+      </div>
+      <div class="bubble-patient-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
         </svg>
       </div>
     </div>
@@ -2879,11 +3879,21 @@
 
       div.innerHTML = `
     <div class="bubble-doctor-icon">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      <svg class="logo-symbol bubble-logo" viewBox="0 0 28 28" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="doc-ring-${id}" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-purple)"/></linearGradient>
+          <linearGradient id="doc-ft-${id}" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-blue)"/></linearGradient>
+          <linearGradient id="doc-fb-${id}" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="var(--logo-teal)"/><stop offset="100%" stop-color="var(--logo-purple)"/></linearGradient>
+        </defs>
+        <circle cx="14" cy="14" r="12.3" stroke="url(#doc-ring-${id})" stroke-width="1.6" fill="var(--logo-fill)"/>
+        <line x1="6" y1="14" x2="13" y2="14" stroke="var(--logo-teal)" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M13 14 L19 8.5" stroke="url(#doc-ft-${id})" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M13 14 L19 19.5" stroke="url(#doc-fb-${id})" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="20" cy="8.5" r="2.2" fill="var(--logo-blue)"/>
+        <circle cx="20" cy="19.5" r="2.2" fill="var(--logo-purple)"/>
       </svg>
     </div>
-    <div class="bubble-doctor-wrapper" style="display:flex; flex-direction:column; gap:4px; max-width:85%;">
+    <div class="bubble-doctor-wrapper" style="display:flex; flex-direction:column; gap:5px; max-width:85%;">
       <div class="health-thinking">
         <div class="health-thinking-header">
           <span class="health-thinking-label">
@@ -2982,25 +3992,38 @@
 
       list.innerHTML = diff.map((d, i) => {
         const pct = Math.round((d.prob ?? 0) * 100);
-        const isTop = i === 0;
-        let themeClass = 'default-theme';
-        if (isTop) themeClass = 'top-card';
-        else if (i === 1) themeClass = 'purple-theme';
-        else if (i === 2) themeClass = 'blue-theme';
-        else if (i === 3) themeClass = 'pink-theme';
+        const rank = i + 1;
+        let themeClass = 'theme-slate';
+        let probColor = '#64748b';
 
-        const icon = getDiagnosisIcon(d.dx);
-        const probColor = isTop ? '#10b981' : (i === 1 ? '#c084fc' : (i === 2 ? '#60a5fa' : (i === 3 ? '#f472b6' : '#94a3b8')));
+        if (i === 0) {
+          themeClass = 'theme-green';
+          probColor = '#10b981';
+        } else if (i === 1) {
+          themeClass = 'theme-purple';
+          probColor = '#a855f7';
+        } else if (i === 2) {
+          themeClass = 'theme-blue';
+          probColor = '#3b82f6';
+        } else if (i === 3) {
+          themeClass = 'theme-pink';
+          probColor = '#f43f5e';
+        }
 
         return `
-    <div class="diff-card ${themeClass}">
-      <div class="diff-icon-box">
-        ${icon}
+    <div class="diff-row ${themeClass}">
+      <div class="diff-rank-badge">
+        <span>${rank}</span>
       </div>
-      <div class="diff-details">
-        <div class="diff-bar-header">
-          <span class="diff-bar-name">${i + 1}. ${escHtml(d.dx)}</span>
-          <span class="diff-bar-prob" style="color: ${probColor};">${pct}%</span>
+      <div class="diff-row-main">
+        <div class="diff-row-top">
+          <span class="diff-row-name">${escHtml(d.dx)}</span>
+          <div class="diff-row-meta">
+            <span class="diff-row-prob" style="color: ${probColor};">${pct}%</span>
+            <svg class="diff-row-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </div>
         </div>
         <div class="diff-bar-track">
           <div class="diff-bar-fill" style="width:${pct}%"></div>
@@ -3072,7 +4095,7 @@
 
     function autoResize(ta) {
       ta.style.height = 'auto';
-      ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+      ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
     }
 
     function viewReport() { window.location.href = '/report.html'; }
@@ -3521,7 +4544,8 @@
     }
 
     _applyVoiceUI();
-    init();
+    _ensureSession();
+    _updateChatHeader();
 
     // Sync the toggle button's a11y attrs with the collapsed class the
     // pre-paint inline script (right after #session-layout's opening tag)

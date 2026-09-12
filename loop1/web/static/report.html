@@ -156,68 +156,110 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Floating Frosted Nav Pill ── */
-    .nav {
-      position: fixed;
-      top: 18px;
-      left: 50%;
-      transform: translateX(-50%);
+    /* ── Header Navbar (Standardized from history.html) ── */
+    .nav-bar {
+      position: sticky;
+      top: 0;
       z-index: 1000;
-      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 12px;
-      padding: 0 18px; height: 52px;
       background: var(--nav-bg);
-      backdrop-filter: blur(24px) saturate(1.8);
-      -webkit-backdrop-filter: blur(24px) saturate(1.8);
-      border: 1px solid var(--border-nav);
-      border-radius: 9999px;
-      box-shadow: var(--nav-shadow);
-      width: 92%; max-width: 1080px; min-width: 600px;
-      transition: all 0.3s ease;
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border-bottom: 1px solid var(--border-card);
+      padding: 0 28px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      width: 100%;
+      flex-shrink: 0;
     }
 
-    .nav-left { display: flex; align-items: center; justify-self: start; min-width: 0; }
-    .nav-back-pill {
+    .nav-home, .nav-signin-btn, #nav-auth a.btn, #nav-auth a.btn-ghost, #nav-auth a {
       display: inline-flex; align-items: center; gap: 7px;
-      padding: 7px 16px; border-radius: 9999px;
-      border: 1px solid var(--btn-nav-border);
-      background: var(--btn-nav-bg);
-      color: var(--btn-nav-text);
-      font-family: var(--font-heading);
-      font-size: 13px; font-weight: 700; cursor: pointer;
-      text-decoration: none; transition: all .2s ease;
-      white-space: nowrap;
+      padding: 7px 16px !important; border-radius: 9999px !important;
+      background: var(--btn-nav-bg) !important;
+      border: 1.5px solid var(--btn-nav-border) !important;
+      color: var(--btn-nav-text) !important; font-family: var(--font-heading) !important;
+      font-size: 13px !important; font-weight: 700 !important; text-decoration: none !important;
+      box-shadow: 0 2px 6px rgba(15, 29, 50, 0.05);
+      transition: all .25s ease !important;
+      cursor: pointer;
     }
-    .nav-back-pill:hover {
-      border-color: var(--teal-primary);
-      color: var(--teal-primary);
-      background: rgba(13, 148, 136, 0.08);
+
+    .nav-home:hover, .nav-signin-btn:hover, #nav-auth a.btn:hover, #nav-auth a.btn-ghost:hover, #nav-auth a:hover {
+      color: var(--teal-primary) !important;
+      border-color: var(--teal-primary) !important;
+      background: rgba(16, 191, 165, 0.08) !important;
+      box-shadow: 0 0 16px rgba(16, 191, 165, 0.2) !important;
+    }
+
+    #nav-auth #nav-notif-btn, #nav-auth #nav-refill-btn, #nav-auth .nav-icon-btn {
+      padding: 0 !important;
+      border-radius: 50% !important;
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
+      box-sizing: border-box !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    .nav-refresh-btn svg,
+    #nav-notif-btn svg, #nav-refill-btn svg, .nav-icon-btn svg {
+      display: block !important;
+      flex-shrink: 0 !important;
+      width: 16px !important;
+      height: 16px !important;
+    }
+
+    .theme-toggle-btn svg {
+      flex-shrink: 0 !important;
+      width: 16px !important;
+      height: 16px !important;
     }
 
     .nav-center-logo {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      min-width: 0; overflow: hidden;
-    }
-    .nav-brand-capsule {
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 18px; border-radius: 9999px;
-      background: rgba(13, 148, 136, 0.08);
-      border: 1px solid rgba(13, 148, 136, 0.25);
-      font-family: var(--font-heading);
-      font-size: 14px; font-weight: 800; letter-spacing: -0.02em;
-      color: var(--text-main);
-    }
-    html.dark-theme .nav-brand-capsule {
-      background: rgba(25, 198, 173, 0.08);
-      border-color: rgba(25, 198, 173, 0.25);
-      box-shadow: 0 0 20px rgba(25, 198, 173, 0.12);
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      text-decoration: none;
+      cursor: pointer;
     }
 
-    .nav-right-cluster {
-      display: flex; align-items: center; gap: 8px;
-      justify-self: end; min-width: 0; overflow: hidden;
+    .logo-symbol {
+      width: 26px;
+      height: 26px;
+      filter: drop-shadow(0 0 8px rgba(25, 198, 173, 0.4));
     }
-    .nav-right-cluster .session-chip {
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+
+    .logo-text {
+      font-family: var(--font-heading);
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -.03em;
+    }
+
+    .logo-accent {
+      background: linear-gradient(90deg, #19C6AD, #4C8FF5);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-right-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
     }
 
     /* Theme Toggle Button */
@@ -233,10 +275,47 @@
       padding: 0 !important;
       background: var(--bg-card);
       border: 1px solid var(--border-card);
-      color: var(--text-main); cursor: pointer;
-      display: inline-flex !important; align-items: center !important; justify-content: center !important;
-      transition: all 0.2s ease; outline: none; flex-shrink: 0;
+      color: var(--text-main);
+      cursor: pointer;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transition: all 0.2s ease;
+      outline: none;
+      flex-shrink: 0;
     }
+
+    .theme-toggle-btn:hover {
+      border-color: var(--teal-primary);
+      color: var(--teal-primary);
+      transform: scale(1.05);
+    }
+
+    html.dark-theme .theme-toggle-btn,
+    html.dark-theme #theme-toggle,
+    html.dark-theme .nav-refresh-btn,
+    html.dark-theme #nav-notif-btn,
+    html.dark-theme .nav-icon-btn,
+    html.dark-theme #nav-refill-btn {
+      background: rgba(255, 255, 255, 0.06) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      color: #cbd5e1 !important;
+    }
+    html.dark-theme .theme-toggle-btn:hover,
+    html.dark-theme #theme-toggle:hover,
+    html.dark-theme .nav-refresh-btn:hover,
+    html.dark-theme #nav-notif-btn:hover,
+    html.dark-theme .nav-icon-btn:hover,
+    html.dark-theme #nav-refill-btn:hover {
+      background: rgba(20, 184, 166, 0.12) !important;
+      border-color: var(--teal, #14b8a6) !important;
+      color: var(--teal, #14b8a6) !important;
+    }
+
+    .theme-toggle-btn .sun-icon { display: none; }
+    .theme-toggle-btn .moon-icon { display: block; }
+    .dark-theme .theme-toggle-btn .moon-icon { display: none; }
+    .dark-theme .theme-toggle-btn .sun-icon { display: block; }
     /* Nav icon SVG size lock */
     .nav-refresh-btn svg,
     #nav-notif-btn svg, #nav-refill-btn svg, .nav-icon-btn svg {
@@ -305,7 +384,7 @@
       max-width: 1080px;
       width: 92%;
       margin: 0 auto;
-      padding: 96px 0 60px;
+      padding: 32px 0 60px;
       position: relative;
       z-index: 1;
       animation: cardFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -1164,29 +1243,37 @@
 <div class="bg-glow-left"></div>
 <div class="bg-glow-right"></div>
 
-<!-- Floating Frosted Nav Pill -->
-<nav class="nav">
-  <div class="nav-left">
-    <a class="nav-back-pill" href="/session" onclick="window.location.href='/session/'+(sessionStorage.getItem('sessionId')||''); return false;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-      <span>Session</span>
-    </a>
-  </div>
+<!-- Header Navbar -->
+<nav class="nav-bar">
+  <a href="/session.html" class="nav-home" onclick="window.location.href='/session.html'; return false;">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Session
+  </a>
+  <a href="/" class="nav-center-logo" aria-label="DiffDx Home">
+    <svg class="logo-symbol" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="pi-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#8174E8"/></linearGradient>
+        <linearGradient id="pi-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#4C8FF5"/></linearGradient>
+        <linearGradient id="pi-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#8174E8"/></linearGradient>
+      </defs>
+      <circle cx="14" cy="14" r="12.5" stroke="url(#pi-ring)" stroke-width="1.25" fill="rgba(25,198,173,.08)"/>
+      <line x1="6" y1="14" x2="13" y2="14" stroke="#19C6AD" stroke-width="2" stroke-linecap="round"/>
+      <path d="M13 14 L19 8.5" stroke="url(#pi-ft)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M13 14 L19 19.5" stroke="url(#pi-fb)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="20" cy="8.5" r="2" fill="#4C8FF5"/>
+      <circle cx="20" cy="19.5" r="2" fill="#8174E8"/>
+    </svg>
+    <span class="logo-text">Diff<span class="logo-accent">/Dx</span></span>
+  </a>
 
-  <div class="nav-center-logo">
-    <div class="nav-brand-capsule">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--teal-primary);"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      Diff<span style="color:var(--teal-primary);">Dx</span>
-    </div>
-  </div>
-
-  <div class="nav-right-cluster">
+  <div class="nav-right-actions">
+    <!-- Theme Toggle Button -->
     <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
-      <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
     <span class="session-chip chip-green"><span class="live-dot" style="margin-right:6px;"></span>Session Complete</span>
-    <div id="nav-auth" style="display:flex;align-items:center;gap:6px;"></div>
+    <div id="nav-auth"></div>
   </div>
 </nav>
 

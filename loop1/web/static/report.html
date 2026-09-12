@@ -521,19 +521,21 @@
       border-bottom: 1px solid var(--border-card);
     }
 
-    /* ── Technical Details (collapsed by default) ──
-       Holds the AI's raw differential, confidence scores, and eval-harness
-       metrics — real, but not something a patient should be led with. Native
-       <details>/<summary> for built-in keyboard support and no JS needed to
-       toggle. */
-    .technical-details-section {
+    /* ── Collapsible report sections (shared) ──
+       Used by both the Conversation Viewer and Technical Details — same
+       card/icon/chevron language so the two don't look like they belong to
+       different design systems. Native <details>/<summary>, no JS needed
+       to toggle. Technical Details is collapsed by default: it holds the
+       AI's raw differential, confidence scores, and eval-harness metrics —
+       real, but not something a patient should be led with. */
+    .report-details-section {
       background: var(--bg-card);
       border: 1px solid var(--border-card);
       border-radius: 20px;
       margin-bottom: 30px;
       overflow: hidden;
     }
-    .technical-details-summary {
+    .report-details-summary {
       list-style: none;
       cursor: pointer;
       padding: 18px 24px;
@@ -542,28 +544,28 @@
       gap: 12px;
       user-select: none;
     }
-    .technical-details-summary::-webkit-details-marker { display: none; }
-    .td-icon {
+    .report-details-summary::-webkit-details-marker { display: none; }
+    .rd-icon {
       width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
       background: var(--surface-2); border: 1px solid var(--border-card);
       display: flex; align-items: center; justify-content: center;
       color: var(--text-muted);
     }
-    .td-text { flex: 1; min-width: 0; }
-    .td-title {
+    .rd-text { flex: 1; min-width: 0; }
+    .rd-title {
       font-family: var(--font-heading); font-size: 14px; font-weight: 800;
       color: var(--text); letter-spacing: -.01em;
     }
-    .td-hint {
+    .rd-hint {
       font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4;
     }
-    .td-chevron { color: var(--text-muted); transition: transform .2s ease; flex-shrink: 0; }
-    .technical-details-section[open] .td-chevron { transform: rotate(180deg); }
-    .technical-details-body {
+    .rd-chevron { color: var(--text-muted); transition: transform .2s ease; flex-shrink: 0; }
+    .report-details-section[open] .rd-chevron { transform: rotate(180deg); }
+    .report-details-body {
       padding: 4px 24px 24px;
       border-top: 1px solid var(--border-card);
     }
-    .technical-details-body .report-section:last-child { margin-bottom: 0; }
+    .report-details-body .report-section:last-child { margin-bottom: 0; }
 
     /* ── Patient Summary Card ── */
     .patient-summary-card {
@@ -748,25 +750,13 @@
       font-family: var(--font-heading); font-weight: 800;
     }
 
-    /* ── Conversation Viewer ── */
-    .conv-toggle-btn {
-      display: flex; align-items: center; gap: 10px; cursor: pointer;
-      background: var(--bg-card); border: 1px solid var(--border-card);
-      border-radius: 14px; padding: 12px 18px;
-      font-family: var(--font-heading); font-size: 13px; font-weight: 700;
-      color: var(--text-dim); width: 100%; transition: all .2s ease;
-    }
-    .conv-toggle-btn:hover {
-      border-color: var(--teal-primary); color: var(--text-main);
-    }
-    .conv-toggle-btn svg { transition: transform .25s ease; }
-    .conv-toggle-btn.open svg:last-child { transform: rotate(180deg); }
+    /* ── Conversation Viewer — toggle chrome now shared, see
+       .report-details-* above; this is just the turn-list styling ── */
     .conv-scroll-wrap {
       max-height: 520px; overflow-y: auto; margin-top: 14px;
       border: 1px solid var(--border-card); border-radius: 16px;
-      background: var(--bg-card); padding: 6px 0; display: none;
+      background: var(--bg-card); padding: 6px 0;
     }
-    .conv-scroll-wrap.open { display: block; }
     .conv-turn {
       padding: 18px 22px; border-bottom: 1px solid var(--border-card);
     }
@@ -1547,12 +1537,14 @@ function _buildSuggestedTestsHtml(data) {
 
   return `
     <div class="sug-header">
-      <div class="report-section-title" style="margin-bottom:0;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" style="vertical-align:-2px;margin-right:6px;"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-        Suggested Tests
-        <span style="font-size:11px;font-weight:500;color:var(--text-muted);margin-left:6px;text-transform:none;letter-spacing:0;">AI Recommendation</span>
+      <div>
+        <div class="report-section-title" style="margin-bottom:4px;border-bottom:none;padding-bottom:0;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" style="vertical-align:-2px;margin-right:6px;"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+          Suggested Tests
+        </div>
+        <div class="rd-hint" style="margin-top:0;">Worth getting done before your appointment — your doctor may adjust this list.</div>
       </div>
-      <button onclick="_printTestList()" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" title="Print test checklist">
+      <button onclick="_printTestList()" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;flex-shrink:0;" title="Print test checklist">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Print
       </button>
@@ -1564,7 +1556,7 @@ function _buildSuggestedTestsHtml(data) {
       <button onclick="_resetSugState(${JSON.stringify(tests).replace(/"/g,'&quot;')})" style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap;" onmouseenter="this.style.color='var(--text)'" onmouseleave="this.style.color='var(--text-muted)'">Reset</button>
     </div>
     <div id="sug-cards">${cards}</div>
-    <p style="font-size:11px;color:var(--text-muted);margin-top:12px;">AI-generated suggestions — consult your doctor before proceeding. Tick each box once you've completed a test.</p>`;
+    <p style="font-size:11px;color:var(--text-muted);margin-top:12px;">Check each one off as you complete it, and bring the results to your appointment.</p>`;
 }
 
 function toggleSugDone(id, tests) {
@@ -2423,18 +2415,18 @@ function buildReport(d) {
     <!-- TECHNICAL DETAILS — collapsed by default. The AI's raw differential,
          confidence/quality scores, and full critique — real and useful for a
          clinician or reviewer, but not something to lead a patient with. -->
-    <details class="technical-details-section" id="technical-details">
-      <summary class="technical-details-summary">
-        <div class="td-icon">
+    <details class="report-details-section" id="technical-details">
+      <summary class="report-details-summary">
+        <div class="rd-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </div>
-        <div class="td-text">
-          <div class="td-title">Technical Details</div>
-          <div class="td-hint">For clinicians &amp; reviewers — the AI's internal differential and confidence scores. Not a confirmed diagnosis.</div>
+        <div class="rd-text">
+          <div class="rd-title">Technical Details</div>
+          <div class="rd-hint">For clinicians &amp; reviewers — the internal differential and confidence scores behind this report. Not a confirmed diagnosis.</div>
         </div>
-        <svg class="td-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        <svg class="rd-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </summary>
-      <div class="technical-details-body">
+      <div class="report-details-body">
         <!-- CLOSING STATEMENT -->
         ${closing ? buildClosing(closing) : ''}
 
@@ -2729,28 +2721,22 @@ function buildConversation(turnHistory) {
     `;
   }).join('');
   return `
-    <div class="report-section">
-      <div class="report-section-title">Session Conversation</div>
-      <button class="conv-toggle-btn" id="conv-toggle" onclick="toggleConversation()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-        </svg>
-        View Full Conversation (${turnHistory.length} turns)
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:auto;">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
-      <div class="conv-scroll-wrap" id="conv-scroll">${turns}</div>
-    </div>
+    <details class="report-details-section" id="session-conversation">
+      <summary class="report-details-summary">
+        <div class="rd-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <div class="rd-text">
+          <div class="rd-title">Session Conversation</div>
+          <div class="rd-hint">${turnHistory.length} turn${turnHistory.length !== 1 ? 's' : ''} — see exactly what was asked and what you answered.</div>
+        </div>
+        <svg class="rd-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <div class="report-details-body">
+        <div class="conv-scroll-wrap" id="conv-scroll">${turns}</div>
+      </div>
+    </details>
   `;
-}
-
-function toggleConversation() {
-  const btn = document.getElementById('conv-toggle');
-  const wrap = document.getElementById('conv-scroll');
-  if (!btn || !wrap) return;
-  const open = wrap.classList.toggle('open');
-  btn.classList.toggle('open', open);
 }
 
 function toggleRationale(id, btn) {
@@ -3363,19 +3349,22 @@ updateNavAuth();
 </div>
 <!-- Print helpers -->
 <script>
+// Expand both collapsible report sections for print/PDF (so nothing a
+// doctor might want is missing from the printout), then restore whatever
+// open/closed state each was actually in beforehand — not just always
+// re-collapsing, in case the reader had one open on purpose.
+let _printPriorOpenState = null;
 window.addEventListener('beforeprint', function () {
-  // Expand conversation viewer so it renders in the PDF
-  const wrap = document.querySelector('.conv-scroll-wrap');
-  const btn  = document.querySelector('.conv-toggle-btn');
-  if (wrap) wrap.style.display = 'block';
-  if (btn)  btn.classList.add('open');
+  const sections = document.querySelectorAll('.report-details-section');
+  _printPriorOpenState = Array.from(sections).map(el => el.open);
+  sections.forEach(el => { el.open = true; });
 });
 window.addEventListener('afterprint', function () {
-  // Restore collapsed state
-  const wrap = document.querySelector('.conv-scroll-wrap');
-  const btn  = document.querySelector('.conv-toggle-btn');
-  if (wrap) wrap.style.display = '';
-  if (btn)  btn.classList.remove('open');
+  const sections = document.querySelectorAll('.report-details-section');
+  if (_printPriorOpenState) {
+    sections.forEach((el, i) => { el.open = !!_printPriorOpenState[i]; });
+  }
+  _printPriorOpenState = null;
 });
 </script>
 

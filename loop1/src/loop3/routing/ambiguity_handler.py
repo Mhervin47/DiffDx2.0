@@ -13,7 +13,7 @@ _AMBIGUITY_RATIO = 1.5
 _FALLBACK_SPECIALTY = "Internal Medicine"
 _FALLBACK_URGENCY = UrgencyLevel.ROUTINE
 _FALLBACK_APPOINTMENT = AppointmentType.ROUTINE
-_FALLBACK_REASONING = "Specialty not identified — recommending general internal medicine evaluation."
+_FALLBACK_REASONING = "Your symptoms don't point clearly to one specialty, so we're starting with a general internal medicine evaluation."
 
 
 _URGENCY_RANK = {"emergency": 0, "urgent": 1, "routine": 2}

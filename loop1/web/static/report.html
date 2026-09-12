@@ -441,11 +441,17 @@
       line-height: 1.5;
     }
     .hero-trust-note {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 11.5px; font-weight: 600; color: var(--text-muted);
-      background: var(--surface-2); border: 1px solid var(--border-card);
-      border-radius: 9999px; padding: 4px 12px; margin-bottom: 14px;
+      display: inline-flex; align-items: center; gap: 7px;
+      font-family: var(--font-heading); font-size: 12px; font-weight: 700;
+      letter-spacing: .01em; color: var(--teal-primary);
+      background: rgba(13, 148, 136, 0.1); border: 1px solid rgba(13, 148, 136, 0.28);
+      border-radius: 9999px; padding: 6px 16px 6px 12px; margin-bottom: 16px;
     }
+    html.dark-theme .hero-trust-note {
+      color: #34d399;
+      background: rgba(25, 198, 173, 0.12); border-color: rgba(25, 198, 173, 0.3);
+    }
+    .hero-trust-note svg { flex-shrink: 0; }
     .diagnosis-name.is-loading {
       background: none; -webkit-text-fill-color: initial;
       color: var(--text-muted); font-size: 22px; font-weight: 700;
@@ -2404,7 +2410,7 @@ function buildReport(d) {
          data isn't available at initial render time. -->
     <div class="diagnosis-hero">
       <div class="hero-trust-note">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
         Guidance to help you get the right care next — not a diagnosis
       </div>
       <div class="diagnosis-eyebrow" id="hero-diagnosis-eyebrow">Analyzing</div>

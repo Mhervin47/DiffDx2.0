@@ -93,8 +93,11 @@ async def get_patient_appointments(user: dict = Depends(get_current_user), db: S
         if a.get("patient_user_id") != user["id"]:
             continue
         entry = dict(composed_by_id.get(appt_id, a))
-        # Strip doctor-only fields before sending to patient
-        if "referral" in entry and "internal_note" in entry["referral"]:
+        # Strip doctor-only fields before sending to patient. entry["referral"]
+        # is explicitly None (not absent) for the common no-referral case —
+        # _compose_appointment_dict always sets the key — so this must check
+        # truthiness, not just key presence, or "internal_note" in None raises.
+        if entry.get("referral") and "internal_note" in entry["referral"]:
             entry["referral"] = {k: v for k, v in entry["referral"].items() if k != "internal_note"}
         patient_appts.append(entry)
     patient_appts.sort(key=lambda a: a.get("slot", ""), reverse=True)

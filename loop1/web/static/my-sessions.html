@@ -1398,7 +1398,7 @@ async function loadSessions() {
     _apptMap = {};
     function _apptScore(a) {
       const s = a.status || 'upcoming';
-      const hasData = ((a.prescriptions?.length > 0) || (a.test_orders?.length > 0) || !!a.referral || !!a.doctor_notes) ? 1 : 0;
+      const hasData = ((a.prescriptions?.length > 0) || (a.test_orders?.length > 0) || !!a.referral || !!a.doctor_notes || !!a.confirmed_diagnosis) ? 1 : 0;
       if (s === 'cancelled') return hasData ? 5 : 0;
       if (s === 'seen')      return hasData ? 25 : 10;
       /* upcoming */         return hasData ? 30 : 20;
@@ -1753,7 +1753,7 @@ function _buildRecordsPanel(appts) {
   const withData = appts.filter(a =>
     (a.prescriptions && a.prescriptions.length) ||
     (a.test_orders && a.test_orders.length) ||
-    a.doctor_summary || a.referral
+    a.doctor_summary || a.referral || a.confirmed_diagnosis
   );
 
   const badge = document.getElementById('records-tab-badge');
@@ -1802,6 +1802,15 @@ function _buildRecordsPanel(appts) {
         <div class="record-note-text">${escHtml(a.doctor_summary)}</div>
       </div>` : '';
 
+    // Doctor-confirmed diagnosis — see DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md.
+    // Shown first (before the note), same "this is the one confirmed fact
+    // on the page" precedence as report.html gives it.
+    const confirmedDxHtml = a.confirmed_diagnosis ? `
+      <div class="record-block">
+        <div class="record-block-label">✅ Confirmed Diagnosis</div>
+        <div class="record-note-text">${escHtml(a.confirmed_diagnosis)}</div>
+      </div>` : '';
+
     const referralHtml = a.referral ? `
       <div class="record-block">
         <div class="record-block-label">➜ Referral</div>
@@ -1817,7 +1826,7 @@ function _buildRecordsPanel(appts) {
         </div>
         <a class="btn btn-ghost btn-sm" style="text-decoration:none;flex-shrink:0;" href="/report.html?session=${escHtml(a.session_id || '')}" onclick="sessionStorage.setItem('sessionId','${escHtml(a.session_id || '')}')">View Session</a>
       </div>
-      ${noteHtml}${rxHtml}${testsHtml}${referralHtml}
+      ${confirmedDxHtml}${noteHtml}${rxHtml}${testsHtml}${referralHtml}
     </div>`;
   }).join('');
 }

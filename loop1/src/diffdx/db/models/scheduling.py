@@ -118,6 +118,15 @@ class Appointment(Base):
     chief_complaint: Mapped[str | None] = mapped_column(Text)
     primary_diagnosis: Mapped[str | None] = mapped_column(String(500))
 
+    # Doctor-confirmed diagnosis disclosure (DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md).
+    # Deliberately a separate column from primary_diagnosis (the AI's own
+    # output, set at booking time) — this is only ever written by a doctor
+    # explicitly submitting/reviewing text via PATCH .../diagnosis, never
+    # auto-derived from primary_diagnosis. The patient-facing report only
+    # ever reads this field, never primary_diagnosis.
+    confirmed_diagnosis: Mapped[str | None] = mapped_column(String(500))
+    diagnosis_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     # Snapshot of patient vitals at booking time (demographics can change later).
     patient_age: Mapped[int | None]
     patient_sex: Mapped[str | None] = mapped_column(String(20))

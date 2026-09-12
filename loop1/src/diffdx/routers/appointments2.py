@@ -29,6 +29,7 @@ from diffdx.repositories.clinical import (
 from diffdx.repositories.users import UserRepository
 from diffdx.schemas.appointments import (
     ApprovedPlanRequest,
+    ConfirmDiagnosisRequest,
     DoctorSummaryRequest,
     FollowUpRequest,
     PrescriptionsRequest,
@@ -364,6 +365,45 @@ async def update_doctor_summary(
         _log.warning("Dual-write of doctor summary failed for appointment %s", appt_id, exc_info=True)
 
     return {"saved": True}
+
+
+@router.patch("/api/doctor/appointments/{appt_id}/diagnosis")
+async def confirm_diagnosis(
+    appt_id: str, req: ConfirmDiagnosisRequest,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
+    """Set or withdraw the doctor-confirmed diagnosis shown to the patient.
+
+    See DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md. req.diagnosis is always the
+    doctor's own submitted text — never a pointer back to the AI's
+    primary_diagnosis — so this never silently reveals the AI's raw
+    wording just because a doctor clicked something; they have to have
+    actually typed/reviewed text in the confirm field and saved it.
+    An empty/None diagnosis withdraws a prior confirmation.
+    """
+
+    appointments = _load_appointments()
+    appt = appointments.get(appt_id)
+    if appt is None:
+        raise HTTPException(status_code=404, detail="Appointment not found.")
+    if appt.get("doctor_id") != doctor.get("doctor_id"):
+        raise HTTPException(status_code=403, detail="Not your appointment.")
+    diagnosis = (req.diagnosis or "").strip() or None
+    confirmed_at = datetime.now(timezone.utc) if diagnosis else None
+    appt["confirmed_diagnosis"] = diagnosis
+    appt["diagnosis_confirmed_at"] = confirmed_at.isoformat() if confirmed_at else None
+    _save_appointments(appointments)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            AppointmentRepository(db).confirm_diagnosis(appt_uuid, diagnosis, confirmed_at=confirmed_at)
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of confirmed diagnosis failed for appointment %s", appt_id, exc_info=True)
+
+    return {"saved": True, "confirmed_diagnosis": diagnosis}
 
 
 @router.get("/api/doctor/appointments/{appt_id}")

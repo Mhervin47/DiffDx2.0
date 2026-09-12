@@ -93,6 +93,12 @@ class DoctorSummaryRequest(BaseModel):
     summary: str
 
 
+class ConfirmDiagnosisRequest(BaseModel):
+    # None/empty withdraws a prior confirmation — see
+    # DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md §3.
+    diagnosis: str | None = None
+
+
 class WaitlistRequest(BaseModel):
     doctor_id: str
     doctor_name: str

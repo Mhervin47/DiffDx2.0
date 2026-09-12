@@ -5349,6 +5349,9 @@ function buildDetail(data) {
       </div>
     </div>
 
+    <!-- Confirm diagnosis for patient -->
+    ${buildDiagnosisConfirmSection(appt.appointment_id, appt.confirmed_diagnosis || '', report.final_diagnosis || appt.primary_diagnosis || '')}
+
     <!-- Differential evolution -->
     ${diff.length > 0 ? buildDiffEvo(diff, turnHistory) : ''}
 
@@ -7371,6 +7374,98 @@ async function saveSummary(apptId) {
   } catch {
     if (btn) { btn.disabled = false; btn.textContent = 'Save Summary'; btn.style.background = ''; btn.style.borderColor = ''; }
     alert('Failed to save summary. Please try again.');
+  }
+}
+
+// ---- Diagnosis confirmation for patient (DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md) ----
+// The patient's report never shows the AI's raw diagnosis on its own — only
+// what a doctor explicitly confirms here reaches them. aiDiagnosis is only
+// ever used to pre-fill the input as a starting point; the value actually
+// saved is whatever's in the field when the doctor clicks Confirm, never a
+// pointer back to the AI's own text.
+const _diagnosisConfirmState = {};
+
+function buildDiagnosisConfirmSection(apptId, existingConfirmed, aiDiagnosis) {
+  _diagnosisConfirmState[apptId] = existingConfirmed;
+
+  if (existingConfirmed) {
+    return `
+      <div class="portal-section" id="dxconfirm-section-${apptId}">
+        <div class="portal-section-title">Diagnosis Confirmation for Patient</div>
+        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:14px 16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--success);margin-bottom:4px;">✓ Visible on patient's report</div>
+          <div style="font-size:14px;color:var(--text);">${escHtml(existingConfirmed)}</div>
+        </div>
+        <div class="summary-footer">
+          <span class="summary-saved" id="dxconfirm-saved-${apptId}">Withdrawn</span>
+          <button class="btn btn-ghost btn-sm" id="dxconfirm-btn-${apptId}"
+            onclick="withdrawConfirmedDiagnosis('${apptId}')" style="font-size:12px;padding:6px 16px;">Withdraw</button>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="portal-section" id="dxconfirm-section-${apptId}">
+      <div class="portal-section-title">Diagnosis Confirmation for Patient</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+        Not yet visible to the patient. Review, correct if needed, and confirm to reveal it on their report.
+      </div>
+      <textarea class="summary-textarea" id="dxconfirm-${apptId}"
+        placeholder="Confirmed diagnosis…">${escHtml(aiDiagnosis)}</textarea>
+      <div class="summary-footer">
+        <span class="summary-saved" id="dxconfirm-saved-${apptId}">Confirmed for patient</span>
+        <button class="btn btn-primary btn-sm" id="dxconfirm-savebtn-${apptId}"
+          onclick="saveConfirmedDiagnosis('${apptId}')" style="font-size:12px;padding:6px 16px;">Confirm for Patient</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveConfirmedDiagnosis(apptId) {
+  const textarea = document.getElementById(`dxconfirm-${apptId}`);
+  if (!textarea) return;
+  const value = textarea.value.trim();
+  if (!value) { alert('Enter a diagnosis before confirming.'); return; }
+  const btn = document.getElementById(`dxconfirm-savebtn-${apptId}`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const res = await fetch(`${API}/api/doctor/appointments/${apptId}/diagnosis`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ diagnosis: value }),
+    });
+    if (!res.ok) throw new Error();
+    _diagnosisConfirmState[apptId] = value;
+    const appt = _appointments.find(a => a.appointment_id === apptId);
+    if (appt) appt.confirmed_diagnosis = value;
+    const container = document.getElementById(`dxconfirm-section-${apptId}`);
+    if (container) container.outerHTML = buildDiagnosisConfirmSection(apptId, value, value);
+  } catch {
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm for Patient'; }
+    alert('Failed to confirm diagnosis. Please try again.');
+  }
+}
+
+async function withdrawConfirmedDiagnosis(apptId) {
+  if (!confirm('Withdraw this confirmed diagnosis? The patient will no longer see it on their report.')) return;
+  const btn = document.getElementById(`dxconfirm-btn-${apptId}`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Withdrawing…'; }
+  try {
+    const res = await fetch(`${API}/api/doctor/appointments/${apptId}/diagnosis`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ diagnosis: null }),
+    });
+    if (!res.ok) throw new Error();
+    _diagnosisConfirmState[apptId] = '';
+    const appt = _appointments.find(a => a.appointment_id === apptId);
+    if (appt) appt.confirmed_diagnosis = '';
+    const aiDx = appt ? (appt.primary_diagnosis || '') : '';
+    const container = document.getElementById(`dxconfirm-section-${apptId}`);
+    if (container) container.outerHTML = buildDiagnosisConfirmSection(apptId, '', aiDx);
+  } catch {
+    if (btn) { btn.disabled = false; btn.textContent = 'Withdraw'; }
+    alert('Failed to withdraw. Please try again.');
   }
 }
 

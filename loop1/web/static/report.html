@@ -1101,6 +1101,25 @@
     }
     .doctors-note-text { font-size: 14px; color: var(--text-main); line-height: 1.65; white-space: pre-line; }
 
+    /* ── Doctor-confirmed diagnosis (DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md) ──
+       Deliberately distinct from .doctors-note-card (teal/success accent,
+       not blue) so it visually reads as "confirmed fact" rather than a
+       general note — the one place on this page a diagnosis name is
+       allowed, because a licensed doctor put their name on it. */
+    .confirmed-dx-card {
+      background: rgba(16, 185, 129, 0.06); border-left: 4px solid var(--teal-primary);
+      border-top: 1px solid rgba(16, 185, 129, 0.25); border-right: 1px solid rgba(16, 185, 129, 0.25);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 0 18px 18px 0; padding: 20px 24px; box-shadow: var(--card-shadow);
+    }
+    .confirmed-dx-label {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--teal-primary); margin-bottom: 8px;
+    }
+    .confirmed-dx-text { font-size: 16px; font-weight: 700; color: var(--text-main); line-height: 1.5; }
+    .confirmed-dx-meta { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
     /* ── Patient Test Orders & Alerts ── */
     .test-orders-alert {
       background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35);
@@ -1800,7 +1819,7 @@ async function loadTestOrders() {
     // has doctor data, then prefer non-cancelled/upcoming over stale.
     function _apptScore(a) {
       const s = a.status || 'upcoming';
-      const hasData = ((a.prescriptions?.length > 0) || (a.test_orders?.length > 0) || !!a.referral || !!a.doctor_summary || !!a.doctor_notes) ? 1 : 0;
+      const hasData = ((a.prescriptions?.length > 0) || (a.test_orders?.length > 0) || !!a.referral || !!a.doctor_summary || !!a.doctor_notes || !!a.confirmed_diagnosis) ? 1 : 0;
       if (s === 'cancelled') return hasData ? 5 : 0;
       if (s === 'seen')      return hasData ? 25 : 10;
       /* upcoming */         return hasData ? 30 : 20;
@@ -1830,6 +1849,23 @@ async function loadTestOrders() {
     });
     const sendBtn = document.getElementById('btn-send-doctor');
     if (sendBtn) sendBtn.style.display = '';
+    const confirmedDxEl = document.getElementById('confirmed-diagnosis-section');
+    if (confirmedDxEl && appt.confirmed_diagnosis) {
+      const confirmedDate = appt.diagnosis_confirmed_at
+        ? new Date(appt.diagnosis_confirmed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '';
+      confirmedDxEl.innerHTML = `
+        <div class="report-section">
+          <div class="confirmed-dx-card">
+            <div class="confirmed-dx-label">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Confirmed by ${escHtml(appt.doctor_name || 'your doctor')}
+            </div>
+            <div class="confirmed-dx-text">${escHtml(appt.confirmed_diagnosis)}</div>
+            <div class="confirmed-dx-meta">${confirmedDate ? `Confirmed ${confirmedDate} — ` : ''}reviewed against your interview and follow-up.</div>
+          </div>
+        </div>`;
+    }
     if (el && appt.test_orders && appt.test_orders.length) {
       el.innerHTML = buildTestOrdersBlock(appt.test_orders, appt.doctor_name, appt.id);
     }
@@ -2448,6 +2484,12 @@ function buildReport(d) {
 
     <!-- PATIENT SUMMARY -->
     ${closing ? buildPatientSummary(closing, d.final_diagnosis) : ''}
+
+    <!-- CONFIRMED DIAGNOSIS — populated async, only when a doctor has
+         explicitly confirmed one (see DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md).
+         Empty/no-op otherwise — no "pending review" placeholder, silence
+         is the correct default state here. -->
+    <div id="confirmed-diagnosis-section"></div>
 
     <!-- NEXT STEPS (routing + booking) — populated async after load -->
     <div class="report-section routing-block" id="next-steps-section">

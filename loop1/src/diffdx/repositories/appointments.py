@@ -30,6 +30,8 @@ class AppointmentDTO:
     rescheduled_from_id: uuid.UUID | None = None
     chief_complaint: str | None = None
     primary_diagnosis: str | None = None
+    confirmed_diagnosis: str | None = None
+    diagnosis_confirmed_at: datetime | None = None
     patient_age: int | None = None
     patient_sex: str | None = None
     patient_bmi: float | None = None
@@ -63,6 +65,8 @@ def _to_dto(appt: Appointment) -> AppointmentDTO:
         rescheduled_from_id=appt.rescheduled_from_id,
         chief_complaint=appt.chief_complaint,
         primary_diagnosis=appt.primary_diagnosis,
+        confirmed_diagnosis=appt.confirmed_diagnosis,
+        diagnosis_confirmed_at=appt.diagnosis_confirmed_at,
         patient_age=appt.patient_age,
         patient_sex=appt.patient_sex,
         patient_bmi=appt.patient_bmi,
@@ -187,6 +191,20 @@ class AppointmentRepository:
             raise NotFoundError(f"Appointment {appointment_id} not found")
         appt.doctor_summary = summary
         appt.summary_updated_at = updated_at
+        self._session.flush()
+        return _to_dto(appt)
+
+    def confirm_diagnosis(
+        self, appointment_id: uuid.UUID, diagnosis: str | None, *, confirmed_at: datetime | None
+    ) -> AppointmentDTO:
+        """Set (or, with diagnosis=None, withdraw) the doctor-confirmed
+        diagnosis. Never touches primary_diagnosis — see that column's
+        docstring for why they're kept separate."""
+        appt = self._session.get(Appointment, appointment_id)
+        if appt is None:
+            raise NotFoundError(f"Appointment {appointment_id} not found")
+        appt.confirmed_diagnosis = diagnosis
+        appt.diagnosis_confirmed_at = confirmed_at if diagnosis else None
         self._session.flush()
         return _to_dto(appt)
 

@@ -1601,20 +1601,7 @@
       }
 
       savePatientInfoDraft();
-
-      // Always show consent modal before proceeding to diagnosis
-      function proceedToHistory() {
-        window.location.href = '/history';
-      }
-
-      if (window.DiffDxConsent) {
-        window.DiffDxConsent.show({
-          onAccept: proceedToHistory,
-          onCancel: () => {} // stay on page
-        });
-      } else {
-        proceedToHistory();
-      }
+      window.location.href = '/history';
     });
 
     // Theme toggle handling

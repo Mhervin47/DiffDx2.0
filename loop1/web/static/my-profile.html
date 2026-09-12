@@ -566,6 +566,29 @@
     .strength-hint {
       font-size: 12px; color: var(--text-dim); line-height: 1.45; font-weight: 500;
     }
+    .strength-missing {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+    }
+    .strength-missing-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600;
+      padding: 3px 9px; border-radius: 99px;
+      background: rgba(239,68,68,.10); color: #DC2626;
+      border: 1px solid rgba(239,68,68,.22);
+      font-family: var(--font-body);
+    }
+    html.dark-theme .strength-missing-pill {
+      background: rgba(239,68,68,.12); color: #FCA5A5;
+      border-color: rgba(239,68,68,.25);
+    }
+    .strength-missing-pill svg { flex-shrink: 0; }
+    .strength-complete-msg {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600;
+      color: #0F766E;
+      margin-top: 4px;
+    }
+    html.dark-theme .strength-complete-msg { color: var(--primary); }
 
     /* Trust & Security Highlights */
     .trust-list {
@@ -1321,7 +1344,7 @@
             <div class="strength-track">
               <div class="strength-fill" id="profile-strength-bar" style="width: 80%;"></div>
             </div>
-            <div class="strength-hint">Complete emergency contacts &amp; health details for comprehensive clinical care.</div>
+            <div id="strength-missing-list"></div>
           </div>
 
           <!-- Trust Badges List -->
@@ -1571,10 +1594,8 @@
       <!-- Section 5: Privacy & Data -->
       <div class="profile-section" id="section-privacy">
         <div class="profile-section-header">
-          <div class="ps-icon-wrap" style="background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(239,68,68,0.05));">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
-            </svg>
+          <div class="ps-icon-wrap" style="background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(239,68,68,0.05));font-size:20px;display:flex;align-items:center;justify-content:center;">
+            🔒
           </div>
           <div class="ps-title-wrap">
             <div class="ps-title">Privacy &amp; Data</div>
@@ -1815,24 +1836,47 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function calculateStrength(p) {
-  const checks = [
-    Boolean(p.name),
-    Boolean(p.email),
-    Boolean(p.mobile),
-    Boolean(p.age),
-    Boolean(p.gender),
-    Boolean(p.blood_type),
-    Boolean(p.address),
-    Boolean(p.allergies),
-    Boolean(p.emergency_contact_name),
-    Boolean(p.emergency_contact_phone)
+  // Privacy & Data is intentionally excluded from completion score
+  const fields = [
+    { key: 'name',                   label: 'Full Name',            val: p.name },
+    { key: 'mobile',                 label: 'Mobile Number',        val: p.mobile },
+    { key: 'age',                    label: 'Age',                  val: p.age },
+    { key: 'gender',                 label: 'Gender',               val: p.gender },
+    { key: 'blood_type',             label: 'Blood Type',           val: p.blood_type },
+    { key: 'address',                label: 'Address',              val: p.address },
+    { key: 'allergies',              label: 'Allergies',            val: p.allergies },
+    { key: 'emergency_contact_name', label: 'Emergency Contact',    val: p.emergency_contact_name },
+    { key: 'emergency_contact_phone',label: 'Emergency Phone',      val: p.emergency_contact_phone },
   ];
-  const filled = checks.filter(Boolean).length;
-  const pct = Math.min(100, Math.max(20, Math.round((filled / checks.length) * 100)));
-  const valEl = document.getElementById('profile-strength-val');
-  const barEl = document.getElementById('profile-strength-bar');
+
+  const missing = fields.filter(f => !f.val);
+  const filled  = fields.length - missing.length;
+  const pct = Math.min(100, Math.max(20, Math.round((filled / fields.length) * 100)));
+
+  const valEl  = document.getElementById('profile-strength-val');
+  const barEl  = document.getElementById('profile-strength-bar');
+  const listEl = document.getElementById('strength-missing-list');
+
   if (valEl) valEl.textContent = pct + '%';
   if (barEl) barEl.style.width = pct + '%';
+
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  if (missing.length === 0) {
+    listEl.innerHTML = `
+      <div class="strength-complete-msg">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Profile complete — you're all set!
+      </div>`;
+  } else {
+    const pillsHtml = missing.map(f => `
+      <span class="strength-missing-pill">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        ${f.label}
+      </span>`).join('');
+    listEl.innerHTML = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:5px;font-weight:600;letter-spacing:.02em;">MISSING FIELDS</div><div class="strength-missing">${pillsHtml}</div>`;
+  }
 }
 
 async function loadProfile() {

@@ -424,9 +424,11 @@
 
     /* Auth container */
     #nav-auth {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+      line-height: 1 !important;
+      vertical-align: middle !important;
     }
 
     #nav-auth .btn {
@@ -460,57 +462,94 @@
 
     .nav-user-menu {
       position: relative;
-      display: flex;
-      align-items: center;
+      display: inline-flex !important;
+      align-items: center !important;
     }
 
     .nav-user-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: 999px;
-      padding: 4px 12px 4px 4px;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      max-height: 38px !important;
+      box-sizing: border-box !important;
+      padding: 0 12px 0 2px !important;
+      background: var(--surface-2) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 9999px !important;
       cursor: pointer;
-      color: var(--text-soft);
-      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      color: var(--text-color) !important;
+      box-shadow: var(--shadow-sm) !important;
+      transition: all 0.2s ease !important;
+      line-height: 1 !important;
+      vertical-align: middle !important;
     }
 
     .nav-user-btn:hover {
-      background: var(--option-bg);
-      border-color: var(--border);
-      box-shadow: var(--shadow-sm);
+      border-color: var(--teal) !important;
+      transform: scale(1.02) !important;
+      background: var(--option-bg) !important;
+      color: var(--teal) !important;
+    }
+
+    html.dark-theme .nav-user-btn {
+      background: rgba(255, 255, 255, 0.06) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      color: #cbd5e1 !important;
+    }
+
+    html.dark-theme .nav-user-btn:hover {
+      background: rgba(20, 184, 166, 0.12) !important;
+      border-color: var(--teal, #14b8a6) !important;
+      color: var(--teal, #14b8a6) !important;
+    }
+
+    .nav-user-btn svg {
+      display: block !important;
+      flex-shrink: 0 !important;
     }
 
     .nav-user-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #0fa88d 0%, #2879d8 100%);
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 800;
-      font-family: var(--font-heading);
-      box-shadow: 0 2px 10px rgba(15, 168, 141, 0.35);
-      flex-shrink: 0;
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      min-height: 32px !important;
+      max-width: 32px !important;
+      max-height: 32px !important;
+      border-radius: 50% !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: linear-gradient(135deg, #0fa88d 0%, #2879d8 100%) !important;
+      color: #ffffff !important;
+      font-size: 13px !important;
+      font-weight: 800 !important;
+      font-family: var(--font-heading) !important;
+      box-shadow: 0 1px 4px rgba(15, 168, 141, 0.25) !important;
+      flex-shrink: 0 !important;
+      line-height: 1 !important;
     }
 
     .dark-theme .nav-user-avatar,
     html.dark-theme .nav-user-avatar {
-      background: linear-gradient(135deg, #19c6ad 0%, #4c8ff5 100%);
-      color: #ffffff;
-      box-shadow: 0 2px 12px rgba(25, 198, 173, 0.4);
+      background: linear-gradient(135deg, #19c6ad 0%, #4c8ff5 100%) !important;
+      color: #ffffff !important;
+      box-shadow: 0 1px 4px rgba(25, 198, 173, 0.3) !important;
     }
 
     .nav-user-name {
-      color: var(--text-color);
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
+      color: var(--text-color) !important;
+      font-size: 13.5px !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      line-height: 1 !important;
+    }
+
+    html.dark-theme .nav-user-name {
+      color: #eaf2fa !important;
     }
 
     .nav-user-dropdown {

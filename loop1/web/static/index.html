@@ -194,29 +194,52 @@
     }
 
     .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
     }
 
-    .theme-toggle-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 1px solid var(--border-card);
-      background: transparent;
-      color: var(--text-soft);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
+    .theme-toggle-btn,
+    #nav-notif-btn,
+    .nav-icon-btn {
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
+      border-radius: 50% !important;
+      border: 1px solid var(--border-card) !important;
+      background: transparent !important;
+      color: var(--text-soft) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      box-sizing: border-box !important;
+      padding: 0 !important;
+      line-height: 1 !important;
+      vertical-align: middle !important;
+      text-decoration: none !important;
+      position: relative !important;
     }
 
-    .theme-toggle-btn:hover {
-      border-color: var(--teal);
-      color: var(--teal);
-      background: var(--teal-light);
+    .theme-toggle-btn:hover,
+    #nav-notif-btn:hover,
+    .nav-icon-btn:hover {
+      border-color: var(--teal) !important;
+      color: var(--teal) !important;
+      background: var(--teal-light) !important;
+    }
+
+    .theme-toggle-btn svg,
+    #nav-notif-btn svg,
+    .nav-icon-btn svg {
+      width: 16px !important;
+      height: 16px !important;
+      display: block !important;
+      flex-shrink: 0 !important;
     }
 
     .sun-icon {
@@ -256,8 +279,84 @@
 
     /* Auth state container */
     #nav-auth {
-      display: inline-flex;
-      align-items: center;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+      line-height: 1 !important;
+      vertical-align: middle !important;
+    }
+
+    .nav-user-menu {
+      position: relative;
+      display: inline-flex !important;
+      align-items: center !important;
+    }
+
+    .nav-user-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      height: 38px !important;
+      min-height: 38px !important;
+      max-height: 38px !important;
+      box-sizing: border-box !important;
+      padding: 0 12px 0 2px !important;
+      background: transparent;
+      border: 1px solid var(--border-card);
+      border-radius: 9999px !important;
+      cursor: pointer;
+      color: var(--text-main);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease !important;
+      line-height: 1 !important;
+      vertical-align: middle !important;
+    }
+
+    .nav-user-btn:hover {
+      border-color: var(--teal);
+      background: var(--teal-light);
+      color: var(--teal);
+    }
+
+    .nav-user-btn svg {
+      display: block !important;
+      flex-shrink: 0 !important;
+    }
+
+    .nav-user-avatar {
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      min-height: 32px !important;
+      max-width: 32px !important;
+      max-height: 32px !important;
+      border-radius: 50% !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: linear-gradient(135deg, #0fa88d 0%, #2879d8 100%) !important;
+      color: #ffffff !important;
+      font-size: 13px !important;
+      font-weight: 800 !important;
+      font-family: var(--font-heading);
+      box-shadow: 0 1px 4px rgba(15, 168, 141, 0.25) !important;
+      flex-shrink: 0 !important;
+      line-height: 1 !important;
+    }
+
+    html.dark-theme .nav-user-avatar {
+      background: linear-gradient(135deg, #19c6ad 0%, #4c8ff5 100%) !important;
+      box-shadow: 0 1px 4px rgba(25, 198, 173, 0.3) !important;
+    }
+
+    .nav-user-name {
+      color: var(--text-main);
+      font-size: 13.5px !important;
+      font-weight: 700 !important;
+      white-space: nowrap !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      line-height: 1 !important;
     }
 
     .nav-user-chip {
@@ -466,6 +565,14 @@
     html.dark-theme .hero-btn-secondary:hover {
       background: var(--teal);
       color: #ffffff !important;
+    }
+
+    .hero-btn-signin {
+      color: #0E172A !important;
+    }
+
+    html.dark-theme .hero-btn-signin {
+      color: #F8FAFC !important;
     }
 
     .hero-visual {
@@ -1640,14 +1747,6 @@
 
       <!-- CENTER / RIGHT NAV -->
       <nav class="header-nav">
-        <div class="nav-links">
-          <a href="#about" class="nav-link">About</a>
-          <a href="#how-it-works" class="nav-link">How it works</a>
-          <a href="#why-diffdx" class="nav-link">Features</a>
-          <a href="/book-slot.html" class="nav-link">Book Appointment</a>
-          <a href="#faq" class="nav-link">FAQ</a>
-        </div>
-
         <div class="header-actions">
           <!-- THEME TOGGLE -->
           <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
@@ -1710,7 +1809,7 @@
               </svg>
               <span>Find Doctor</span>
             </a>
-            <a href="/login.html" class="hero-btn-secondary hero-btn-half">
+            <a href="/login.html" class="hero-btn-secondary hero-btn-half hero-btn-signin">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
                 <polyline points="10 17 15 12 10 7"/>

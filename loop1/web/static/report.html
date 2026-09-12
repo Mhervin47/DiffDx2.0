@@ -175,7 +175,7 @@
       flex-shrink: 0;
     }
 
-    .nav-home, .nav-signin-btn, #nav-auth a.btn, #nav-auth a.btn-ghost, #nav-auth a {
+    .nav-home, .nav-signin-btn, #nav-auth a.btn, #nav-auth a.btn-ghost, #nav-auth a.nav-signin-btn {
       display: inline-flex; align-items: center; gap: 7px;
       padding: 7px 16px !important; border-radius: 9999px !important;
       background: var(--btn-nav-bg) !important;
@@ -187,7 +187,7 @@
       cursor: pointer;
     }
 
-    .nav-home:hover, .nav-signin-btn:hover, #nav-auth a.btn:hover, #nav-auth a.btn-ghost:hover, #nav-auth a:hover {
+    .nav-home:hover, .nav-signin-btn:hover, #nav-auth a.btn:hover, #nav-auth a.btn-ghost:hover, #nav-auth a.nav-signin-btn:hover {
       color: var(--teal-primary) !important;
       border-color: var(--teal-primary) !important;
       background: rgba(16, 191, 165, 0.08) !important;
@@ -256,10 +256,18 @@
     }
 
     .nav-right-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
       margin-left: auto;
+    }
+
+    #nav-auth {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+      line-height: 1 !important;
+      vertical-align: middle !important;
     }
 
     /* Theme Toggle Button */

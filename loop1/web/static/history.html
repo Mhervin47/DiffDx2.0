@@ -140,7 +140,7 @@
       animation: animateNavDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
-    .nav-home, .nav-signin-btn, #nav-auth a.btn, #nav-auth a.btn-ghost, #nav-auth a {
+    .nav-home, .nav-signin-btn, #nav-auth a.btn, #nav-auth a.btn-ghost, #nav-auth a.nav-signin-btn {
       display: inline-flex; align-items: center; gap: 7px;
       padding: 7px 16px !important; border-radius: 9999px !important;
       background: var(--btn-nav-bg) !important;
@@ -151,7 +151,7 @@
       transition: all .25s ease !important;
     }
 
-    .nav-home:hover, .nav-signin-btn:hover, #nav-auth a.btn:hover, #nav-auth a.btn-ghost:hover, #nav-auth a:hover {
+    .nav-home:hover, .nav-signin-btn:hover, #nav-auth a.btn:hover, #nav-auth a.btn-ghost:hover, #nav-auth a.nav-signin-btn:hover {
       color: var(--teal-primary) !important;
       border-color: var(--teal-primary) !important;
       background: rgba(16, 191, 165, 0.08) !important;
@@ -210,7 +210,11 @@
     }
 
     .nav-right-actions {
-      display: flex; align-items: center; gap: 12px; margin-left: auto;
+      display: flex !important; align-items: center !important; gap: 10px !important; margin-left: auto;
+    }
+
+    #nav-auth {
+      display: inline-flex !important; align-items: center !important; gap: 10px !important; line-height: 1 !important; vertical-align: middle !important;
     }
 
     /* Theme Toggle Button */
@@ -1574,8 +1578,7 @@
       _histPhaseTimer = null;
     }
 
-    document.getElementById('history-form').addEventListener('submit', async e => {
-      e.preventDefault();
+    async function _startDiagnosisSession() {
       const btn = document.getElementById('start-btn');
       btn.disabled = true;
       document.getElementById('loading-overlay').classList.add('active');
@@ -1629,9 +1632,27 @@
         alert('Network error — please check your connection and try again.');
         btn.disabled = false;
       }
+    }
+
+    document.getElementById('history-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (window.DiffDxConsent && !window.DiffDxConsent.hasConsented()) {
+        window.DiffDxConsent.show({
+          onAccept: () => {
+            _startDiagnosisSession();
+          },
+          onCancel: () => {
+            const btn = document.getElementById('start-btn');
+            if (btn) btn.disabled = false;
+          }
+        });
+        return;
+      }
+      _startDiagnosisSession();
     });
   </script>
   <script src="/auth.js"></script>
+  <script src="/consent-modal.js"></script>
 </body>
 </html>
 

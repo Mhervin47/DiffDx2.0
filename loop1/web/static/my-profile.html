@@ -1687,7 +1687,35 @@
 
     <div style="display:flex;gap:12px;margin-top:22px;">
       <button type="button" class="btn-ghost" style="flex:1;" onclick="closeDsrModal()">Cancel</button>
-      <button type="button" class="btn-danger-outline" style="flex:1;justify-content:center;" onclick="submitDsrRequest()" id="dsr-submit-btn">Submit Request</button>
+      <button type="button" class="btn-danger-outline" style="flex:1;justify-content:center;" onclick="openDsrConfirmModal()" id="dsr-submit-btn">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- DSR Deletion Confirmation Alert Modal -->
+<div class="modal-overlay" id="dsr-confirm-overlay" style="display:none; z-index:350;" onclick="if(event.target===this)closeDsrConfirmModal()">
+  <div class="modal-card" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-icon-wrap" style="background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.3);color:#EF4444;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div>
+        <div class="modal-title" style="color:var(--text-main);">Confirm Data Deletion</div>
+        <div class="modal-subtitle">Are you sure you want to proceed?</div>
+      </div>
+    </div>
+
+    <p style="font-size:13.5px;line-height:1.6;color:var(--text-muted);margin:16px 0;">
+      Are you sure you want to submit a request to delete your data? This will ask an administrator to permanently delete your account, consultation history, and associated medical records.
+    </p>
+
+    <div style="display:flex;gap:12px;margin-top:24px;">
+      <button type="button" class="btn-ghost" style="flex:1;" onclick="closeDsrConfirmModal()">Cancel</button>
+      <button type="button" class="btn-danger-outline" style="flex:1;justify-content:center;background:rgba(239,68,68,0.12);color:#EF4444;font-weight:700;" onclick="confirmAndSubmitDsrRequest()" id="dsr-confirm-btn">Confirm Deletion</button>
     </div>
   </div>
 </div>
@@ -2061,11 +2089,27 @@ function openDsrModal() {
 }
 function closeDsrModal() { document.getElementById('dsr-overlay').style.display = 'none'; }
 
-async function submitDsrRequest() {
-  const btn = document.getElementById('dsr-submit-btn');
+function openDsrConfirmModal() {
+  document.getElementById('dsr-confirm-overlay').style.display = 'flex';
+}
+function closeDsrConfirmModal() {
+  document.getElementById('dsr-confirm-overlay').style.display = 'none';
+}
+
+function submitDsrRequest() {
+  openDsrConfirmModal();
+}
+
+async function confirmAndSubmitDsrRequest() {
+  const confirmBtn = document.getElementById('dsr-confirm-btn');
+  const mainBtn = document.getElementById('dsr-submit-btn');
   const errEl = document.getElementById('dsr-error');
   errEl.style.display = 'none';
-  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Submitting…';
+  if (mainBtn) { mainBtn.disabled = true; mainBtn.textContent = 'Submitting…'; }
+
   try {
     const reason = document.getElementById('dsr-reason').value.trim();
     const res = await fetch('/api/patient/dsr-request', {
@@ -2075,13 +2119,17 @@ async function submitDsrRequest() {
     });
     if (!res.ok) throw new Error((await res.json()).detail || 'Request failed');
     const data = await res.json();
+    closeDsrConfirmModal();
     closeDsrModal();
     renderPrivacySection(data.request);
   } catch (err) {
+    closeDsrConfirmModal();
     errEl.textContent = err.message;
     errEl.style.display = 'block';
   } finally {
-    btn.disabled = false; btn.textContent = 'Submit Request';
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Confirm Deletion';
+    if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = 'Submit Request'; }
   }
 }
 

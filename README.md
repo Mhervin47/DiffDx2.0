@@ -31,6 +31,12 @@ docker compose up --build
   rate limits in practice, not designed in the abstract.
 - **Blob store → relational cutover done as dual-write phases**, not a big-bang migration — see
   `docs/tasks/` for the actual sequence.
+- **Patient-safe diagnosis disclosure** — the report page never states a raw AI-generated
+  diagnosis to a patient. It leads with a specialist recommendation, urgency, and a pre-visit test
+  checklist instead; the AI's full differential and confidence scores stay available, but only
+  inside a collapsed "Technical Details" section meant for clinicians and reviewers. A direct
+  response to mentor feedback that naming a specific disease — from a system that explicitly isn't
+  a diagnosis — risks unnecessary patient panic. See `REPORT_PAGE_REDESIGN.md`.
 
 ## Architecture
 

@@ -1220,9 +1220,27 @@
       background: rgba(13, 148, 136, 0.06); border: 1px solid rgba(13, 148, 136, 0.25);
       border-radius: 16px; font-size: 13.5px; color: var(--teal-primary); font-weight: 600;
     }
-    .sug-status-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-    .sug-progress { flex: 1; height: 5px; background: var(--border-card); border-radius: 9999px; overflow: hidden; }
-    .sug-progress-fill { height: 100%; background: var(--teal-primary); border-radius: 9999px; transition: width .3s ease; }
+    .sug-status-bar {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+      background: var(--surface-2); border: 1px solid var(--border-card);
+      border-radius: 14px; padding: 12px 16px;
+    }
+    .sug-status-count {
+      font-family: var(--font-heading); font-size: 13px; font-weight: 800;
+      color: var(--text); white-space: nowrap;
+    }
+    .sug-progress { flex: 1; height: 8px; background: var(--border-card); border-radius: 9999px; overflow: hidden; }
+    .sug-progress-fill {
+      height: 100%; border-radius: 9999px; transition: width .35s cubic-bezier(.16,1,.3,1);
+      background: linear-gradient(90deg, #059669, #10b981, #34d399);
+    }
+    .sug-reset-btn {
+      display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+      font-family: var(--font-heading); font-size: 11px; font-weight: 700;
+      color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 9999px; padding: 5px 12px; cursor: pointer; transition: all .15s ease;
+    }
+    .sug-reset-btn:hover { color: var(--text); border-color: var(--teal-primary); }
     .sug-badge {
       font-family: var(--font-heading); font-size: 10px; font-weight: 800; padding: 3px 9px;
       border-radius: 9999px; text-transform: uppercase; letter-spacing: .07em;
@@ -1576,9 +1594,12 @@ function _buildSuggestedTestsHtml(data) {
     </div>
     ${data.rationale ? `<div class="sug-rationale">${escHtml(data.rationale)}</div>` : ''}
     <div class="sug-status-bar">
-      <span id="sug-status-text" style="font-size:12px;color:var(--text-muted);">${doneCount} of ${tests.length} completed</span>
+      <span id="sug-status-text" class="sug-status-count">${doneCount} of ${tests.length} completed</span>
       <div class="sug-progress"><div class="sug-progress-fill" id="sug-progress-fill" style="width:${tests.length ? Math.round(doneCount/tests.length*100) : 0}%"></div></div>
-      <button onclick="_resetSugState(${JSON.stringify(tests).replace(/"/g,'&quot;')})" style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap;" onmouseenter="this.style.color='var(--text)'" onmouseleave="this.style.color='var(--text-muted)'">Reset</button>
+      <button class="sug-reset-btn" onclick="_resetSugState(${JSON.stringify(tests).replace(/"/g,'&quot;')})">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        Reset
+      </button>
     </div>
     <div id="sug-cards">${cards}</div>
     <p style="font-size:11px;color:var(--text-muted);margin-top:12px;">Check each one off as you complete it, and bring the results to your appointment.</p>`;

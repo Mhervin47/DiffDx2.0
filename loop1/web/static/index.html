@@ -14,7 +14,7 @@
       }
       // If user is already logged in, route to their dedicated overview page
       try {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('authAccessToken');
         const raw = localStorage.getItem('authUser');
         if (token && raw) {
           const u = JSON.parse(raw);

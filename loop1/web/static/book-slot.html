@@ -1080,7 +1080,7 @@ function closeAuthRequiredModal() {
 }
 
 function openBook(docId) {
-  const token = localStorage.getItem('authToken');
+  const token = (typeof getAuthToken === 'function') ? getAuthToken() : localStorage.getItem('authAccessToken');
   if (!token) {
     const doc = _doctors.find(d => d.id === docId);
     openAuthRequiredModal(doc);
@@ -1155,7 +1155,7 @@ function resetBooking() {
 }
 
 function openWaitlist(docId) {
-  const token = localStorage.getItem('authToken');
+  const token = (typeof getAuthToken === 'function') ? getAuthToken() : localStorage.getItem('authAccessToken');
   if (!token) {
     const doc = _doctors.find(d => d.id === docId);
     openAuthRequiredModal(doc);

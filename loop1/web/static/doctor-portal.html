@@ -4750,7 +4750,7 @@ function firePushNotif(id, title, body, opts = {}) {
     requireInteraction: opts.requireInteraction || false,
     ...opts,
   });
-  n.onclick = () => { window.focus(); n.close(); };
+  n.onclick = () => { window.focus(); if (opts.link) window.location.href = opts.link; n.close(); };
 }
 
 // Called after each appointment load — fire notifs for new/emergency items
@@ -4847,6 +4847,7 @@ async function init() {
       .catch(() => {});
     loadRenewalCount();
     loadNewResultsCount();
+    _checkDoctorMessages();
   }, 60000);
 }
 
@@ -5019,6 +5020,8 @@ function updateStats(appts) {
   loadRenewalCount();
   // Load new (unreviewed) test results count
   loadNewResultsCount();
+  // Check for unread messages
+  _checkDoctorMessages();
 }
 
 async function loadRenewalCount() {
@@ -6272,6 +6275,27 @@ async function loadNewResultsCount() {
       }
     }
   } catch (e) { /* silent — same as loadRenewalCount */ }
+}
+
+// Mirrors my-sessions.html's _checkPatientMessages() — patients already get
+// a proactive push notification for unread messages while browsing other
+// pages; doctors had the nav badge (auth.js's _loadMsgBadge) but no
+// equivalent push, despite having the same firePushNotif infrastructure
+// already wired up here for refills/new results.
+async function _checkDoctorMessages() {
+  try {
+    const r = await fetch('/api/messages/unread-count', { headers: authHeaders() });
+    if (!r.ok) return;
+    const { count } = await r.json();
+    if (count > 0) {
+      const ts = new Date().toISOString().slice(0, 16); // minute-resolution so re-fires if count changes
+      firePushNotif(`msg-${ts}-${count}`,
+        `${count} Unread Message${count > 1 ? 's' : ''}`,
+        'You have unread messages from a patient.',
+        { link: '/messages.html' }
+      );
+    }
+  } catch { /* silent — same as loadRenewalCount */ }
 }
 
 async function _markUnreviewedResultsSeen(apptId, existingOrders) {

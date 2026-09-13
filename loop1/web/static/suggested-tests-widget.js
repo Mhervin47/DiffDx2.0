@@ -8,11 +8,17 @@
  * report.html keeps its own long-standing implementation untouched — this
  * file is additive, not a replacement for it.
  *
- * Usage: SugTestsWidget.render(containerEl, sessionId, { allowGenerateMore }).
+ * Additional tests (beyond the initial LLM pass) are checked for
+ * automatically in the background after the first render — no button, no
+ * user action; only a "New" badge appears on any cards it actually adds.
+ * Pass { autoCheckMore: false } to opt out (used on the prep/intake page,
+ * where regeneration doesn't make sense mid-checklist).
+ *
+ * Usage: SugTestsWidget.render(containerEl, sessionId, { autoCheckMore }).
  */
 (function () {
   const API = window.API_BASE || '';
-  const _instances = {}; // sessionId -> { tests, uploads, allowGenerateMore, newIds }
+  const _instances = {}; // sessionId -> { tests, uploads, newIds }
 
   // Inject the card/progress-bar CSS + a spinner keyframe once. Pages that
   // already define these classes (report.html) get harmless duplicates;
@@ -99,8 +105,8 @@
 
   async function render(containerEl, sessionId, opts) {
     opts = opts || {};
-    const allowGenerateMore = opts.allowGenerateMore !== false;
-    _instances[sessionId] = { tests: [], uploads: {}, allowGenerateMore, newIds: new Set() };
+    const autoCheckMore = opts.autoCheckMore !== false;
+    _instances[sessionId] = { tests: [], uploads: {}, newIds: new Set() };
     containerEl.dataset.sugSession = sessionId;
     containerEl.innerHTML = `<div class="sug-loading"><div class="spinner"></div> Analysing test requirements&hellip;</div>`;
 
@@ -128,15 +134,38 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           No basic tests required.${data.rationale ? ' ' + _esc(data.rationale) : ''}
         </div>`;
+        if (autoCheckMore) _autoCheckMore(containerEl, sessionId);
         return;
       }
       _instances[sessionId].tests = data.tests;
       containerEl.innerHTML = _buildHtml(sessionId, data);
+      if (autoCheckMore) _autoCheckMore(containerEl, sessionId);
     } catch (e) {
       containerEl.innerHTML = e.name === 'AbortError'
         ? `<div class="sug-none" style="color:var(--text-muted);background:none;border:none;">Test analysis timed out &mdash; try again.</div>`
         : '';
     }
+  }
+
+  // Automatic, not user-triggered — the backend is idempotent per session
+  // (only the first call ever actually invokes the LLM), so this is safe
+  // to fire every time this widget renders. Silent: no loading state, no
+  // "nothing found" message — only a "New" badge on any cards it adds.
+  async function _autoCheckMore(containerEl, sessionId) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 40000);
+      const res = await fetch(`${API}/api/session/${sessionId}/suggested-tests/more`, { method: 'POST', signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!res.ok) return;
+      const data = await res.json();
+      const newIds = new Set(data.new_ids || []);
+      if (newIds.size === 0) return;
+      const inst = _instances[sessionId];
+      inst.newIds = newIds;
+      inst.tests = data.tests || [];
+      containerEl.innerHTML = _buildHtml(sessionId, data);
+    } catch { /* silent */ }
   }
 
   function _buildHtml(sessionId, data) {
@@ -189,11 +218,6 @@
     return `
       <div class="sug-header">
         <div class="rd-hint" style="margin-top:0;">Worth getting done &mdash; upload if you have results, skip if not.</div>
-        ${inst.allowGenerateMore ? `
-          <button onclick="SugTestsWidget.generateMore('${_esc(sessionId)}')" id="sug-more-btn-${_esc(sessionId)}" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;flex-shrink:0;" title="Ask the AI for additional tests">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Suggest more
-          </button>` : ''}
       </div>
       ${data.rationale ? `<div class="sug-rationale">${_esc(data.rationale)}</div>` : ''}
       <div class="sug-status-bar">
@@ -291,32 +315,5 @@
     }
   }
 
-  async function generateMore(sessionId) {
-    const btn = document.getElementById(`sug-more-btn-${sessionId}`);
-    if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 40000);
-      const res = await fetch(`${API}/api/session/${sessionId}/suggested-tests/more`, { method: 'POST', signal: ctrl.signal });
-      clearTimeout(timer);
-      if (!res.ok) throw new Error('Request failed');
-      const data = await res.json();
-      const inst = _instances[sessionId];
-      inst.newIds = new Set(data.new_ids || []);
-      inst.tests = data.tests || [];
-      const container = document.querySelector(`[data-sug-session="${sessionId}"]`);
-      if (inst.newIds.size === 0) {
-        _toast('No additional tests needed right now');
-      } else {
-        if (container) container.innerHTML = _buildHtml(sessionId, data);
-        _toast(`${inst.newIds.size} additional test${inst.newIds.size > 1 ? 's' : ''} suggested`);
-      }
-    } catch (e) {
-      _toast(e.name === 'AbortError' ? 'Request timed out — try again' : 'Could not generate more tests', '#ef4444');
-    } finally {
-      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
-    }
-  }
-
-  window.SugTestsWidget = { render, toggleDone, uploadResult, generateMore };
+  window.SugTestsWidget = { render, toggleDone, uploadResult };
 })();

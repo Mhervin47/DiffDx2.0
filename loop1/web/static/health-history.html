@@ -965,7 +965,7 @@ function toggleRecTests(btn, sessionId) {
   btn.classList.toggle('open', open);
   if (open && !_openedRecTests.has(sessionId)) {
     _openedRecTests.add(sessionId);
-    SugTestsWidget.render(panel, sessionId, { allowGenerateMore: true });
+    SugTestsWidget.render(panel, sessionId);
   }
 }
 

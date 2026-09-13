@@ -74,11 +74,15 @@ additional tests needed." Appends a new batch to the persisted store, returns th
 merged `{necessary, rationale, tests}` shape as the GET route, plus a `new_ids` list (the ids
 introduced by this call) so the frontend can visually mark only the new cards.
 
-`report.html`: add a "Suggest additional tests" button inside the suggested-tests section
-header (next to the existing print button). On click, calls the new endpoint, re-renders
-`#sug-cards` via the existing `_buildSuggestedTestsHtml`-style path, and tags cards whose id
-is in `new_ids` with a small "New" badge. Existing checked/uploaded state
-(`_sugDone`/`_sugUploads`) is untouched — new tests just extend the set.
+**Automatic, not user-triggered.** There's no button — generation stays automatic throughout;
+only uploading a result stays the optional, patient-driven step. The endpoint is idempotent
+per session (a persisted `auto_more_done` flag on the store entry), so it only ever calls the
+LLM once per session; every later call — including every subsequent page load — just replays
+the stored result at no extra cost. `report.html` fires this silently right after the initial
+list renders (`_autoCheckMoreTests()`, called from `loadSuggestedTests()`), with no loading
+state and no "nothing found" message — only a small "New" badge appears on any cards it
+actually adds. Existing checked/uploaded state (`_sugDone`/`_sugUploads`) is untouched — new
+tests just extend the set.
 
 ### 3. Shared frontend widget (new file: `suggested-tests-widget.js`)
 
@@ -88,31 +92,33 @@ is in `new_ids` with a small "New" badge. Existing checked/uploaded state
 three times, factor it into a shared script, following the same shared-include convention
 the codebase already uses for `auth.js` and `reloader.js`:
 
-- `renderSuggestedTests(containerEl, sessionId, opts)` — fetches `/suggested-tests` and
-  `/suggested-test-files`, renders cards + progress bar + upload buttons into `containerEl`.
-  `opts.allowGenerateMore` (default true) toggles the "Suggest additional tests" button —
-  off by default on pre-visit-intake (prep context, not the review context).
+- `SugTestsWidget.render(containerEl, sessionId, opts)` — fetches `/suggested-tests` and
+  `/suggested-test-files`, renders cards + progress bar + upload buttons into `containerEl`,
+  then silently fires the automatic additional-tests check. `opts.autoCheckMore` (default
+  true) turns that check off — off on pre-visit-intake (prep context, not the review context;
+  regeneration mid-checklist doesn't make sense there).
 - `toggleSugDone`/`uploadSugResult`/localStorage key logic moves in verbatim — the existing
   `sug_tests_${sessionId}` key is already correctly scoped per session, so reuse across pages
   needs no change.
 
-`report.html` switches to calling this shared widget instead of its own copy (same visual
-result, no user-facing change there).
+`report.html` keeps its own long-standing implementation (not switched to the shared widget,
+to avoid touching an already-polished page) — it grew the same automatic-check behavior
+directly, via `_autoCheckMoreTests()`.
 
 ### 4. `health-history.html` — recommended tests per past visit
 
 Each `.tl-card` with a truthy `session_id` gets a collapsed-by-default "Recommended Tests"
-sub-section (expand on click, lazy-loads via `renderSuggestedTests` only when opened — avoids
+sub-section (expand on click, lazy-loads via `SugTestsWidget.render` only when opened — avoids
 firing N requests for every visible history entry on page load). Uses the shared widget with
-`allowGenerateMore: true`, so a patient revisiting an old session can still ask for more tests
-if their situation has changed, exactly like on `report.html`.
+its default `autoCheckMore: true`, so opening an old session still silently checks for
+additional tests if the picture has changed, exactly like on `report.html` — still no button.
 
 ### 5. `pre-visit-intake.html` — recommended tests before the visit
 
 Add one fetch at page load: `GET /api/appointments`, find the entry matching the `appt`
 query-param id, read its `session_id` (field already present on every appointment record —
 no new backend route needed). If present, render a "Recommended Tests" panel (shared widget,
-`allowGenerateMore: false` — regeneration belongs on the report page, not mid-intake) above
+`autoCheckMore: false` — regeneration belongs on the report page, not mid-intake) above
 the existing static `tests_done` self-report checklist. The two stay conceptually distinct
 and both remain: `tests_done` is "tell us what you've already had done"; the new panel is
 "here's what the AI recommends, upload if you have results." No change to the intake submit
@@ -132,7 +138,7 @@ payload — `tests_done` keeps working exactly as today.
 - `py_compile` on all touched backend files; `node --check` on the new/changed JS.
 - Direct Python exercise of the persistence round-trip (`_save_suggested_tests` /
   `_load_suggested_tests`) and the batch-merge logic in `get_suggested_tests`.
-- Playwright, mocked APIs: report.html's "Suggest additional tests" button appends new cards
+- Playwright, mocked APIs: report.html's automatic additional-tests check appends new cards
   with the "New" badge and preserves existing checked/uploaded state; health-history.html's
   collapsed section lazy-loads on expand; pre-visit-intake.html renders the panel only when
   the matched appointment has a `session_id`, and never sends a `/suggested-tests` request

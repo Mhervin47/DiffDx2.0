@@ -254,14 +254,24 @@ async def get_suggested_tests(session_id: str, refresh: bool = False):
 
 @router.post("/api/session/{session_id}/suggested-tests/more")
 async def get_more_suggested_tests(session_id: str):
-    """Generate an additional batch of suggested tests, appended to whatever
-    was already suggested for this session. Returns the same flat shape as
-    the GET route, plus new_ids so the frontend can highlight the new cards."""
+    """Generate one additional batch of suggested tests, appended to whatever
+    was already suggested for this session. Called automatically by the
+    frontend (no user-facing button) right after the initial list loads, so
+    this is idempotent per session — the extra LLM pass only ever runs once;
+    later calls (e.g. the same page reloaded) just replay the persisted
+    result at no extra cost. Returns the same flat shape as the GET route,
+    plus new_ids so the frontend can badge any genuinely new cards."""
     entry = _suggested_tests_store.setdefault(session_id, {"batches": []})
-    existing_names = [t.get("name", "") for b in entry["batches"] for t in b.get("tests", [])]
 
+    if entry.get("auto_more_done"):
+        merged = _merge_batches(entry["batches"])
+        merged["new_ids"] = []
+        return merged
+
+    existing_names = [t.get("name", "") for b in entry["batches"] for t in b.get("tests", [])]
     batch = await _generate_test_batch(session_id, exclude_names=existing_names)
     entry["batches"].append(batch)
+    entry["auto_more_done"] = True
     _save_suggested_tests_store(_suggested_tests_store)
 
     merged = _merge_batches(entry["batches"])

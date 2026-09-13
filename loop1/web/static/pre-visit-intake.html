@@ -1677,7 +1677,7 @@ function _mountRecTestsPanel() {
   if (!_apptSessionId) return;
   const panel = document.getElementById('rec-tests-panel');
   if (!panel) return;
-  SugTestsWidget.render(panel, _apptSessionId, { allowGenerateMore: false });
+  SugTestsWidget.render(panel, _apptSessionId, { autoCheckMore: false });
 }
 
 function renderStep1() {

@@ -83,6 +83,7 @@ from admin_portal.routers.admin_portal_usage import router as admin_portal_usage
 from admin_portal.routers.health import router as admin_portal_health_router
 from admin_portal.routers.audit import router as admin_portal_audit_router
 from admin_portal.routers.dsr import router as admin_portal_dsr_router
+from admin_portal.routers.reports import router as admin_portal_reports_router
 
 logging.basicConfig(level=logging.INFO)
 _log = logging.getLogger(__name__)
@@ -335,6 +336,7 @@ app.include_router(admin_portal_usage_router)
 app.include_router(admin_portal_health_router)
 app.include_router(admin_portal_audit_router)
 app.include_router(admin_portal_dsr_router)
+app.include_router(admin_portal_reports_router)
 
 # ---------------------------------------------------------------------------
 # Static files — MUST come last (catch-all)

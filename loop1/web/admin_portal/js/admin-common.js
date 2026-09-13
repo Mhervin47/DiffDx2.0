@@ -73,6 +73,7 @@ const AdminPortal = (() => {
     { href: "quality.html", label: "AI Quality" },
     { href: "audit.html", label: "Audit" },
     { href: "dsr.html", label: "DSR" },
+    { href: "reports.html", label: "Reports" },
   ];
 
   function mountNav(activeHref) {

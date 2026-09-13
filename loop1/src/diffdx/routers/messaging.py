@@ -13,9 +13,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy import select
 
+from diffdx.audit import log_audit_event
+from diffdx.db.engine import get_sessionmaker
+from diffdx.db.models.reports import MessageReport
 from diffdx.dependencies import get_current_user
 from diffdx.legacy_store import (
     _db_load,
@@ -29,6 +33,15 @@ router = APIRouter(prefix="/api/messages", tags=["messaging"])
 class MessageRequest(BaseModel):
     appointment_id: str
     body: str
+
+
+class MessageReportRequest(BaseModel):
+    thread_id: str
+    reason: str
+    details: str | None = None
+
+
+_VALID_REPORT_REASONS = {"non_medical", "harassment", "inappropriate_content", "spam", "other"}
 
 
 def _load_messages() -> list:
@@ -167,6 +180,80 @@ async def send_message(req: MessageRequest, user: dict = Depends(get_current_use
     msgs.append(msg)
     _save_messages(msgs)
     return {"sent": True, "message": msg}
+
+
+@router.post("/report")
+async def report_thread(req: MessageReportRequest, request: Request, user: dict = Depends(get_current_user)):
+    """Flag the other party in a message thread for admin review — e.g. the
+    channel being used for something other than medical care. Doesn't
+    block, hide, or notify the other party; purely creates a reviewable
+    record for admin_portal/routers/reports.py, same relationship the DSR
+    erasure request queue has to the admin's actual erase flow."""
+    if req.reason not in _VALID_REPORT_REASONS:
+        raise HTTPException(status_code=400, detail=f"reason must be one of: {sorted(_VALID_REPORT_REASONS)}")
+    if req.reason == "other" and not (req.details or "").strip():
+        raise HTTPException(status_code=400, detail="details is required when reason is 'other'.")
+    if not _is_thread_id(req.thread_id):
+        raise HTTPException(status_code=400, detail="thread_id must be a patient__doctor thread id.")
+    p_uid, d_id = req.thread_id.split("__", 1)
+
+    role = user.get("role", "patient")
+    if role == "doctor":
+        if user.get("doctor_id") != d_id:
+            raise HTTPException(status_code=403, detail="Not your conversation.")
+    else:
+        if user["id"] != p_uid:
+            raise HTTPException(status_code=403, detail="Not your conversation.")
+
+    msgs = _load_messages()
+    thread_msgs = [m for m in msgs if m.get("patient_user_id") == p_uid and m.get("doctor_id") == d_id]
+    if not thread_msgs:
+        raise HTTPException(status_code=404, detail="No conversation found to report.")
+    sample = thread_msgs[-1]
+
+    if role == "doctor":
+        reported_patient_user_id, reported_doctor_id = p_uid, None
+        reported_name = sample.get("patient_name", "")
+    else:
+        reported_patient_user_id, reported_doctor_id = None, d_id
+        reported_name = sample.get("doctor_name", "")
+
+    reporter_uuid = uuid.UUID(str(user["id"]))
+    with get_sessionmaker()() as db:
+        existing = db.execute(
+            select(MessageReport).where(
+                MessageReport.reporter_user_id == reporter_uuid,
+                MessageReport.thread_id == req.thread_id,
+                MessageReport.status == "open",
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            existing.reason = req.reason
+            existing.details = req.details
+            db.commit()
+            report_id = str(existing.id)
+        else:
+            rep = MessageReport(
+                reporter_user_id=reporter_uuid,
+                reporter_role=role,
+                reporter_name=user.get("name", ""),
+                thread_id=req.thread_id,
+                reported_patient_user_id=reported_patient_user_id,
+                reported_doctor_id=reported_doctor_id,
+                reported_name=reported_name,
+                reason=req.reason,
+                details=req.details,
+            )
+            db.add(rep)
+            db.commit()
+            db.refresh(rep)
+            report_id = str(rep.id)
+
+    log_audit_event(
+        actor=user, action="POST /api/messages/report", resource_type="message_report", resource_id=report_id,
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"ok": True, "report_id": report_id}
 
 
 @router.patch("/{thread_or_appt_id}/read")

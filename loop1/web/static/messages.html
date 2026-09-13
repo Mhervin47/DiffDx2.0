@@ -766,13 +766,18 @@
     .chat-hdr-details.open { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .chat-hdr-chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: 1; }
 
-    .chat-hdr-del-btn {
+    .chat-hdr-del-btn, .chat-hdr-report-btn {
       background: var(--surface-2); border: 1px solid var(--border-subtle);
       border-radius: 10px; color: var(--text-muted); cursor: pointer; padding: 7px 11px;
-      display: flex; align-items: center; transition: all .15s; flex-shrink: 0; margin-left: auto;
+      display: flex; align-items: center; transition: all .15s; flex-shrink: 0;
     }
+    .chat-hdr-report-btn { margin-left: auto; }
     .chat-hdr-del-btn:hover {
       color: #DC2626; border-color: rgba(220, 38, 38, 0.35); background: rgba(239, 68, 68, 0.08);
+      transform: translateY(-1px);
+    }
+    .chat-hdr-report-btn:hover {
+      color: #f59e0b; border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.08);
       transform: translateY(-1px);
     }
 
@@ -993,6 +998,60 @@
       box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
     }
     .del-btn-del:hover { background: #B91C1C; transform: translateY(-1px); }
+
+    /* Report conversation modal */
+    .report-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center; padding: 24px;
+    }
+    .report-overlay.open { display: flex; }
+    .report-box {
+      background: var(--bg-card); border: 1px solid var(--border-card);
+      border-radius: 20px; padding: 32px; width: 100%; max-width: 420px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+    }
+    .report-icon {
+      width: 54px; height: 54px; border-radius: 16px;
+      background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3);
+      display: flex; align-items: center; justify-content: center;
+      color: #F59E0B; margin: 0 auto 16px;
+    }
+    .report-title {
+      font-family: var(--font-heading); font-size: 18px; font-weight: 800; color: var(--text-main);
+      letter-spacing: -.02em; margin-bottom: 6px; text-align: center;
+    }
+    .report-sub { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 18px; text-align: center; }
+    .report-field-label {
+      font-family: var(--font-heading); font-size: 11px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: block;
+    }
+    .report-select, .report-textarea {
+      width: 100%; background: var(--surface-2); border: 1px solid var(--border-subtle);
+      border-radius: 10px; color: var(--text-main); font-family: inherit; font-size: 13.5px;
+      padding: 10px 12px; outline: none; transition: border-color .15s; margin-bottom: 14px;
+      box-sizing: border-box;
+    }
+    .report-select:focus, .report-textarea:focus { border-color: var(--primary); }
+    .report-textarea { resize: vertical; min-height: 70px; font-family: inherit; }
+    .report-actions { display: flex; gap: 10px; }
+    .report-btn-cancel {
+      flex: 1; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border-card);
+      background: var(--surface-2); color: var(--text-main);
+      font-family: var(--font-heading); font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: all .15s;
+    }
+    .report-btn-cancel:hover { border-color: var(--primary); color: var(--primary); }
+    .report-btn-submit {
+      flex: 1; padding: 10px 16px; border-radius: 10px;
+      background: #F59E0B; border: 1px solid #F59E0B;
+      color: #1a1200; font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all .15s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+    }
+    .report-btn-submit:hover { background: #D97706; transform: translateY(-1px); }
+    .report-btn-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
   </style>
 </head>
 <body>
@@ -1225,6 +1284,11 @@
         <!-- Expandable Details -->
         <div class="chat-hdr-details" id="chat-hdr-details">
           <div class="chat-hdr-chips" id="chat-hdr-chips"></div>
+          <button class="chat-hdr-report-btn" id="chat-report-btn" onclick="openReportModal()" title="Report this conversation">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+            </svg>
+          </button>
           <button class="chat-hdr-del-btn" id="chat-del-btn" onclick="confirmDeleteConvo()" title="Delete conversation">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
@@ -1281,6 +1345,39 @@
       <button class="del-btn-del" id="del-confirm-btn" onclick="deleteConvo()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
         Yes, Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Conversation Modal -->
+<div class="report-overlay" id="report-overlay" onclick="if(event.target===this)closeReportModal()">
+  <div class="report-box">
+    <div class="report-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+      </svg>
+    </div>
+    <div class="report-title">Report this conversation</div>
+    <div class="report-sub" id="report-sub">Let an admin know if this conversation is being used for something other than medical care.</div>
+
+    <label class="report-field-label" for="report-reason">Reason</label>
+    <select class="report-select" id="report-reason" onchange="_onReportReasonChange()">
+      <option value="non_medical">Not related to medical care</option>
+      <option value="harassment">Harassment or threatening language</option>
+      <option value="inappropriate_content">Inappropriate content</option>
+      <option value="spam">Spam or solicitation</option>
+      <option value="other">Other</option>
+    </select>
+
+    <label class="report-field-label" for="report-details">Details<span id="report-details-required" style="color:#DC2626;" hidden> (required)</span></label>
+    <textarea class="report-textarea" id="report-details" placeholder="Optional — add any context that will help the review"></textarea>
+
+    <div class="report-actions">
+      <button class="report-btn-cancel" onclick="closeReportModal()">Cancel</button>
+      <button class="report-btn-submit" id="report-submit-btn" onclick="submitReport()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        Submit Report
       </button>
     </div>
   </div>
@@ -1811,6 +1908,57 @@ async function deleteConvo() {
     alert('Could not delete: ' + e.message);
   } finally {
     btn.textContent = 'Yes, Delete'; btn.disabled = false;
+  }
+}
+
+// ── Report ───────────────────────────────────────────────────────────
+function openReportModal() {
+  const thread = _threads.find(t => t.thread_id === _activeThreadId);
+  if (!thread || !thread.messages.length) {
+    alert('Start the conversation before reporting it — there\'s nothing to review yet.');
+    return;
+  }
+  const isDoc = _me?.role === 'doctor';
+  const otherLabel = isDoc ? (thread.patient_name || 'this patient') : (thread.doctor_name || 'this doctor');
+  document.getElementById('report-sub').textContent =
+    `Let an admin know if your conversation with ${otherLabel} is being used for something other than medical care. This doesn't block or notify them.`;
+  document.getElementById('report-reason').value = 'non_medical';
+  document.getElementById('report-details').value = '';
+  _onReportReasonChange();
+  document.getElementById('report-overlay').classList.add('open');
+}
+function closeReportModal() {
+  document.getElementById('report-overlay').classList.remove('open');
+}
+function _onReportReasonChange() {
+  const isOther = document.getElementById('report-reason').value === 'other';
+  document.getElementById('report-details-required').hidden = !isOther;
+  document.getElementById('report-details').placeholder = isOther
+    ? 'Required — describe what\'s happening'
+    : 'Optional — add any context that will help the review';
+}
+async function submitReport() {
+  const reason = document.getElementById('report-reason').value;
+  const details = document.getElementById('report-details').value.trim();
+  if (reason === 'other' && !details) {
+    alert('Please add a few details since you selected "Other".');
+    return;
+  }
+  const btn = document.getElementById('report-submit-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${_API}/api/messages/report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ thread_id: _activeThreadId, reason, details: details || null }),
+    });
+    if (!r.ok) throw new Error((await r.json()).detail || 'Failed to submit report');
+    closeReportModal();
+    alert('Report submitted. An admin will review this conversation.');
+  } catch (e) {
+    alert('Could not submit report: ' + e.message);
+  } finally {
+    btn.disabled = false;
   }
 }
 

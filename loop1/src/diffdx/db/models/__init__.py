@@ -21,6 +21,7 @@ from diffdx.db.models.clinical import (
 from diffdx.db.models.dsr import DsrErasureRequest
 from diffdx.db.models.files import UploadedFile
 from diffdx.db.models.messaging import Message, MessageThread
+from diffdx.db.models.reports import MessageReport
 from diffdx.db.models.scheduling import (
     Appointment,
     BlockedDate,
@@ -60,4 +61,5 @@ __all__ = [
     "AuditLogEntry",
     "LlmUsageEvent",
     "DsrErasureRequest",
+    "MessageReport",
 ]

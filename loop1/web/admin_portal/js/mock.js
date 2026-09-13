@@ -42,6 +42,22 @@ const AdminPortalMock = {
     ],
   },
 
+  // Matches /api/admin/message-reports's real shape exactly.
+  messageReports: {
+    status: "ok",
+    total: 1,
+    items: [
+      {
+        id: "00000000-0000-0000-0000-0000000000r1",
+        reporter_user_id: "u-1001", reporter_role: "patient", reporter_name: "Test Patient",
+        thread_id: "u-1001__dr_001",
+        reported_patient_user_id: null, reported_doctor_id: "dr_001", reported_name: "Dr. Rao",
+        reason: "non_medical", details: "Kept asking about unrelated topics, not my visit.",
+        status: "open", created_at: "2026-01-02T10:00:00", reviewed_at: null, reviewed_by: null, admin_note: null,
+      },
+    ],
+  },
+
   // Phase 2 — matches /api/admin/subjects and inventory shapes exactly.
   subjectsSearch: {
     status: "ok",

@@ -11,7 +11,7 @@ see TASK4_SPLIT_ROUTERS.md §3 for why that's temporary scaffolding.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -43,6 +43,38 @@ def _save_messages(msgs: list) -> None:
 
 def _is_thread_id(s: str) -> bool:
     return "__" in s
+
+
+# Messaging used to stay open forever on any appointment, effectively an
+# unbounded hotline. Kept simple rather than a fixed pre/post-appointment
+# clock window (e.g. "6h before, 12h after"): that would directly conflict
+# with the post-visit test-results workflow (POST_VISIT_RESULTS_NOTIFICATION_PLAN.md),
+# where a patient legitimately uploads results — and may want to message
+# about them — days after a visit is marked seen. So instead: messaging
+# stays open for the entire life of an "upcoming" appointment (no pre-visit
+# restriction), plus a grace period after it's marked "seen"; beyond that,
+# a new appointment is required to continue the conversation. Message
+# history itself is never hidden by this — only new sends are blocked.
+_MESSAGING_GRACE_DAYS = 7
+
+
+def _messaging_blocked_reason(appt: dict) -> str | None:
+    status = appt.get("status", "upcoming")
+    if status == "upcoming":
+        return None
+    if status == "seen":
+        # status_updated_at is set on every status transition (see
+        # appointments.py's update_appointment_status); fall back to slot
+        # for older records that predate that field.
+        anchor = appt.get("status_updated_at") or appt.get("slot") or ""
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=_MESSAGING_GRACE_DAYS)).isoformat()
+        if not anchor or anchor >= cutoff:
+            return None
+        return (
+            f"Messaging for this visit closed {_MESSAGING_GRACE_DAYS} days after it was "
+            "marked seen. Book a new appointment to continue the conversation."
+        )
+    return "Messaging isn't available for this appointment. Book a new appointment to start a conversation."
 
 
 @router.get("")
@@ -115,6 +147,9 @@ async def send_message(req: MessageRequest, user: dict = Depends(get_current_use
     else:
         if appt.get("patient_user_id") != user["id"]:
             raise HTTPException(status_code=403, detail="Not your appointment.")
+    blocked_reason = _messaging_blocked_reason(appt)
+    if blocked_reason:
+        raise HTTPException(status_code=403, detail=blocked_reason)
     msg = {
         "message_id": str(uuid.uuid4()),
         "appointment_id": req.appointment_id,

@@ -865,6 +865,13 @@
       background: var(--bg-card);
       transition: background .25s ease, border-color .25s ease;
     }
+    .composer-closed-banner {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--text-muted); line-height: 1.5;
+      background: var(--surface-2); border: 1px solid var(--border-subtle);
+      border-radius: 12px; padding: 9px 14px; margin-bottom: 10px;
+    }
+    .composer-closed-banner svg { flex-shrink: 0; color: #f59e0b; }
     .composer-inner {
       display: flex; align-items: center; gap: 12px;
       background: var(--surface-2);
@@ -1235,6 +1242,7 @@
 
       <!-- Message Composer -->
       <div class="msg-composer">
+        <div class="composer-closed-banner" id="composer-closed-banner" hidden></div>
         <div class="composer-inner">
           <textarea class="msg-input" id="msg-input" placeholder="Type a message…" rows="1"
             oninput="autoResize(this)"
@@ -1419,13 +1427,15 @@ async function loadThreads() {
   const data = await msgRes.json();
   _threads = data.threads || [];
 
-  // Merge appointments that have no thread yet so patients/doctors can start conversations
+  let apptById = {};
   if (apptRes.ok) {
     const apptData = await apptRes.json();
     const appts = apptData.appointments || apptData || [];
     const apptList = Array.isArray(appts) ? appts : Object.values(appts);
-    const existingApptIds = new Set(_threads.flatMap(t => t.appointment_ids || []));
+    apptById = Object.fromEntries(apptList.map(a => [a.appointment_id || a.id, a]));
 
+    // Merge appointments that have no thread yet so patients/doctors can start conversations
+    const existingApptIds = new Set(_threads.flatMap(t => t.appointment_ids || []));
     for (const a of apptList) {
       const aid = a.appointment_id || a.id;
       if (!aid || existingApptIds.has(aid)) continue;
@@ -1449,7 +1459,31 @@ async function loadThreads() {
     }
   }
 
+  for (const t of _threads) {
+    t.blocked_reason = _computeBlockedReason(apptById[t.latest_appointment_id]);
+  }
+
   applyFilters();
+}
+
+// Mirrors the backend's _messaging_blocked_reason (routers/messaging.py) —
+// this copy is purely for proactive UX (disabling the composer, showing an
+// explanation) before the user tries to send. The server enforces this for
+// real; if this drifts (clock skew, a status changing mid-session) the
+// actual POST still gets the authoritative 403 with the real reason.
+const _MESSAGING_GRACE_DAYS = 7;
+function _computeBlockedReason(appt) {
+  if (!appt) return null;
+  const status = appt.status || 'upcoming';
+  if (status === 'upcoming') return null;
+  if (status === 'seen') {
+    const anchor = appt.status_updated_at || appt.slot || '';
+    if (!anchor) return null;
+    const cutoff = new Date(Date.now() - _MESSAGING_GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    if (anchor >= cutoff) return null;
+    return `Messaging for this visit closed ${_MESSAGING_GRACE_DAYS} days after it was marked seen. Book a new appointment to continue the conversation.`;
+  }
+  return "Messaging isn't available for this appointment. Book a new appointment to start a conversation.";
 }
 
 function filterThreads(q) {
@@ -1579,7 +1613,27 @@ async function openThread(threadId) {
   }
 
   renderMessages(thread?.messages || []);
-  document.getElementById('msg-input').focus();
+  _applyComposerState(thread);
+}
+
+function _applyComposerState(thread) {
+  const banner = document.getElementById('composer-closed-banner');
+  const input = document.getElementById('msg-input');
+  const btn = document.getElementById('send-btn');
+  const reason = thread?.blocked_reason;
+  if (reason) {
+    banner.hidden = false;
+    banner.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>${escHtml(reason)}</span>`;
+    input.disabled = true;
+    input.placeholder = 'Messaging closed for this conversation';
+    btn.disabled = true;
+  } else {
+    banner.hidden = true;
+    input.disabled = false;
+    input.placeholder = 'Type a message…';
+    btn.disabled = false;
+    input.focus();
+  }
 }
 
 // ── Tick helper ───────────────────────────────────────────────────────
@@ -1680,6 +1734,11 @@ async function sendMessage() {
     btn.disabled = false;
     return;
   }
+  if (thread?.blocked_reason) {
+    alert(thread.blocked_reason);
+    btn.disabled = false;
+    return;
+  }
   const optimistic = {
     body, sender_role: _me?.role || 'patient',
     sender_name: _me?.name || '', sent_at: new Date().toISOString(), _pending: true,
@@ -1741,10 +1800,21 @@ setInterval(async () => {
     const newThreads = data.threads || [];
     const incomingIds = new Set(newThreads.map(t => t.thread_id));
     const apptOnlyThreads = _threads.filter(t => t._from_appt && !incomingIds.has(t.thread_id));
+    // This poll doesn't refetch /api/appointments, so blocked_reason isn't
+    // recomputed here — carry it over from the prior state as long as the
+    // thread's latest appointment hasn't changed (a changed latest appt is
+    // effectively always a fresh "upcoming" one anyway, i.e. unblocked).
+    const prevById = Object.fromEntries(_threads.map(t => [t.thread_id, t]));
+    for (const t of newThreads) {
+      const prev = prevById[t.thread_id];
+      if (prev && prev.latest_appointment_id === t.latest_appointment_id) {
+        t.blocked_reason = prev.blocked_reason;
+      }
+    }
     _threads = [...newThreads, ...apptOnlyThreads];
     _filteredThreads = _threads;
     const updated = _threads.find(t => t.thread_id === _activeThreadId);
-    if (updated) { renderMessages(updated.messages || []); renderThreads(); }
+    if (updated) { renderMessages(updated.messages || []); renderThreads(); _applyComposerState(updated); }
   } catch (_) {}
 }, 5000);
 

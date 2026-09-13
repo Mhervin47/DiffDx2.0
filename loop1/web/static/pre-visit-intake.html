@@ -1565,7 +1565,12 @@ let _apptSessionId = null;
     const data = await res.json();
     const match = (data.appointments || []).find(a => a.appointment_id === apptId || a.id === apptId);
     _apptSessionId = match && match.session_id ? match.session_id : null;
-    if (_apptSessionId && step === 2) _mountRecTestsPanel();
+    // If the user already reached step 2 before this fetch resolved, the
+    // "AI-Recommended Tests" block wasn't in renderStep2()'s output yet
+    // (it's a conditional baked into the returned HTML string, not a live
+    // binding) — re-render step 2 now so the panel's container actually
+    // exists, rather than trying to mount into a div that was never drawn.
+    if (_apptSessionId && step === 2) render();
   } catch { /* ignore — panel just won't show */ }
 })();
 
@@ -1609,12 +1614,12 @@ const FEELINGS = [
 ];
 
 const TESTS_CATALOG = [
-  { name: 'Blood Work', icon: '🩸', desc: 'CBC, Metabolic panel' },
-  { name: 'X-ray', icon: '🩻', desc: 'Chest or limb scan' },
-  { name: 'MRI', icon: '🧠', desc: 'Magnetic resonance' },
-  { name: 'ECG', icon: '💓', desc: 'Cardiovascular check' },
-  { name: 'Urine Test', icon: '🧪', desc: 'Urinalysis' },
-  { name: 'Ultrasound', icon: '📡', desc: 'Sonogram imaging' }
+  { name: 'Blood Work', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2C6 9 4 13.5 4 16a8 8 0 0016 0c0-2.5-2-7-8-14z"/></svg>', desc: 'CBC, Metabolic panel' },
+  { name: 'X-ray', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>', desc: 'Chest or limb scan' },
+  { name: 'MRI', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>', desc: 'Magnetic resonance' },
+  { name: 'ECG', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>', desc: 'Cardiovascular check' },
+  { name: 'Urine Test', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>', desc: 'Urinalysis' },
+  { name: 'Ultrasound', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12a10 10 0 0120 0"/><path d="M6 12a6 6 0 0112 0"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>', desc: 'Sonogram imaging' }
 ];
 
 const COMMON_SYMPTOMS = ['Headache', 'Fever', 'Fatigue', 'Cough', 'Body Aches', 'Shortness of breath', 'Nausea'];
@@ -1782,14 +1787,14 @@ function renderStep1() {
       </div>
       <div class="radio-grid">
         ${[
-          { key: 'Better', icon: '🌿' },
-          { key: 'Same', icon: '⚖️' },
-          { key: 'Worse', icon: '⚠️' },
-          { key: 'First Visit', icon: '🆕' }
+          { key: 'Better', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>' },
+          { key: 'Same', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"/></svg>' },
+          { key: 'Worse', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="7" x2="17" y2="17"/><polyline points="17 7 17 17 7 17"/></svg>' },
+          { key: 'First Visit', icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg>' }
         ].map(item => `
           <div class="radio-card ${state.changes === item.key ? 'active' : ''}" onclick="setChanges('${item.key}')">
             <div class="radio-dot"></div>
-            <span>${item.icon} ${item.key}</span>
+            <span style="display:inline-flex; align-items:center; gap:7px;">${item.icon}${item.key}</span>
           </div>
         `).join('')}
       </div>
@@ -1908,7 +1913,7 @@ function renderStep2() {
                 ${isAct ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
               </span>
               <div style="flex:1; min-width:0;">
-                <div style="font-weight:600; color:var(--text-main); font-size:13px;">${t.icon} ${t.name}</div>
+                <div style="font-weight:600; color:var(--text-main); font-size:13px; display:flex; align-items:center; gap:7px;"><span style="display:inline-flex; color:var(--primary); flex-shrink:0;">${t.icon}</span>${t.name}</div>
                 <div style="font-size:10px; color:var(--text-muted);">${t.desc}</div>
               </div>
             </div>`;

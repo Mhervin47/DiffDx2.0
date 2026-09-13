@@ -1027,12 +1027,18 @@
       text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: block;
     }
     .report-select, .report-textarea {
-      width: 100%; background: var(--surface-2); border: 1px solid var(--border-subtle);
+      width: 100%; background: var(--surface-2); border: 1.5px solid var(--border-subtle);
       border-radius: 10px; color: var(--text-main); font-family: inherit; font-size: 13.5px;
       padding: 10px 12px; outline: none; transition: border-color .15s; margin-bottom: 14px;
       box-sizing: border-box;
     }
     .report-select:focus, .report-textarea:focus { border-color: var(--primary); }
+    .report-select {
+      -webkit-appearance: none; -moz-appearance: none; appearance: none;
+      cursor: pointer; padding-right: 34px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
     .report-textarea { resize: vertical; min-height: 70px; font-family: inherit; }
     .report-actions { display: flex; gap: 10px; }
     .report-btn-cancel {
@@ -1045,7 +1051,7 @@
     .report-btn-submit {
       flex: 1; padding: 10px 16px; border-radius: 10px;
       background: #F59E0B; border: 1px solid #F59E0B;
-      color: #1a1200; font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      color: #051424; font-family: var(--font-heading); font-size: 13px; font-weight: 700;
       cursor: pointer; transition: all .15s;
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);

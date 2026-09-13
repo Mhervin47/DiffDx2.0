@@ -130,8 +130,12 @@ async def update_test_results(
 
 
 @router.get("/api/doctor/appointments/{appt_id}/file")
-async def doctor_download_patient_file(appt_id: str, filename: str = "", doctor: dict = Depends(require_role("doctor"))):
-    """Serve a patient-uploaded file to the doctor assigned to that appointment.
+async def doctor_view_patient_file(appt_id: str, filename: str = "", doctor: dict = Depends(require_role("doctor"))):
+    """Serve a patient-uploaded file to the doctor assigned to that appointment,
+    for inline viewing only — Content-Disposition is deliberately "inline", not
+    "attachment", and the frontend (doctor-portal.html's previewPatientFile) has
+    no download/save action, by design: doctors can review a patient's uploaded
+    test results but not export a copy of them.
     Filename is passed as a query param (?filename=...) to avoid Starlette path-decode
     issues with non-ASCII characters (e.g. macOS screenshot narrow no-break space U+202F)."""
 

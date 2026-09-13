@@ -234,7 +234,7 @@ async def download_patient_file(appt_id: str, filename: str, request: Request):
     # raised an unhandled UnicodeEncodeError (500) with no meaningful
     # message reaching the client. Same fix already applied to the
     # doctor-side equivalent (routers/appointments2.py's
-    # doctor_download_patient_file), found live there via a macOS
+    # doctor_view_patient_file), found live there via a macOS
     # screenshot's narrow no-break space (U+202F) — this route just never
     # got the same treatment.
     safe_name = filename.encode("ascii", "replace").decode("ascii")

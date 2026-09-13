@@ -17,6 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Manrope:wght@500;600;700;800&family=Sora:wght@400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="/auth.js"></script>
+  <script src="/suggested-tests-widget.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -576,6 +577,19 @@
       color: var(--primary);
       transform: translateY(-1px);
     }
+    .tl-tests-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-card);
+      color: var(--text-main); font-family: var(--font-heading);
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tl-tests-toggle:hover { border-color: var(--teal-primary); color: var(--teal-primary); }
+    .tl-tests-toggle.open .tl-tests-chevron { transform: rotate(180deg); }
+    .tl-tests-chevron { transition: transform .2s ease; }
+    .tl-tests-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-card); }
 
     /* Badges */
     .badge-seen {
@@ -934,10 +948,25 @@ function renderTimeline() {
             ${rxCount} prescription${rxCount !== 1 ? 's' : ''}
           </span>
           ${canView ? `<button class="tl-view-btn" onclick="viewReport('${e.session_id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> View Report</button>` : ''}
+          ${canView ? `<button class="tl-tests-toggle" onclick="toggleRecTests(this,'${e.session_id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg> Recommended Tests <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="tl-tests-chevron"><polyline points="6 9 12 15 18 9"/></svg></button>` : ''}
         </div>
+        ${canView ? `<div class="tl-tests-panel" id="tl-tests-${e.session_id}" hidden></div>` : ''}
       </div>
     </div>`;
   }).join('')}</div>`;
+}
+
+const _openedRecTests = new Set();
+function toggleRecTests(btn, sessionId) {
+  const panel = document.getElementById('tl-tests-' + sessionId);
+  if (!panel) return;
+  const open = panel.hidden;
+  panel.hidden = !open;
+  btn.classList.toggle('open', open);
+  if (open && !_openedRecTests.has(sessionId)) {
+    _openedRecTests.add(sessionId);
+    SugTestsWidget.render(panel, sessionId, { allowGenerateMore: true });
+  }
 }
 
 function viewReport(sessionId) {

@@ -39,7 +39,6 @@ from sqlalchemy.orm import Session
 from diffdx.db.engine import get_session
 from diffdx.repositories.appointments import AppointmentRepository
 from diffdx.repositories.users import UserRepository
-from diffdx.routers.sessions import _suggested_tests_cache
 from diffdx.schemas.sessions import BookRequest
 from diffdx.legacy_store import (
     _add_session_to_user,
@@ -58,7 +57,9 @@ from diffdx.legacy_store import (
     _save_doctors,
     _save_file_data,
     _save_session_uploads,
+    _save_suggested_tests_store,
     _session_test_uploads,
+    _suggested_tests_store,
 )
 from diffdx.session_store import get_session as _get_live_session
 
@@ -67,16 +68,27 @@ _log = logging.getLogger(__name__)
 router = APIRouter(tags=["sessions"])
 
 
-@router.get("/api/session/{session_id}/suggested-tests")
-async def get_suggested_tests(session_id: str, refresh: bool = False):
-    """
-    Use the LLM to suggest basic pre-diagnosis tests based on the session's
-    final differential. Results are cached per session so repeated calls are free.
-    Pass ?refresh=1 to bust the cache.
-    """
+def _merge_batches(batches: list[dict]) -> dict:
+    """Flatten stored batches into the flat {necessary, rationale, tests} shape
+    report.html (and the shared suggested-tests widget) already expect — later
+    batches' tests are appended after earlier ones, ids stay unique since each
+    generation assigns t{n} against the running count."""
+    tests: list[dict] = []
+    for b in batches:
+        tests.extend(b.get("tests", []))
+    latest = batches[-1] if batches else {}
+    return {
+        "necessary": latest.get("necessary", bool(tests)),
+        "rationale": latest.get("rationale", ""),
+        "tests": tests,
+    }
 
-    if not refresh and session_id in _suggested_tests_cache:
-        return _suggested_tests_cache[session_id]
+
+async def _generate_test_batch(session_id: str, exclude_names: list[str] | None = None) -> dict:
+    """Call the LLM for one batch of suggested tests. exclude_names, when given,
+    tells the model what's already been suggested so a 'generate more' call
+    doesn't repeat itself. Raises HTTPException on session-not-found/timeout,
+    same as the original single-shot generator did."""
 
     # Load session data
     diff, confidence = _get_final_differential(session_id)
@@ -132,6 +144,14 @@ async def get_suggested_tests(session_id: str, refresh: bool = False):
     except Exception:
         pass
 
+    already_suggested = ""
+    if exclude_names:
+        already_suggested = (
+            "\nTests already suggested previously (do NOT repeat these unless "
+            "clinically distinct from all of them):\n" +
+            "\n".join(f'- "{n}"' for n in exclude_names)
+        )
+
     prompt = f"""You are a clinical decision-support system.
 
 {patient_line}
@@ -140,6 +160,7 @@ Symptoms: {symptoms_text or "not specified"}
 Top differential: {diff_summary}
 Most likely diagnosis: {top_dx}
 {doctor_test_mentions}
+{already_suggested}
 
 Your task: Decide which BASIC outpatient tests are warranted BEFORE a specialist appointment.
 Rules:
@@ -194,9 +215,11 @@ If no tests needed: set necessary=false and tests=[].
         result.setdefault("necessary", bool(result.get("tests")))
         result.setdefault("rationale", "")
         result.setdefault("tests", [])
-        # Assign stable IDs
+        # Assign stable IDs, offset past any already-suggested tests so ids
+        # stay unique when this batch gets appended to earlier ones.
+        start = len(exclude_names or [])
         for i, t in enumerate(result["tests"]):
-            t.setdefault("id", f"t{i+1}")
+            t.setdefault("id", f"t{start + i + 1}")
             t.setdefault("priority", "routine")
             t.setdefault("preparation", "No special preparation required.")
             t.setdefault("duration", "")
@@ -208,8 +231,42 @@ If no tests needed: set necessary=false and tests=[].
         _log.warning("suggested-tests LLM call failed: %s", exc)
         result = {"necessary": False, "rationale": "Test suggestions unavailable.", "tests": []}
 
-    _suggested_tests_cache[session_id] = result
+    result["generated_at"] = datetime.now(timezone.utc).isoformat()
     return result
+
+
+@router.get("/api/session/{session_id}/suggested-tests")
+async def get_suggested_tests(session_id: str, refresh: bool = False):
+    """
+    Use the LLM to suggest basic pre-diagnosis tests based on the session's
+    final differential. Results are persisted per session (survives restarts)
+    so repeated calls are free. Pass ?refresh=1 to regenerate the first batch.
+    """
+    entry = _suggested_tests_store.get(session_id)
+    if entry and entry.get("batches") and not refresh:
+        return _merge_batches(entry["batches"])
+
+    batch = await _generate_test_batch(session_id)
+    _suggested_tests_store[session_id] = {"batches": [batch]}
+    _save_suggested_tests_store(_suggested_tests_store)
+    return _merge_batches([batch])
+
+
+@router.post("/api/session/{session_id}/suggested-tests/more")
+async def get_more_suggested_tests(session_id: str):
+    """Generate an additional batch of suggested tests, appended to whatever
+    was already suggested for this session. Returns the same flat shape as
+    the GET route, plus new_ids so the frontend can highlight the new cards."""
+    entry = _suggested_tests_store.setdefault(session_id, {"batches": []})
+    existing_names = [t.get("name", "") for b in entry["batches"] for t in b.get("tests", [])]
+
+    batch = await _generate_test_batch(session_id, exclude_names=existing_names)
+    entry["batches"].append(batch)
+    _save_suggested_tests_store(_suggested_tests_store)
+
+    merged = _merge_batches(entry["batches"])
+    merged["new_ids"] = [t.get("id") for t in batch.get("tests", [])]
+    return merged
 
 
 @router.post("/api/session/{session_id}/book")

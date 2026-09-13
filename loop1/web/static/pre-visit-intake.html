@@ -18,6 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="/auth.js"></script>
+  <script src="/suggested-tests-widget.js"></script>
   <style>
     /* ═════════════════════════════════════════════════════════
        DIFFDX CLINICAL INTAKE — LIGHT & DARK THEME SYSTEM
@@ -1552,6 +1553,22 @@ if (!user) {
   window.location.replace('/login.html?next=' + encodeURIComponent(location.pathname + location.search));
 }
 
+// Resolve this appointment's session_id (if any) so the AI-recommended-tests
+// panel on step 2 has something to fetch against. GET /api/appointments
+// already returns the full blob per appointment (session_id included) —
+// no new endpoint needed. See SUGGESTED_TESTS_EXPANSION_PLAN.md.
+let _apptSessionId = null;
+(async () => {
+  try {
+    const res = await fetch('/api/appointments', { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const match = (data.appointments || []).find(a => a.appointment_id === apptId || a.id === apptId);
+    _apptSessionId = match && match.session_id ? match.session_id : null;
+    if (_apptSessionId && step === 2) _mountRecTestsPanel();
+  } catch { /* ignore — panel just won't show */ }
+})();
+
 let step = 1;
 const state = {
   feeling: '',
@@ -1651,9 +1668,16 @@ function render() {
   updateStepperUI();
   const body = document.getElementById('wiz-body');
   if (step === 1) body.innerHTML = renderStep1();
-  else if (step === 2) body.innerHTML = renderStep2();
+  else if (step === 2) { body.innerHTML = renderStep2(); _mountRecTestsPanel(); }
   else if (step === 3) body.innerHTML = renderStep3();
   else body.innerHTML = renderSuccess();
+}
+
+function _mountRecTestsPanel() {
+  if (!_apptSessionId) return;
+  const panel = document.getElementById('rec-tests-panel');
+  if (!panel) return;
+  SugTestsWidget.render(panel, _apptSessionId, { allowGenerateMore: false });
 }
 
 function renderStep1() {
@@ -1852,6 +1876,19 @@ function renderStep2() {
         <button type="button" class="sugg-pill" onclick="appendAllergy('Sulfa')">+ Sulfa</button>
       </div>
     </div>
+
+    ${_apptSessionId ? `
+    <!-- AI-Recommended Tests (SUGGESTED_TESTS_EXPANSION_PLAN.md) -->
+    <div class="field-group" style="margin-bottom: 8px;">
+      <div class="field-label-row">
+        <label class="field-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>
+          Recommended Tests
+        </label>
+        <span class="field-hint">Optional — upload if you have results</span>
+      </div>
+      <div id="rec-tests-panel"></div>
+    </div>` : ''}
 
     <!-- Diagnostic Tests Done Recently -->
     <div class="field-group" style="margin-bottom: 8px;">

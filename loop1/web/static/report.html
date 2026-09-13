@@ -1288,6 +1288,12 @@
       background: rgba(13, 148, 136, 0.1); color: var(--teal-primary); white-space: nowrap;
     }
     .sug-test-name-done { text-decoration: line-through; opacity: 0.6; }
+    .sug-new-badge {
+      display: inline-block; font-family: var(--font-heading); font-size: 9px; font-weight: 800;
+      letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 9999px;
+      background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35);
+      vertical-align: middle; margin-left: 4px;
+    }
     .sug-loading { display: flex; align-items: center; gap: 10px; padding: 20px 0; font-size: 13px; color: var(--text-muted); }
 
     /* ── Slot Picker Modal ── */
@@ -1495,6 +1501,8 @@ const _SUG_STORAGE_KEY = `sug_tests_${sessionId}`;
 let _sugDone = new Set();    // set of test IDs marked done
 let _sugUploads = {};        // { [testId]: { filename, uploaded_at, test_name } }
 let _sugApptId = null;       // appointment id for uploads
+let _sugTests = [];          // current flat list of suggested tests (for "Suggest more")
+let _sugNewIds = new Set();  // ids introduced by the most recent "Suggest more" call
 
 function _loadSugState() {
   try { _sugDone = new Set(JSON.parse(localStorage.getItem(_SUG_STORAGE_KEY) || '[]')); } catch { _sugDone = new Set(); }
@@ -1545,6 +1553,7 @@ async function loadSuggestedTests() {
         </div>`;
       return;
     }
+    _sugTests = data.tests;
     el.innerHTML = _buildSuggestedTestsHtml(data);
   } catch (e) {
     el.innerHTML = e.name === 'AbortError'
@@ -1575,6 +1584,7 @@ function _buildSuggestedTestsHtml(data) {
              style="display:none" onchange="uploadSugResult(event,'${escHtml(t.id)}','${escHtml(t.name)}',${JSON.stringify(tests).replace(/"/g,'&quot;')})">
          </label>`;
     const accentCls = t.priority === 'urgent' ? 'card-urgent' : 'card-routine';
+    const isNew = _sugNewIds.has(t.id);
     return `
       <div class="sug-test-card${done ? ' done' : ''} ${accentCls}" id="sugcard-${escHtml(t.id)}">
         <button class="sug-checkbox${done ? ' sug-checkbox-done' : ''}" onclick="toggleSugDone('${escHtml(t.id)}',${JSON.stringify(tests).replace(/"/g,'&quot;')})" title="${done ? 'Mark as not done' : 'Mark as done'}">
@@ -1582,7 +1592,7 @@ function _buildSuggestedTestsHtml(data) {
         </button>
         <div class="sug-icon ${iconCls}">${icon}</div>
         <div style="flex:1;min-width:0;">
-          <div class="sug-test-name${done ? ' sug-test-name-done' : ''}">${escHtml(t.name)}</div>
+          <div class="sug-test-name${done ? ' sug-test-name-done' : ''}">${escHtml(t.name)}${isNew ? ' <span class="sug-new-badge">New</span>' : ''}</div>
           <div class="sug-test-why">${escHtml(t.why)}</div>
           <div class="sug-test-meta" style="margin-top:8px;">
             <span class="sug-badge ${badgeCls}">${escHtml(t.priority)}</span>
@@ -1606,10 +1616,16 @@ function _buildSuggestedTestsHtml(data) {
         </div>
         <div class="rd-hint" style="margin-top:0;">Worth getting done before your appointment — your doctor may adjust this list.</div>
       </div>
-      <button onclick="_printTestList()" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;flex-shrink:0;" title="Print test checklist">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Print
-      </button>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        <button onclick="_generateMoreTests()" id="sug-more-btn" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" title="Ask the AI for additional tests">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Suggest more
+        </button>
+        <button onclick="_printTestList()" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;" title="Print test checklist">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print
+        </button>
+      </div>
     </div>
     ${data.rationale ? `<div class="sug-rationale">${escHtml(data.rationale)}</div>` : ''}
     <div class="sug-status-bar">
@@ -1634,6 +1650,32 @@ function _resetSugState(tests) {
   _sugDone.clear();
   _saveSugState();
   _refreshSugCards(tests);
+}
+
+async function _generateMoreTests() {
+  const btn = document.getElementById('sug-more-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 40000);
+    const res = await fetch(`${API}/api/session/${sessionId}/suggested-tests/more`, { method: 'POST', signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('Request failed');
+    const data = await res.json();
+    _sugNewIds = new Set(data.new_ids || []);
+    _sugTests = data.tests || [];
+    if (_sugNewIds.size === 0) {
+      _showReportToast('No additional tests needed right now');
+    } else {
+      const el = document.getElementById('suggested-tests-section');
+      if (el) el.innerHTML = _buildSuggestedTestsHtml(data);
+      _showReportToast(`${_sugNewIds.size} additional test${_sugNewIds.size > 1 ? 's' : ''} suggested`);
+    }
+  } catch (e) {
+    _showReportToast(e.name === 'AbortError' ? 'Request timed out — try again' : 'Could not generate more tests', '#ef4444');
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
 }
 
 async function uploadSugResult(event, testId, testName, tests) {

@@ -671,6 +671,18 @@ def _save_session_uploads(data: dict) -> None:
 _session_test_uploads: dict = _load_session_uploads()  # session_id → { test_id → record }
 
 
+def _load_suggested_tests_store() -> dict:
+    return _db_load("suggested_tests", {})
+
+
+def _save_suggested_tests_store(data: dict) -> None:
+    _db_save("suggested_tests", data)
+
+
+# session_id → {"batches": [{"generated_at", "necessary", "rationale", "tests": [...]}]}
+_suggested_tests_store: dict = _load_suggested_tests_store()
+
+
 # ── Session report DB storage (survives server restarts / ephemeral filesystems) ─
 def _save_session_report(session_id: str, report: dict) -> None:
     _db_save(f"session_report:{session_id}", report)

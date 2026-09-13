@@ -7,10 +7,8 @@ Depends(get_current_user) where the original required auth (most of these
 routes don't — sessions can be started anonymously).
 
 Helpers verified private to this domain (not referenced anywhere else in
-web/api.py) moved fully: _CASE_META, _load_profile, _profile_summary,
-_suggested_tests_cache (the last of these is used by session_booking.py
-too — imported from here rather than duplicated). _get_final_differential
-did NOT move — it's also used by a route that hasn't been split out yet
+web/api.py) moved fully: _CASE_META, _load_profile, _profile_summary.
+_get_final_differential did NOT move — it's also used by a route that hasn't been split out yet
 (web/api.py ~L2060 as of this writing) — so it stays behind and gets
 lazily imported, same as the other genuinely-shared helpers. See
 TASK4_SPLIT_ROUTERS.md §3.
@@ -64,8 +62,6 @@ _CASE_META = {
     "case_05": {"label": "Case 05", "tags": ["geriatric", "vague"]},
     "case_06": {"label": "Case 06", "tags": ["pediatric", "infectious"]},
 }
-
-_suggested_tests_cache: dict[str, dict] = {}
 
 
 def _load_profile(case_id: str):

@@ -1460,7 +1460,9 @@ async function loadThreads() {
   }
 
   for (const t of _threads) {
-    t.blocked_reason = _computeBlockedReason(apptById[t.latest_appointment_id]);
+    const appt = apptById[t.latest_appointment_id];
+    t.blocked_reason = _computeBlockedReason(appt);
+    t.window_chip = _computeWindowChip(appt);
   }
 
   applyFilters();
@@ -1484,6 +1486,26 @@ function _computeBlockedReason(appt) {
     return `Messaging for this visit closed ${_MESSAGING_GRACE_DAYS} days after it was marked seen. Book a new appointment to continue the conversation.`;
   }
   return "Messaging isn't available for this appointment. Book a new appointment to start a conversation.";
+}
+
+// Header chip communicating the 7-day window up front, not just reactively
+// once it's already closed (the composer banner handles that case).
+function _computeWindowChip(appt) {
+  if (!appt) return '';
+  const status = appt.status || 'upcoming';
+  if (status === 'upcoming') return '';
+  const closedChip = `<span class="badge" title="Book a new appointment to continue the conversation" style="font-size:10px;color:#ef4444;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:9999px;padding:3px 9px;font-weight:700;">Messaging closed</span>`;
+  if (status !== 'seen') return closedChip;
+  const anchor = appt.status_updated_at || appt.slot || '';
+  const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
+  if (isNaN(anchorMs)) return '';
+  const daysLeft = Math.ceil(_MESSAGING_GRACE_DAYS - (Date.now() - anchorMs) / 86400000);
+  if (daysLeft <= 0) return closedChip;
+  const urgent = daysLeft <= 2;
+  const color = urgent ? '#f59e0b' : 'var(--text-muted)';
+  const bg = urgent ? 'rgba(245,158,11,.12)' : 'var(--surface-2)';
+  const border = urgent ? 'rgba(245,158,11,.35)' : 'var(--border-subtle)';
+  return `<span class="badge" title="Messaging closes ${_MESSAGING_GRACE_DAYS} days after a visit is marked seen" style="font-size:10px;color:${color};background:${bg};border:1px solid ${border};border-radius:9999px;padding:3px 9px;font-weight:700;">Closes in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}</span>`;
 }
 
 function filterThreads(q) {
@@ -1560,6 +1582,7 @@ function renderThreads() {
           <div class="thread-chips">
             <span class="urgency-badge urgency-${urg}">${urgLabel}</span>
             ${t.specialty ? `<span class="badge badge-dim" style="font-size:10px;">${escHtml(t.specialty)}</span>` : ''}
+            ${t.window_chip || ''}
             ${t.unread ? `<span class="thread-unread">${t.unread}</span>` : ''}
           </div>
         </div>
@@ -1598,7 +1621,8 @@ async function openThread(threadId) {
     `<span class="urgency-badge urgency-${urgency}">${urgLabel}</span>` +
     (specialty ? `<span class="badge badge-dim" style="font-size:10px;">${escHtml(specialty)}</span>` : '') +
     `<span class="badge badge-dim" style="font-size:10px;">${roleLabel}</span>` +
-    countChip;
+    countChip +
+    (thread?.window_chip || '');
 
   document.getElementById('no-thread-msg').style.display = 'none';
   const cc = document.getElementById('chat-content');
@@ -1809,6 +1833,7 @@ setInterval(async () => {
       const prev = prevById[t.thread_id];
       if (prev && prev.latest_appointment_id === t.latest_appointment_id) {
         t.blocked_reason = prev.blocked_reason;
+        t.window_chip = prev.window_chip;
       }
     }
     _threads = [...newThreads, ...apptOnlyThreads];

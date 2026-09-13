@@ -120,12 +120,19 @@ async def upload_patient_file(
     # Replace any existing file with the same name
     files[:] = [f for f in files if f.get("filename") != file.filename]
     files.append(record)
-    # Mark the matched doctor-ordered test as having results uploaded
+    # Mark the matched doctor-ordered test as having results uploaded.
+    # results_reviewed_at is deliberately left untouched here (only ever
+    # cleared to None below on a re-upload) — see
+    # POST_VISIT_RESULTS_NOTIFICATION_PLAN.md: this is the "unreviewed"
+    # signal the doctor's new-results panel/notification key off of,
+    # separate from results_uploaded itself.
     if test_order_id:
         for t in appt.get("test_orders", []):
             if t.get("id") == test_order_id:
                 t["results_uploaded"] = True
                 t["results_filename"] = file.filename
+                t["results_uploaded_at"] = uploaded_at.isoformat()
+                t["results_reviewed_at"] = None
                 break
     # Mark the matched suggested test as uploaded
     if suggested_test_id:

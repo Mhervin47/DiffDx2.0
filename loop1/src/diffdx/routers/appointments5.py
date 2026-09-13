@@ -366,3 +366,41 @@ async def get_renewal_reminders(request: Request):
         })
     results.sort(key=lambda r: r["requested_at"], reverse=True)
     return {"reminders": results, "count": len(results)}
+
+
+@router.get("/api/doctor/new-test-results")
+async def get_new_test_results(request: Request):
+    """Return appointments with at least one uploaded-but-unreviewed test
+    result, regardless of the appointment's own status.
+
+    See POST_VISIT_RESULTS_NOTIFICATION_PLAN.md — modeled directly on
+    get_renewal_reminders above: a patient can upload a result well after
+    a doctor has marked the appointment "seen" (labs routinely take days),
+    and the Queue view filters "seen" out by default, so without this the
+    doctor has no way to find out. Same shape, same cross-status-filter
+    scan.
+    """
+
+    doctor = _require_doctor(request)
+    doctor_id = doctor.get("doctor_id")
+    appointments = _load_appointments()
+    results = []
+    for appt in appointments.values():
+        if appt.get("doctor_id") != doctor_id:
+            continue
+        unreviewed = [
+            t for t in appt.get("test_orders", [])
+            if t.get("results_uploaded") and not t.get("results_reviewed_at")
+        ]
+        if not unreviewed:
+            continue
+        results.append({
+            "appointment_id": appt.get("appointment_id"),
+            "patient_name": appt.get("patient_name", ""),
+            "tests": [t.get("test", "") for t in unreviewed],
+            "test_order_ids": [t.get("id") for t in unreviewed],
+            "uploaded_at": max((t.get("results_uploaded_at") or "" for t in unreviewed), default=""),
+            "slot": appt.get("slot", ""),
+        })
+    results.sort(key=lambda r: r["uploaded_at"], reverse=True)
+    return {"results": results, "count": len(results)}

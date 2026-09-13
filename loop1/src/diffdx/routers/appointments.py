@@ -197,6 +197,40 @@ async def update_test_orders(
     return {"saved": True, "count": len(req.test_orders)}
 
 
+@router.patch("/api/doctor/appointments/{appt_id}/test-orders/{test_order_id}/reviewed")
+async def mark_test_result_reviewed(
+    appt_id: str, test_order_id: str,
+    doctor: dict = Depends(require_role("doctor")),
+):
+    """Doctor acknowledges having looked at an uploaded test result.
+
+    See POST_VISIT_RESULTS_NOTIFICATION_PLAN.md — this is what clears a
+    test order off the "New Test Results" panel/stat/push-notification,
+    independent of the appointment's own status (which stays untouched;
+    "seen" means the consultation happened, not that every later result
+    has been looked at). Blob-only, no relational sync: test_orders has
+    no relational mirror actively maintained for results_uploaded either
+    (see the upload endpoint in routers/appointments4.py), so this stays
+    consistent with that rather than introducing a new dual-write path
+    for a single boolean-ish field.
+    """
+
+    appointments = _load_appointments()
+    appt = appointments.get(appt_id)
+    if appt is None:
+        raise HTTPException(status_code=404, detail="Appointment not found.")
+    if appt.get("doctor_id") != doctor.get("doctor_id"):
+        raise HTTPException(status_code=403, detail="Not your appointment.")
+    match = next((t for t in appt.get("test_orders", []) if t.get("id") == test_order_id), None)
+    if match is None:
+        raise HTTPException(status_code=404, detail="Test order not found.")
+    if not match.get("results_uploaded"):
+        raise HTTPException(status_code=400, detail="No results uploaded for this test yet.")
+    match["results_reviewed_at"] = datetime.now(timezone.utc).isoformat()
+    _save_appointments(appointments)
+    return {"saved": True}
+
+
 @router.post("/api/doctor/appointments/{appt_id}/files")
 async def doctor_upload_file(
     appt_id: str,

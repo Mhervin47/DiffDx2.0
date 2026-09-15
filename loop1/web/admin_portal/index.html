@@ -591,16 +591,16 @@
     flex: 1 1 180px;
     background: var(--surface-2);
     border: 1px solid var(--border-card);
-    border-radius: 12px; padding: 16px 18px;
+    border-radius: 12px; padding: 18px 18px 16px;
   }
   .roi-value {
-    font-size: 24px; font-weight: 800; font-family: var(--font-heading);
+    font-size: 32px; line-height: 1.15; font-weight: 800; font-family: var(--font-heading);
     background: linear-gradient(135deg, var(--teal-primary), var(--purple-accent));
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent;
   }
   .roi-label {
-    font-size: 11.5px; color: var(--text-muted); margin-top: 4px; font-weight: 600;
+    font-size: 11.5px; color: var(--text-muted); margin-top: 6px; font-weight: 600;
   }
   .roi-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
@@ -741,8 +741,8 @@
     return `${days} day${days === 1 ? "" : "s"} ago`;
   }
 
-  function renderRoi(usage, evidence) {
-    const { fmtUsd, fmtPct, currencySymbol, convertAmount, el } = AdminPortal;
+  function renderRoi(usage) {
+    const { fmtUsd, currencySymbol, convertAmount, el } = AdminPortal;
     const root = document.getElementById("roi-content");
     const cards = [];
 
@@ -757,39 +757,24 @@
       cards.push({
         value: perSession != null ? `${currencySymbol()}${convertAmount(perSession * ROI_PROJECTED_MONTHLY_SESSIONS).toFixed(2)}` : "—",
         label: `Projected / month`,
-        sub: `at ${ROI_PROJECTED_MONTHLY_SESSIONS.toLocaleString()} sessions — inference only, projection not a measurement`,
+        sub: `at ${ROI_PROJECTED_MONTHLY_SESSIONS.toLocaleString()} sessions`,
+      });
+      cards.push({
+        value: String(usage.counts.sessions_in_window),
+        label: "Session volume",
+        sub: null,
       });
     } else if (usageAuthRequired) {
       cards.push({ value: "—", label: "Cost / session", sub: "sign in as admin to see this" });
       cards.push({ value: "—", label: "Projected / month", sub: "sign in as admin to see this" });
+      cards.push({ value: "—", label: "Session volume", sub: "sign in as admin to see this" });
     } else {
       cards.push({ value: "—", label: "Cost / session", sub: "usage data not yet available" });
       cards.push({ value: "—", label: "Projected / month", sub: "usage data not yet available" });
+      cards.push({ value: "—", label: "Session volume", sub: "usage data not yet available" });
     }
 
-    if (evidence && evidence.status === "ok" && evidence.safety && evidence.safety.red_flag_top3_recall) {
-      const recall = evidence.safety.red_flag_top3_recall;
-      const ac = recall.actor_critic;
-      const baseline = recall.baseline_mode_a || recall.baseline_mode_b;
-      if (ac && baseline && ac.pct != null && baseline.pct != null) {
-        const deltaPp = (ac.pct - baseline.pct) * 100;
-        cards.push({
-          value: `${deltaPp >= 0 ? "+" : ""}${deltaPp.toFixed(1)}pp`,
-          label: "Safety-recall delta vs. baseline",
-          sub: `actor-critic ${fmtPct(ac.pct)} vs. baseline ${fmtPct(baseline.pct)}, n=${ac.total}`,
-        });
-      } else {
-        cards.push({ value: "—", label: "Safety-recall delta vs. baseline", sub: "not enough red-flag cases in this eval set" });
-      }
-    } else if (evidence && evidence.status === "auth_required") {
-      cards.push({ value: "—", label: "Safety-recall delta vs. baseline", sub: "sign in as admin to see this" });
-    } else if (evidence && evidence.status === "not_generated") {
-      cards.push({ value: "—", label: "Safety-recall delta vs. baseline", sub: "evidence report not yet generated" });
-    } else {
-      cards.push({ value: "—", label: "Safety-recall delta vs. baseline", sub: "evidence data not yet available" });
-    }
-
-    if (usageAuthRequired && evidence && evidence.status === "auth_required") {
+    if (usageAuthRequired) {
       AdminPortal.renderAuthRequired(root, { what: "ROI figures" });
       return;
     }
@@ -916,7 +901,7 @@
       fetchJSON("/api/admin/usage"),
       fetchJSON("/api/admin/evidence"),
     ]);
-    renderRoi(usage, evidence);
+    renderRoi(usage);
     renderConfig(config, usage);
     renderFreshness(config, evidence);
   })();

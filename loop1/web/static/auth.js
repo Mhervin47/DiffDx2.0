@@ -170,8 +170,12 @@ function initAuthNav() {
             <a class="nav-user-dropdown-item" href="/admin_portal/index.html">Overview</a>
             <a class="nav-user-dropdown-item" href="/admin_portal/evidence.html">Evidence</a>
             <a class="nav-user-dropdown-item" href="/admin_portal/quality.html">AI Quality</a>
+            <a class="nav-user-dropdown-item" href="/admin_portal/architecture-validation.html">Architecture Validation</a>
             <a class="nav-user-dropdown-item" href="/admin_portal/audit.html">Audit</a>
             <a class="nav-user-dropdown-item" href="/admin_portal/dsr.html">DSR</a>
+            <a class="nav-user-dropdown-item" href="/admin_portal/reports.html">Reports</a>
+            <a class="nav-user-dropdown-item" href="/admin_portal/users.html">Users</a>
+            <a class="nav-user-dropdown-item" href="/admin_portal/sop.html">SOP</a>
             <button class="nav-user-dropdown-item nav-user-dropdown-item--danger" onclick="logout()">Sign Out</button>
           </div>
         </div>

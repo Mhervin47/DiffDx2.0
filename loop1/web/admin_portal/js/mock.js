@@ -243,18 +243,72 @@ const AdminPortalMock = {
     ],
   },
 
-  // NOT a real endpoint yet — unlike every other entry in this file, there is
-  // no /api/admin/* route backing this. audit.html's growth section renders
-  // this unconditionally (no fetch attempt) until a real total-doctors/
-  // total-users-over-time endpoint exists to replace it. Always shown with a
-  // visible "sample data" label — see audit.html's growth-section markup.
-  platformGrowth: {
+  // Matches /api/admin/users/summary, /timeseries, /engagement, /retention
+  // exactly — used both for the existing "can't reach endpoint" fallback
+  // banner (auth failure / offline) AND, separately, per-section on
+  // users.html when a real response succeeds but data_sufficient is false
+  // (a fresh/low-volume deployment) — see users.js for how the two cases
+  // pick different label text off the same fixture data.
+  usersSummary: {
+    status: "ok",
+    data_sufficient: true,
+    total_patients: 264,
     total_doctors: 18,
-    total_users: 264,
-    daily: Array.from({ length: 14 }, (_, i) => ({
-      date: new Date(Date.now() - (13 - i) * 86400000).toISOString().slice(0, 10),
-      doctors: Math.round(11 + i * 0.5),
-      users: Math.round(160 + i * 7.4),
+    new_patients_7d: 12,
+    new_patients_30d: 41,
+    active_patients_7d: 58,
+    active_patients_30d: 132,
+    dormant_patients_30d: 47,
+    repeat_usage_rate_pct: 36.4,
+    avg_session_minutes: 6.8,
+    avg_turns_per_session: 5.3,
+    abandonment_rate_pct: 9.1,
+    stuck_sessions: 0,
+    cancellation_rate_pct: 7.6,
+  },
+  usersTimeseries: {
+    status: "ok",
+    days: 30,
+    data_sufficient: true,
+    series: Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10),
+      new_patients: [2,1,0,3,2,1,0,2,4,1,0,1,2,3,1,0,2,1,3,2,0,1,2,1,0,3,2,1,0,2][i],
+      new_doctors: [0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0][i],
+      active_patients: [9,11,8,14,12,10,7,13,15,10,8,9,12,16,11,8,13,10,14,12,9,10,13,11,8,15,12,10,8,13][i],
+      active_doctors: [2,3,2,4,3,3,2,4,4,3,2,3,3,4,3,2,4,3,4,3,2,3,4,3,2,4,3,3,2,4][i],
+      cancellations_patient: [0,1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0][i],
+      cancellations_patient_reschedule: [0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1,0,0,1][i],
+      cancellations_doctor: [0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0][i],
     })),
+  },
+  usersEngagement: {
+    status: "ok",
+    days: 30,
+    data_sufficient: true,
+    series: Array.from({ length: 30 }, (_, i) => ({
+      date: new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10),
+      avg_session_minutes: Math.round((5.5 + Math.sin(i / 3) * 1.5) * 10) / 10,
+      avg_turns_per_session: Math.round((5.0 + Math.cos(i / 4) * 1.0) * 10) / 10,
+    })),
+    termination_breakdown: { max_turns: 61, safety_stop: 8, confidence_threshold: 94, user_quit: 22 },
+  },
+  usersRetention: {
+    status: "ok",
+    weeks: 12,
+    data_sufficient: true,
+    cohorts: [
+      { cohort_week: "2026-06-22", cohort_size: 14, returned_within_30d: 6, retention_pct: 42.9 },
+      { cohort_week: "2026-06-29", cohort_size: 19, returned_within_30d: 7, retention_pct: 36.8 },
+      { cohort_week: "2026-07-06", cohort_size: 22, returned_within_30d: 9, retention_pct: 40.9 },
+      { cohort_week: "2026-07-13", cohort_size: 17, returned_within_30d: 5, retention_pct: 29.4 },
+      { cohort_week: "2026-07-20", cohort_size: 25, returned_within_30d: 11, retention_pct: 44.0 },
+      { cohort_week: "2026-07-27", cohort_size: 21, returned_within_30d: 8, retention_pct: 38.1 },
+      { cohort_week: "2026-08-03", cohort_size: 18, returned_within_30d: 6, retention_pct: 33.3 },
+      { cohort_week: "2026-08-10", cohort_size: 23, returned_within_30d: 10, retention_pct: 43.5 },
+      { cohort_week: "2026-08-17", cohort_size: 20, returned_within_30d: 7, retention_pct: 35.0 },
+      { cohort_week: "2026-08-24", cohort_size: 16, returned_within_30d: 5, retention_pct: 31.3 },
+      { cohort_week: "2026-08-31", cohort_size: 24, returned_within_30d: 8, retention_pct: 33.3 },
+      { cohort_week: "2026-09-07", cohort_size: 12, returned_within_30d: 3, retention_pct: 25.0 },
+    ],
   },
 };

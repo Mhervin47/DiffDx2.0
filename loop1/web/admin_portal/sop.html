@@ -343,6 +343,7 @@
     <a href="#audit">Audit</a><span class="sep">·</span>
     <a href="#evidence-quality">Evidence &amp; Quality</a><span class="sep">·</span>
     <a href="#usage">Usage</a><span class="sep">·</span>
+    <a href="#users">Users</a><span class="sep">·</span>
     <a href="#accounts">Accounts</a>
   </nav>
 
@@ -537,6 +538,61 @@
         <dt>Meaning</dt><dd>This is answerable — <code>model_actual</code> on each <code>llm_usage_events</code> row is populated with the exact model that served that specific call (post-fallback), for every successful call. <code>/api/admin/usage</code>'s <code>model_actual_breakdown</code> (all roles blended) and <code>model_actual_breakdown_by_role</code> (doctor/critic/compressor/closing_turn broken out separately) both surface this on the Overview page's Model &amp; Config card, next to each role's configured model.</dd>
         <dt>Action</dt><dd>Check the "actually serving" line next to the relevant role on the Overview page rather than guessing from logs alone. A small number of very old records predate this field (<code>model_actual_unknown</code> in the response) and are excluded from the percentages, not silently folded in.</dd>
         <dt>Escalate if</dt><dd class="escalate none">N/A — this is a working, live signal, not a known gap.</dd>
+      </dl></div>
+    </details>
+  </section>
+
+  <section class="sop-section" id="users">
+    <h2>Users</h2>
+    <p class="scope"><code>users.html</code>, <code>users_analytics.py</code>.</p>
+
+    <details class="methodology">
+      <summary>Citing "abandonment rate" or the user_quit row from Engagement</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Citing <code>abandonment_rate_pct</code> or the <code>user_quit</code> row of the termination-reason table.</dd>
+        <dt>Meaning</dt><dd><code>termination_reason == "user_quit"</code> is only ever written by the offline/CLI driver (<code>loop1/session.py</code>) — the live web session driver (<code>web/api_session.py</code>) never produces it, only <code>max_turns</code>/<code>safety_stop</code>/<code>confidence_threshold</code>. On a deployment with only live web traffic, this row (and therefore the abandonment rate) will genuinely read 0 — that is an accurate reflection of what the live path can measure today, not a bug in the query.</dd>
+        <dt>Action</dt><dd>Don't read a 0% abandonment rate as "no patient has ever quit mid-interview" — read it as "this signal isn't wired up for the live path yet." If abandonment needs to be measured for real users, that's an instrumentation gap in <code>web/api_session.py</code>, not something this page can surface differently.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A — known, documented gap, not an incident.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>No admin-cancellation series on the Cancellations chart</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Expecting to see cancellations broken out by admin, not finding it.</dd>
+        <dt>Meaning</dt><dd><code>Appointment.cancelled_by</code> has three real values: <code>"patient"</code> and <code>"patient_reschedule"</code> (written in <code>routers/appointments4.py</code>), and <code>"doctor"</code> (written by <code>DELETE /api/doctor/appointments/{appt_id}</code> in <code>routers/appointments.py</code> — a doctor cancelling an appointment on their own schedule, surfaced as a "Cancel" button on <code>doctor-portal.html</code>). Admins have no cancellation right in this product — there is no admin-facing action anywhere that cancels a patient's appointment — so <code>"admin"</code> is never written and deliberately never charted.</dd>
+        <dt>Action</dt><dd>None — this reflects the actual codebase. If an admin-cancellation capability is ever added as a real product requirement, it needs a new write path (and an explicit product decision to grant admins that right) before it can be a new chart series.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A — known, deliberate omission, not a gap.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>A KPI tile, chart, or table shows a "Demo data" label</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Any section on this page shows the amber "Demo data — shown until usage is high enough to chart" note.</dd>
+        <dt>Meaning</dt><dd>That specific section's backend response came back with <code>data_sufficient: false</code> (too few real rows to chart meaningfully — the exact threshold differs per endpoint, e.g. fewer than 5 total patients+doctors for the snapshot/timeseries, fewer than 5 ended sessions in range for engagement, every retention cohort under 3 patients). The section is rendering the matching mock fixture instead of the real (sparse) response — never a blend of the two. This is a different mechanism from the "could not reach endpoint" sample-data banner used elsewhere in this portal; don't conflate a real outage with this. The Cancellations chart and the Engagement chart additionally get a narrower, chart-only version of this same fallback: even when the section overall is <code>data_sufficient: true</code>, if that one chart's own series are all genuinely zero (e.g. plenty of real session/patient activity but zero cancellations so far), <code>users.js</code> swaps just that chart to the mock fixture and shows its own demo note — the rest of the section stays real.</dd>
+        <dt>Action</dt><dd>None required — this clears itself. It's re-evaluated fresh on every poll/fetch, no manual toggle or persisted state; once enough real activity accumulates, the label and demo numbers disappear on the next load.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A — unless the label never clears despite genuinely high real usage, which would point to a bug in the threshold check itself.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Comparing doctor and patient counts on the Growth &amp; Activity charts</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Tempted to read a doctor-count change and a patient-count change as the same kind of growth.</dd>
+        <dt>Meaning</dt><dd>Doctors don't sign up — every doctor account is seeded by ops (<code>scripts/seed_doctors.py</code>), never self-registered. A spike in the doctor roster is a roster action, not organic growth, and is never comparable to patient acquisition. The two charts intentionally use separate axes and separate headings for this reason.</dd>
+        <dt>Action</dt><dd>Read "New patients vs. active patients" as real organic growth/engagement. Read "Doctor roster + active doctors" as an ops/roster view — a rising line there means someone added doctor accounts, not that doctors are "signing up" faster.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Citing "dormant" or a low retention % externally</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>About to describe a patient as having "churned," or cite the retention table as a subscription-renewal metric.</dd>
+        <dt>Meaning</dt><dd>Neither concept exists in this system. There is no account deactivation, no soft-delete, no subscription/plan field anywhere in <code>User</code>. "Dormant" here means only: created more than 30 days ago, with zero login events in the last 30 days — it is an inactivity signal, not an account state. "Retention" means only: a second <code>DiagnosticSession</code> or <code>Appointment</code> within 30 days of the first — repeat clinical activity, not a renewal. DSR erasure (a rare, explicit, privacy-driven hard delete) is never counted here as churn, dormancy, or anything else on this page.</dd>
+        <dt>Action</dt><dd>Use "dormant" / "at risk" / "inactive," never "churn," when describing these numbers to anyone outside this page — the word choice matters because there is no product concept of a churned account to back it up.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A.</dd>
       </dl></div>
     </details>
   </section>

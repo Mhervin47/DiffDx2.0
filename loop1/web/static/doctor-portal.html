@@ -5350,7 +5350,7 @@ function buildDetail(data) {
     </div>` : ''}
 
     <!-- Appointment status -->
-    ${buildStatusBar(appt.appointment_id, status)}
+    ${buildStatusBar(appt.appointment_id, status, appt.cancelled_by)}
 
     <!-- Pre-consultation brief -->
     ${buildBrief(appt, report, routing, closing)}
@@ -6002,13 +6002,14 @@ async function savePlan(apptId) {
 }
 
 // ---- Status bar ----
-function buildStatusBar(apptId, currentStatus) {
+function buildStatusBar(apptId, currentStatus, cancelledBy) {
   const isDone = currentStatus === 'seen' || currentStatus === 'no_show';
   if (currentStatus === 'cancelled') {
+    const cancelledByLabel = cancelledBy === 'doctor' ? 'by You' : cancelledBy === 'patient' ? 'by Patient' : '';
     return `
     <div class="status-bar" id="status-bar-${apptId}" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:10px 14px;gap:10px;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-      <span style="font-size:12px;font-weight:700;color:#ef4444;">Appointment Cancelled by Patient</span>
+      <span style="font-size:12px;font-weight:700;color:#ef4444;">Appointment Cancelled${cancelledByLabel ? ' ' + cancelledByLabel : ''}</span>
       <span style="font-size:11px;color:var(--text-muted);">Slot has been freed</span>
       <button onclick="doctorDismissAppt('${apptId}', this)" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:7px;border:1px solid rgba(148,163,184,.35);background:var(--card);color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444';" onmouseout="this.style.borderColor='rgba(148,163,184,.35)';this.style.color='var(--text-muted)';">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -6037,6 +6038,14 @@ function buildStatusBar(apptId, currentStatus) {
           onclick="setStatus('${apptId}', 'no_show', this)">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           No-show
+        </button>
+        <button class="status-btn" style="color:#ef4444;border-color:rgba(239,68,68,.3);"
+          onclick="cancelDoctorAppt('${apptId}', this)"
+          onmouseover="this.style.borderColor='#ef4444';this.style.background='rgba(239,68,68,.08)';"
+          onmouseout="this.style.borderColor='rgba(239,68,68,.3)';this.style.background='';"
+          title="Cancel this appointment — frees the slot and notifies the patient">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          Cancel
         </button>
       </div>
       <span class="status-saved" id="status-saved-${apptId}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;">
@@ -6076,6 +6085,23 @@ async function doctorDismissAppt(apptId, btn) {
     showToast('Appointment removed from your list.');
   } catch (e) {
     btn.disabled = false; btn.textContent = 'Remove from list';
+    showToast('Failed: ' + e.message);
+  }
+}
+
+async function cancelDoctorAppt(apptId, btn) {
+  if (!confirm('Cancel this appointment? The slot will be freed and the patient notified. This cannot be undone.')) return;
+  btn.disabled = true; btn.textContent = 'Cancelling…';
+  try {
+    const res = await fetch(`${API}/api/doctor/appointments/${apptId}`, {
+      method: 'DELETE', headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
+    const bar = document.getElementById(`status-bar-${apptId}`);
+    if (bar) bar.outerHTML = buildStatusBar(apptId, 'cancelled', 'doctor');
+    showToast('Appointment cancelled. The patient has been notified.');
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Cancel';
     showToast('Failed: ' + e.message);
   }
 }

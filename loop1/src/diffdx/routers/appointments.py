@@ -371,7 +371,18 @@ async def update_appointment_status(
     appt_id: str, req: StatusRequest,
     doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
 ):
-    """Update appointment status: upcoming | seen | no_show."""
+    """Update appointment status: upcoming | seen | no_show.
+
+    Deliberately excludes "cancelled" — same reasoning as the patient side,
+    which never routes cancellation through a generic status update either
+    (see cancel_patient_appointment, appointments4.py): cancellation has its
+    own semantics (freeing the slot, waitlist notification, notifying the
+    other party) that don't belong bolted onto a same-shape status PATCH.
+    See cancel_doctor_appointment below for the doctor-side cancel route —
+    the waitlist-notification logic used to live here, dead, since this
+    function structurally can never receive status="cancelled"; it now
+    lives there instead, where it's actually reachable.
+    """
 
     valid = {"upcoming", "seen", "no_show"}
     if req.status not in valid:
@@ -382,7 +393,6 @@ async def update_appointment_status(
         raise HTTPException(status_code=404, detail="Appointment not found.")
     if appt.get("doctor_id") != doctor.get("doctor_id"):
         raise HTTPException(status_code=403, detail="Not your appointment.")
-    old_status = appt.get("status", "upcoming")
     appt["status"] = req.status
     appt["status_updated_at"] = datetime.now(timezone.utc).isoformat()
     _save_appointments(appointments)
@@ -396,32 +406,102 @@ async def update_appointment_status(
         db.rollback()
         _log.warning("Dual-write of status failed for appointment %s", appt_id, exc_info=True)
 
-    # Waitlist notification: when appointment is cancelled, notify first waiting patient
-    if req.status == "cancelled" and old_status != "cancelled":
-        doctor_id = appt.get("doctor_id", "")
-        if doctor_id:
-            waitlist = _load_waitlist()
-            waiting = [e for e in waitlist if e.get("doctor_id") == doctor_id and e.get("status") == "waiting"]
-            if waiting:
-                first = waiting[0]
-                first["status"] = "notified"
-                _save_waitlist(waitlist)
-                # Email the waiting patient
-                users = _load_users()
-                patient = users.get(first.get("patient_user_id", ""), {})
-                p_email = patient.get("email", "")
-                p_name = patient.get("name", "Patient")
-                _send_email_notification(
-                    to=p_email,
-                    subject=f"Slot Available — {first.get('doctor_name', 'Your doctor')}",
-                    body=(
-                        f"Hi {p_name},\n\n"
-                        f"Good news! A slot has opened up with {first.get('doctor_name', 'your doctor')} ({first.get('specialty', '')}).\n"
-                        f"Please log in to DiffDx to book your appointment before it fills up.\n"
-                    ),
-                )
-
     return {"status": req.status}
+
+
+@router.delete("/api/doctor/appointments/{appt_id}")
+async def cancel_doctor_appointment(
+    appt_id: str,
+    doctor: dict = Depends(require_role("doctor")), db: Session = Depends(get_session),
+):
+    """Doctor cancels an appointment on their own schedule.
+
+    Mirrors cancel_patient_appointment (appointments4.py) exactly — same
+    ownership-check shape, same blob-authoritative-then-dual-write order,
+    same slot-freeing — with two differences that follow from who's
+    cancelling: cancelled_by="doctor" instead of "patient", and the
+    waitlist-notification step (previously dead code inside
+    update_appointment_status above, since that function can't reach
+    status="cancelled") actually fires here, because a doctor cancelling
+    is exactly the scenario it was written for. The patient is notified
+    that the doctor cancelled; the doctor isn't self-notified (there's no
+    symmetry to preserve — cancel_patient_appointment self-notifies the
+    patient because the doctor has no equivalent "my appointment was
+    cancelled" state to learn about).
+    """
+
+    appointments = _load_appointments()
+    appt = appointments.get(appt_id)
+    if appt is None:
+        raise HTTPException(status_code=404, detail="Appointment not found.")
+    if appt.get("doctor_id") != doctor.get("doctor_id"):
+        raise HTTPException(status_code=403, detail="Not your appointment.")
+    if appt.get("status") not in ("upcoming", None):
+        raise HTTPException(status_code=400, detail="Only upcoming appointments can be cancelled.")
+
+    appt["status"] = "cancelled"
+    appt["cancelled_at"] = datetime.now(timezone.utc).isoformat()
+    appt["cancelled_by"] = "doctor"
+    _save_appointments(appointments)
+
+    # Return the slot to this doctor's available pool — same as
+    # cancel_patient_appointment.
+    freed_slot = appt.get("slot", "")
+    if freed_slot:
+        doctors = _load_doctors()
+        doc = next((d for d in doctors if d["id"] == appt.get("doctor_id")), None)
+        if doc is not None:
+            slots = set(doc.get("available_slots", []))
+            slots.add(freed_slot)
+            doc["available_slots"] = sorted(slots)
+            _save_doctors(doctors)
+
+    try:
+        appt_uuid = _ensure_relational_appointment(db, appt)
+        if appt_uuid is not None:
+            AppointmentRepository(db).cancel(appt_uuid, cancelled_by="doctor", cancelled_at=datetime.now(timezone.utc))
+            db.commit()
+    except Exception:
+        db.rollback()
+        _log.warning("Dual-write of doctor cancellation failed for appointment %s", appt_id, exc_info=True)
+
+    # Notify the patient — the doctor already knows, they just cancelled it.
+    users = _load_users()
+    patient = users.get(appt.get("patient_user_id", ""), {})
+    _send_email_notification(
+        to=patient.get("email", ""),
+        subject="Appointment Cancelled",
+        body=(
+            f"Hi {patient.get('name', 'there')},\n\n"
+            f"Your appointment with {appt.get('doctor_name', 'your doctor')} on {appt.get('slot', '')} "
+            f"has been cancelled by the doctor. Please log in to DiffDx to book a new time.\n"
+        ),
+    )
+
+    # Waitlist notification: notify the first patient waiting for this
+    # doctor that a slot just opened up. Moved here from
+    # update_appointment_status (see that function's docstring) — this is
+    # the one place a doctor-initiated cancellation can actually happen.
+    doctor_id = appt.get("doctor_id", "")
+    if doctor_id:
+        waitlist = _load_waitlist()
+        waiting = [e for e in waitlist if e.get("doctor_id") == doctor_id and e.get("status") == "waiting"]
+        if waiting:
+            first = waiting[0]
+            first["status"] = "notified"
+            _save_waitlist(waitlist)
+            waiting_patient = users.get(first.get("patient_user_id", ""), {})
+            _send_email_notification(
+                to=waiting_patient.get("email", ""),
+                subject=f"Slot Available — {first.get('doctor_name', 'Your doctor')}",
+                body=(
+                    f"Hi {waiting_patient.get('name', 'Patient')},\n\n"
+                    f"Good news! A slot has opened up with {first.get('doctor_name', 'your doctor')} ({first.get('specialty', '')}).\n"
+                    f"Please log in to DiffDx to book your appointment before it fills up.\n"
+                ),
+            )
+
+    return {"cancelled": True, "freed_slot": freed_slot}
 
 
 @router.patch("/api/doctor/appointments/{appt_id}/reschedule")

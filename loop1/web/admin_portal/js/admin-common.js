@@ -102,6 +102,7 @@ const AdminPortal = (() => {
     { href: "audit.html", label: "Audit" },
     { href: "dsr.html", label: "DSR" },
     { href: "reports.html", label: "Reports" },
+    { href: "users.html", label: "Users" },
     { href: "sop.html", label: "SOP" },
   ];
 

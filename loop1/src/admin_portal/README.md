@@ -239,11 +239,13 @@ unauthenticated visitors get the real "sign in as an admin" prompt
 (`admin-common.js`'s `renderAuthRequired`), not sample data, on every page
 now, including Evidence and AI Quality.
 
-The `/admin_portal/*.html` page *shells* still have no auth at all — same
-as `doctor-portal.html` today — because they're served by a generic
-static-file route, not an API endpoint. That's fine: the shell being
-public doesn't matter, because every number on every page now comes from
-an authenticated `/api/admin/*` call.
+The `/admin_portal/*.html` page *shells* originally had no auth at all — same as
+`doctor-portal.html` today — because they're served by a generic static-file route, not an API
+endpoint. At the time that was fine, since every number on every page came from an authenticated
+`/api/admin/*` call regardless. **Phase 3 closed this anyway**, with a client-side guard rather
+than a server-side one (a server-side page-route guard can't work here — see "Client-side admin
+page-shell guard" below for why): a signed-out or non-admin visitor is now redirected before any
+admin_portal page's content loads at all, not just before its data does.
 
 ## The corrected live-path coverage note
 
@@ -369,3 +371,82 @@ and the reasoning behind it. In short:
    `CASCADE`.** Erasing only the `Patient` row would have silently orphaned
    session/turn PHI instead of deleting it. Sessions are deleted explicitly,
    before the user row, in `dsr.py`.
+
+---
+
+# Phase 3
+
+Locked down `/api/admin/evidence`, `/api/admin/quality`, and `/api/admin/config` behind
+`require_role("admin")` (see the "Auth model" section above — this is the change that section
+already documents), and added three pages plus one new data domain that weren't covered by
+Phase 1 or Phase 2.
+
+## New pages
+
+- **`reports.html`** (+ `js/reports.js`) — the moderation queue for `POST /api/messages/report`
+  (a patient or doctor flagging the other side of a conversation for using messaging outside of
+  medical care — see `MESSAGE_REPORTING_PLAN.md` at the repo root). Filterable by status
+  (open/reviewed/dismissed), with "Mark Reviewed"/"Dismiss" row actions. Backend:
+  `admin_portal/routers/reports.py` (`GET /api/admin/message-reports`,
+  `PATCH /api/admin/message-reports/{id}`), reading `MessageReport`
+  (`diffdx/db/models/reports.py`) — a real relational table, not blob-based, unlike the messaging
+  domain it reports on.
+- **`architecture-validation.html`** (+ `js/architecture-validation.js`) — a credibility/external-
+  validity page, not a live operational dashboard: maps DiffDx's actor-critic-router design
+  against MEDDxAgent (arXiv:2502.19175), a peer-reviewed benchmark, with KPI tiles, a concept
+  correspondence table, and an interactive metrics explorer (GTPA@1 / avg rank / ΔProgress by
+  model+dataset). Content is static/reference data checked into the page, not served from a live
+  endpoint — nothing here degrades if the DB is down.
+- **`sop.html`** — an operator runbook, also static content, no backing API. Structured as
+  Trigger/Meaning/Action/Escalate-if entries grouped by area (Health, DSR, Audit, Evidence &
+  Quality, Usage, Accounts) for specific real situations (a health pill going down, about to run a
+  real DSR erasure, citing a cost figure externally, creating a new admin account). Read this one
+  before doing anything unfamiliar in the console for the first time.
+- **`users.html`** (+ `js/users.js`, backend `admin_portal/routers/users_analytics.py`) — user
+  growth/engagement/retention analytics, four endpoints under `/api/admin/users/`: `summary`,
+  `timeseries` (signups over time), `engagement`, `retention` (cohort-based). Uses a shared
+  `_bucketing.py` helper for the time-bucketing logic across all four.
+
+## Client-side admin page-shell guard
+
+Every page shell under `web/admin_portal/` used to be servable to anyone — no auth at all on the
+HTML/JS itself, only on the `/api/admin/*` data it fetches (so an unauthenticated visitor saw a
+real "sign in as an admin" prompt instead of real data, but could still load the page layout). A
+guard in `admin-common.js` now runs before anything else on every page: reads the cached
+`authUser` (from `auth.js`, already loaded first on every admin_portal page), and redirects to
+`/login.html` if there's no signed-in user, or to `/` if the signed-in user isn't an admin. This
+can't be done server-side on the page *route* — a plain browser navigation carries no
+`Authorization` header (only `fetch()`/XHR calls do), so a `Depends(require_role(...))` on the
+route itself would 401 every legitimate admin landing here too, same reasoning as
+`diffdx.routers.pages`'s page-serving guard elsewhere in the app.
+
+## Voice/Sarvam usage tracking
+
+A second usage domain alongside the existing LLM token/cost tracking (D1 Option B, above), same
+architecture: a durable Postgres table, not JSONL.
+
+- **`SarvamUsageEvent`** (`diffdx/db/models/usage.py`, alongside `LlmUsageEvent`) — one row per
+  Sarvam API call: `operation` (`translate` or `tts`), `call_site`, `language`, `char_count`,
+  `latency_ms`, `ok`/`error_type`. No PHI logged — character counts and language codes only, same
+  privacy posture as `LlmUsageEvent`.
+- **`voice_usage_logger.py`** (`log_sarvam_usage`) — the write path, called from both Sarvam call
+  sites: `POST /api/tts` (translate + text-to-speech) and the per-turn patient-answer
+  translate-back on any non-English session. Same never-raise contract as `usage_logger.py` — a
+  logging failure never breaks the request it's attached to.
+- **`GET /api/admin/usage`** now returns a `voice_usage` block alongside the existing LLM figures:
+  request counts (ok/failed), total characters, an estimated cost (from `sarvam_pricing.json`'s
+  per-1k-character rates — **not verified against actual Sarvam invoices**, same caveat as the LLM
+  cost figures elsewhere in this doc), broken down by operation and by language. Surfaced on
+  `index.html`'s Voice/Sarvam Usage card.
+
+## What this means for the "every /api/admin/* route is admin-gated" claim above
+
+Phase 3 extended that claim to cover the two new API-backed pages too:
+`GET /api/admin/message-reports` and `PATCH /api/admin/message-reports/{id}` are both
+`require_role("admin")`, same as every other `/api/admin/*` route, and `users.html`'s four
+`/api/admin/users/*` endpoints are gated the same way. `architecture-validation.html` and
+`sop.html` have no backing API to gate — their content is static, so there's nothing to
+authenticate at the data layer — but as of the client-side guard above, no `/admin_portal/*.html`
+page shell is actually reachable by a signed-out or non-admin visitor anymore either, closing the
+gap the "Auth model" section above originally described as a non-issue only because the data was
+still gated. Both layers now agree: data-gated server-side, shell-gated client-side.

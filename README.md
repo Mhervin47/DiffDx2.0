@@ -26,27 +26,75 @@ DiffDx is a full patient-doctor telehealth workflow built around an AI-conducted
 interview, not just a standalone chatbot. A session moves through three parties:
 
 **Patient** — registers or continues as a guest, fills in demographics and chief complaint
-(`patient-info.html`) plus structured history (`history.html`), then has an adaptive multi-turn
-interview with the AI "doctor" (`session.html`) — one question at a time, live differential
-updating in a collapsible sidebar as the conversation progresses. When the interview ends
-(confidence threshold reached, turn limit, or a safety-triggered stop), the patient lands on a
-report page (`report.html`) that leads with a specialist recommendation, urgency level, and a
+(`patient-info.html`) plus structured history, then has an adaptive multi-turn interview with the
+AI "doctor" (`session.html`) — one question at a time, live differential updating in a
+collapsible sidebar as the conversation progresses. When the interview ends (confidence threshold
+reached, turn limit, or a safety-triggered stop), the patient lands on a report page
+(`report.html`) that leads with a specialist recommendation, urgency level, and an AI-suggested
 pre-visit test checklist — deliberately **not** a named diagnosis (see "Patient-safe diagnosis
-disclosure" below). From there they can book a real doctor (`find-doctors.html` /
-`book-slot.html`), track appointments and doctor-written notes/prescriptions/test orders
-(`my-sessions.html`), and message their doctor (`messages.html`).
+disclosure" below).
+
+The suggested-tests list is generated once from the session's differential and then persisted —
+report.html silently checks for additional tests on every load (no button; idempotent
+server-side, so it only ever costs one extra LLM call per session) and badges anything new.
+Patients can upload a result file against any suggested test right from `report.html`,
+`health-history.html`, or the separate `pre-visit-intake.html` check-in tied to a booked
+appointment — uploading is always optional, never required.
+
+From the report, a patient books a real doctor (`find-doctors.html` / `book-slot.html`), tracks
+appointments and doctor-written notes/prescriptions/test orders (`my-sessions.html`), and messages
+their doctor (`messages.html`). Messaging stays open for the life of an upcoming appointment plus
+a 7-day grace period after it's marked seen (long enough to cover a delayed test-result upload),
+then closes to new sends — chosen over a fixed pre/post-appointment clock window specifically so
+it doesn't conflict with that post-visit upload flow. Either side can also report a conversation
+to an admin for review (non-medical use, harassment, spam, etc.) without blocking or notifying the
+other party.
+
+Two separate intake flows exist and shouldn't be confused: `patient-info.html` gates starting a
+**new AI diagnostic session**; `pre-visit-intake.html` is a **per-appointment** check-in completed
+shortly before an already-booked visit, unrelated to starting a session.
 
 **Doctor** — signs in to a separate portal (`doctor-portal.html`, `doctor-overview.html`) showing
 a queue of booked appointments. For each patient, the doctor sees the full AI-conducted interview
-transcript, the critic's per-turn quality scores, the ranked differential, and can write
+transcript, the critic's per-turn quality scores, and the ranked differential, and can write
 prescriptions, order tests, leave a plain-language summary for the patient, refer to another
-specialist, or request a second opinion from a colleague — all backed by real relational tables,
-not just the AI's own output.
+specialist, or request a second opinion from a colleague. Separately, the doctor can record their
+own **confirmed diagnosis** — a distinct field from the AI's `primary_diagnosis`, never
+auto-populated from it, so it only reaches the patient once a licensed doctor has actually typed
+and saved it. A "New Results" stat chip and side panel surface patient-uploaded test results even
+after an appointment has already been marked "seen" (where they'd otherwise be filtered out of the
+default queue view), with a push notification the doctor portal already had the plumbing for.
+Doctors get the same proactive unread-message push notification patients do, and can cancel an
+appointment on their own schedule the same way a patient can cancel theirs (mirrored logic,
+attributed separately as `cancelled_by="doctor"`).
 
-**Admin** — a separate console (`web/admin_portal/`) for operational oversight: audit log viewer,
-Data Subject Request (GDPR-style erasure/export) queue, LLM cost & usage tracking per session, and
-a system health view. Gated behind `role="admin"` on the account (see
-[`loop1/src/admin_portal/README.md`](loop1/src/admin_portal/README.md)).
+**Admin** — a separate static app (`web/admin_portal/`), gated behind `role="admin"` both
+server-side (every `/api/admin/*` route) and client-side (a page-shell guard redirects a
+signed-out or non-admin visitor before any page content loads), for operational oversight:
+- **Overview** (`index.html`) — cost/usage at a glance, system health, model config, voice/Sarvam
+  usage. Cost figures across the console can be toggled between USD and a fixed-rate INR display
+  (display-only conversion, nothing is recomputed).
+- **Evidence** / **AI Quality** (`evidence.html`, `quality.html`) — accuracy, cost-effectiveness,
+  and safety-recall comparison against a baseline; reasoning-quality and calibration breakdowns.
+- **Audit** (`audit.html`) — filterable, append-only log of every sensitive action.
+- **DSR** (`dsr.html`) — the GDPR-style data-subject erasure/export request queue.
+- **Reports** (`reports.html`) — the review queue for patient/doctor-reported message threads
+  (open / reviewed / dismissed), backed by the `message_reports` table.
+- **Users** (`users.html`) — user growth/engagement/retention analytics: signup timeseries,
+  activity summaries, cohort retention.
+- **Architecture Validation** (`architecture-validation.html`) — maps DiffDx's actor-critic-router
+  design against a peer-reviewed benchmark paper (MEDDxAgent, arXiv:2502.19175), with an
+  interactive metrics explorer.
+- **SOP** (`sop.html`) — an operator runbook: trigger/meaning/action/escalate-if entries for real
+  situations an admin hits (a health-check pill going down, running a real DSR erasure, citing a
+  cost figure externally, creating a new admin account).
+
+Live usage tracking covers both LLM calls (tokens, latency, cost, actual model served after any
+fallback reroute — `LlmUsageEvent`) and Sarvam voice/translation calls (`SarvamUsageEvent`),
+both durable Postgres tables, tagged by source (`live_web` vs. `offline_cli`) so eval runs never
+pollute production metrics. See [`loop1/src/admin_portal/README.md`](loop1/src/admin_portal/README.md)
+for the full admin console reference, including Phase 3 (Reports, Architecture Validation, SOP,
+voice usage).
 
 ### How one diagnostic session actually runs
 
@@ -90,7 +138,7 @@ a system health view. Gated behind `role="admin"` on the account (see
 Patient / Doctor browser
         │  REST + JSON
         ▼
-   FastAPI (loop1/src/diffdx/main.py — app factory, 15 routers)
+   FastAPI (loop1/src/diffdx/main.py — app factory, 22 routers incl. admin_portal)
         ├── Auth layer (JWT via PyJWT, PBKDF2-SHA256 password hashing, refresh rotation, RBAC)
         ├── Loop 1 ─── Doctor LLM (actor)
         │               ├── Profile Updater
@@ -139,11 +187,12 @@ DiffDx2.0/
     │   ├── loop2/       — Loop 2: critic scoring, DDxPlus patient simulator, eval harness
     │   ├── loop3/       — Loop 3: urgency/specialty router, disease→specialty map, ambiguity handling
     │   ├── diffdx/       — the FastAPI app: routers, DB models/repositories, auth, main.py app factory
-    │   └── admin_portal/ — admin console backend (audit, DSR, usage, health) + its own eval tooling
+    │   └── admin_portal/ — admin console backend (audit, DSR, message reports, usage, health) + its own eval tooling
     ├── web/
     │   ├── api.py         — thin re-export shim: `from diffdx.main import app`
     │   ├── api_session.py — APISession: turn-by-turn session state machine used by the web layer
-    │   └── static/        — every patient/doctor/admin page, plain HTML/CSS/JS, one file per screen
+    │   ├── static/        — every patient/doctor page, plain HTML/CSS/JS, one file per screen
+    │   └── admin_portal/  — the admin console's own static frontend (separate from web/static/)
     ├── alembic/          — migrations (relational schema is the source of truth; see v1 → v2 below)
     ├── prompts/          — versioned prompt files (`doctor_v0_6.txt`, etc.) — see loop1/README.md §8
     ├── exemplars/        — the few-shot pool Loop 1's retriever selects from
@@ -164,18 +213,25 @@ grouped by what each table is actually for:
 - **Clinical session** (`clinical.py`) — `DiagnosticSession` + `SessionTurn` (the durable record of
   a completed AI interview — id matches the `session_id` Loop 1 generates, not DB-assigned),
   `Prescription`, `SuggestedTest`, `Referral`, `SecondOpinion`, `RefillRequest`,
-  `AppointmentIntake`, `PrescriptionHistoryBatch`, `TreatmentPlanItem`.
+  `AppointmentIntake`, `PrescriptionHistoryBatch`, `TreatmentPlanItem`. Naming collision worth
+  knowing: `SuggestedTest` here is the **doctor's** post-visit test order + result row — a
+  completely different thing from the AI-suggested pre-visit tests described above, which are
+  LLM-generated and live in the blob store (`store["suggested_tests"]`), not this table.
 - **Scheduling** (`scheduling.py`) — `Appointment` (the row a DB-level partial unique index on
   `(doctor_id, slot_datetime)` makes double-booking structurally impossible for — see
-  `loop1/docs/evidence/concurrency.txt`), `DoctorSlot`, `BlockedDate`, `RescheduleProposal`,
+  `loop1/docs/evidence/concurrency.txt` — plus `confirmed_diagnosis`/`diagnosis_confirmed_at` for
+  the doctor-confirmed diagnosis feature), `DoctorSlot`, `BlockedDate`, `RescheduleProposal`,
   `Waitlist`.
-- **Messaging** (`messaging.py`) — `MessageThread`, `Message` (patient ↔ doctor chat, tied to an
-  appointment).
+- **Messaging** (`messaging.py`, `reports.py`) — `MessageThread`, `Message` (patient ↔ doctor chat,
+  tied to an appointment; the relational tables exist but the live messaging router still reads/
+  writes the blob store — see the v1 → v2 table below), `MessageReport` (a flagged conversation
+  awaiting admin review: reason, optional details, status).
 - **Platform** (`audit.py`, `dsr.py`, `files.py`, `usage.py`, `verification.py`) — `AuditLogEntry`
   (every sensitive action, read by the admin portal), `DsrErasureRequest` (GDPR-style
   export/delete queue), `UploadedFile` (test-result attachments), `LlmUsageEvent` (per-call token
   count/latency/cost, source-tagged `live_web` vs `offline_cli` so eval runs never pollute
-  production metrics), `EmailOtp`.
+  production metrics), `SarvamUsageEvent` (same idea for voice/translation calls — character
+  counts, latency, cost), `EmailOtp`.
 
 The blob store (`legacy_store.py`, a single JSON-per-collection table predating this schema) is
 being cut over table-by-table in dual-write phases — see `docs/tasks/` for the exact sequence and
@@ -187,7 +243,7 @@ the v1 → v2 table below for why.
 |---|---|---|
 | Persistence | Single-row JSON blob store, 8 collections in 8 rows | Relational schema, 3 Alembic migrations, FKs and indexes |
 | Concurrency | Read-modify-write, silent lost updates | DB-level unique constraint, clean 409s — see `loop1/docs/evidence/concurrency.txt` |
-| `web/api.py` | 3,892 lines, 93 routes | 67 lines; 15 routers, service layer |
+| `web/api.py` | 3,892 lines, 93 routes | 67 lines; 22 routers, service layer |
 | Auth | In-memory opaque tokens, lost on restart | JWT + refresh rotation, RBAC, rate limiting |
 | Sessions | Process memory | Redis + Postgres persistence |
 | Deployment | Manual | Docker, Compose, Render (`render.yaml`) |
@@ -204,9 +260,17 @@ the v1 → v2 table below for why.
   identically on a rerun.
 - [`docs/tasks/`](docs/tasks/) — the working specs this project was actually built from, in order
 - [`loop1/src/admin_portal/README.md`](loop1/src/admin_portal/README.md) — admin console: DSR
-  queue, audit log, usage/cost tracking, system health
+  queue, audit log, usage/cost tracking, message reports, system health, and the operator SOP
 - [`REPORT_PAGE_REDESIGN.md`](REPORT_PAGE_REDESIGN.md) — the patient-safe diagnosis disclosure
   redesign, section by section
+- [`DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md`](DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md) — why the
+  doctor-confirmed diagnosis is a separate field, not derived from the AI's own differential
+- [`SUGGESTED_TESTS_EXPANSION_PLAN.md`](SUGGESTED_TESTS_EXPANSION_PLAN.md) — persistence, the
+  automatic "check for more tests" pass, and the three surfaces that read from it
+- [`POST_VISIT_RESULTS_NOTIFICATION_PLAN.md`](POST_VISIT_RESULTS_NOTIFICATION_PLAN.md) — why a
+  "seen" appointment still needs to notify the doctor when results land afterward
+- [`MESSAGE_REPORTING_PLAN.md`](MESSAGE_REPORTING_PLAN.md) — the 7-day messaging window and the
+  admin-reviewed report queue
 - [Architecture write-up](https://mhervin47.github.io/DiffDx/) — how the actor-critic design adapts
   RL concepts to multi-turn diagnosis
 
@@ -225,9 +289,26 @@ pytest tests/ -v
 
 ## Deployment
 
-**Hosted**: configured for Render via `render.yaml`. Connect the repo, set env vars in the Render
-dashboard, deploy — auto-deploys on push to `main`.
+**Hosted**: `render.yaml` is a full blueprint — deploying it via Render's **New → Blueprint** flow
+provisions three resources, all on the free tier: the web service, a Postgres instance
+(`diffdx-db`), and a Key Value/Redis instance (`diffdx-redis`, private-network only). `DATABASE_URL`
+and `REDIS_URL` are auto-wired to those (`fromDatabase`/`fromService` — never typed or pasted
+anywhere), along with `ENVIRONMENT=production` and a pinned Python version. You still fill in, in
+the Render dashboard: `GROQ_API_KEY` (required), `SECRET_KEY` (generate with
+`python3 -c "import secrets; print(secrets.token_urlsafe(48))"`, must stay stable across deploys),
+`CORS_ALLOWED_ORIGINS` (your real deployed URL — the app refuses to boot in production without
+both this and `SECRET_KEY` set to real values), and optionally `OPENROUTER_API_KEY`,
+`SARVAM_API_KEY`, `RESEND_API_KEY`/`RESEND_FROM`. Two free-tier caveats worth knowing before
+relying on this for anything real: the free web service spins down after ~15 minutes idle
+(~30-60s cold start on the next request), and the free Postgres plan is deleted ~30 days after
+creation unless upgraded.
+
+Admin accounts aren't seeded automatically (doctor accounts are) — after the first deploy, run
+`PYTHONPATH=src python scripts/seed_admin.py` from the service's Shell tab in Render's dashboard.
 
 **Self-hosted**: `docker compose up --build` from the repo root — runs the API alongside its own
 Postgres and Redis containers. `loop1/Dockerfile` builds a non-root, multi-stage image with
-`/health` (liveness) and `/ready` (DB + Redis connectivity) endpoints.
+`/health` (liveness) and `/ready` (DB + Redis connectivity) endpoints. `render.yaml` has been
+deployed and confirmed live on Render; the Dockerfile/Compose path has been written and reviewed
+carefully but not run against a live Docker daemon from this environment — treat the first real
+`docker compose up` as the actual test, not a formality.

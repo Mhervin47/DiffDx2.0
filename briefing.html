@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiffDx — Project Briefing</title>
+<meta name="description" content="Evidence page and mentor-engagement document for DiffDx — an AI diagnostic assistant that grades its own reasoning, evaluated on DDXPlus.">
+<style>
+  :root{
+    --paper:#FAFAFA;--paper-2:#F2F2F2;--paper-3:#E8E8E8;
+    --ink:#1A1A1A;--ink-soft:#4A4A4A;--ink-faint:#888;
+    --line:#DEDEDE;--line-strong:#C0C0C0;
+    --accent:#2563EB;--green:#0E9F6E;--red:#E5484D;--amber:#B9781A;
+    --topbar-bg:rgba(250,250,250,.94);
+    --code-bg:#F0F0F0;--code-text:#1A1A1A;
+    --ui:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+    --serif:Georgia,"Times New Roman",serif;
+    --mono:"SF Mono","Cascadia Code","Fira Code",Consolas,monospace;
+    --maxw:740px;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --paper:#141414;--paper-2:#1E1E1E;--paper-3:#282828;
+      --ink:#E4E4E4;--ink-soft:#ABABAB;--ink-faint:#666;
+      --line:#2E2E2E;--line-strong:#444;
+      --accent:#60A5FA;--green:#2CC88A;--red:#F06569;--amber:#D4923A;
+      --topbar-bg:rgba(20,20,20,.94);--code-bg:#1E1E1E;--code-text:#D4D4D4;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#141414;--paper-2:#1E1E1E;--paper-3:#282828;
+    --ink:#E4E4E4;--ink-soft:#ABABAB;--ink-faint:#666;
+    --line:#2E2E2E;--line-strong:#444;
+    --accent:#60A5FA;--green:#2CC88A;--red:#F06569;--amber:#D4923A;
+    --topbar-bg:rgba(20,20,20,.94);--code-bg:#1E1E1E;--code-text:#D4D4D4;
+  }
+  :root[data-theme="light"]{
+    --paper:#FAFAFA;--paper-2:#F2F2F2;--paper-3:#E8E8E8;
+    --ink:#1A1A1A;--ink-soft:#4A4A4A;--ink-faint:#888;
+    --line:#DEDEDE;--line-strong:#C0C0C0;
+    --accent:#2563EB;--green:#0E9F6E;--red:#E5484D;--amber:#B9781A;
+    --topbar-bg:rgba(250,250,250,.94);--code-bg:#F0F0F0;--code-text:#1A1A1A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.75;-webkit-font-smoothing:antialiased}
+  ::selection{background:rgba(37,99,235,.18)}
+  a{color:inherit}
+
+  @media(min-width:1080px){
+    .shell{display:grid;grid-template-columns:220px minmax(0,var(--maxw)) 1fr;gap:48px;max-width:1180px;margin:0 auto;padding:0 32px;align-items:start}
+    .toc-col{position:sticky;top:0;height:100vh;padding-top:90px;overflow-y:auto;border-right:1px solid var(--line)}
+    .col-main{padding-top:90px}
+  }
+  .col-main{min-width:0;padding-top:20px;padding-bottom:80px}
+
+  .topbar{position:sticky;top:0;z-index:40;background:var(--topbar-bg);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-inner{max-width:1180px;margin:0 auto;padding:13px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .brand{font-family:var(--ui);font-weight:600;font-size:14px;letter-spacing:.01em;text-decoration:none;display:flex;align-items:center;gap:9px}
+  .brand .dot{width:8px;height:8px;border-radius:2px;background:var(--accent)}
+  .brand em{font-style:normal;color:var(--ink-faint);font-weight:400}
+  .topbar nav{font-family:var(--ui);font-size:13px;display:flex;gap:18px}
+  .topbar nav a{color:var(--ink-soft);text-decoration:none}
+  .topbar nav a:hover{color:var(--accent)}
+  @media(max-width:760px){.topbar nav{display:none}}
+  .theme-toggle{border:1px solid var(--line);border-radius:5px;padding:3px 9px;font-size:13px;background:none;cursor:pointer;color:var(--ink-soft)}
+
+  .hero{padding:48px 0 30px}
+  .eyebrow{font-family:var(--ui);text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:600;color:var(--accent);margin-bottom:16px}
+  h1{font-family:var(--ui);font-weight:700;font-size:clamp(26px,4.4vw,38px);line-height:1.18;letter-spacing:-.02em;margin-bottom:16px}
+  .lede{font-size:18px;line-height:1.6;color:var(--ink-soft);margin-bottom:22px;max-width:38em}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-family:var(--ui);font-size:13px;color:var(--ink-faint);margin-bottom:8px}
+  .meta .sep{width:3px;height:3px;border-radius:50%;background:var(--line-strong)}
+  .badge-caution{display:inline-block;font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--red);border:1px solid rgba(229,72,77,.35);background:rgba(229,72,77,.06);padding:3px 9px;border-radius:100px;margin-top:14px}
+
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:26px 0}
+  .mcard{background:var(--paper-2);border:1px solid var(--line);border-radius:6px;padding:16px;text-align:center}
+  .mcard .mv{font-family:var(--ui);font-size:24px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1}
+  .mcard .mv.pending{font-size:15px;color:var(--ink-faint);font-weight:600}
+  .mcard .ml{font-family:var(--ui);font-size:11.5px;color:var(--ink-faint);margin-top:6px;line-height:1.3}
+
+  .toc h4{font-family:var(--ui);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:12px;font-weight:600}
+  .toc ol{list-style:none;counter-reset:toc}
+  .toc li{counter-increment:toc;margin-bottom:2px}
+  .toc a{font-family:var(--ui);font-size:12.5px;line-height:1.35;color:var(--ink-soft);text-decoration:none;display:grid;grid-template-columns:20px 1fr;gap:6px;padding:4px 6px;border-radius:5px}
+  .toc a::before{content:counter(toc,decimal-leading-zero);font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
+  .toc a:hover{background:var(--paper-2)}
+  .toc a.active{color:var(--accent);font-weight:600}
+
+  article{padding-bottom:30px}
+  article h2{font-family:var(--ui);font-weight:650;font-size:1.15rem;letter-spacing:-.01em;border-top:1px solid var(--line);padding-top:26px;margin-top:52px;scroll-margin-top:80px}
+  article h2 .num{display:block;font-family:var(--mono);font-size:.72rem;font-weight:500;color:var(--accent);margin-bottom:8px;letter-spacing:0}
+  article h3{font-family:var(--ui);font-weight:600;font-size:.98rem;margin:28px 0 8px}
+  article p{margin:14px 0}
+  strong{font-weight:600;color:var(--ink)}
+  em.term{font-style:italic}
+  code{font-family:var(--mono);font-size:.82em;background:var(--code-bg);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  a.ref{color:var(--accent);text-decoration:none;border-bottom:1px solid currentColor}
+  a.ref:hover{opacity:.8}
+  .kicker{font-family:var(--ui);font-size:13px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:26px}
+
+  ul.clean{list-style:none;padding:0;margin:16px 0}
+  ul.clean li{position:relative;padding-left:22px;margin:9px 0}
+  ul.clean li::before{content:"";position:absolute;left:2px;top:11px;width:6px;height:6px;border-radius:1px;background:var(--accent)}
+
+  .callout{margin:22px 0;padding:16px 20px;border-radius:4px;background:var(--paper-2);border-left:2px solid var(--line-strong)}
+  .callout .c-lab{font-family:var(--ui);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--ink-faint);margin-bottom:7px;display:block}
+  .callout p{margin:0;font-size:16px}
+  .callout p+p{margin-top:8px}
+  .callout.warn{border-left-color:var(--red)}
+  .callout.warn .c-lab{color:var(--red)}
+  .callout.green{border-left-color:var(--green)}
+  .callout.green .c-lab{color:var(--green)}
+  .callout.amber{border-left-color:var(--amber)}
+  .callout.amber .c-lab{color:var(--amber)}
+  .callout.pending{border-left-color:var(--ink-faint);background:repeating-linear-gradient(135deg,var(--paper-2),var(--paper-2) 10px,var(--paper-3) 10px,var(--paper-3) 20px)}
+
+  pre{margin:20px 0;background:var(--code-bg);color:var(--code-text);border:1px solid var(--line);border-radius:4px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.65}
+  .pre-label{font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);margin:20px 0 4px;display:block}
+
+  .tbl-wrap{margin:22px 0;overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;font-family:var(--ui)}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{background:var(--paper-2);font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft)}
+  tbody tr:last-child td{border-bottom:none}
+  td strong{color:var(--ink)}
+  .mono-cell{font-family:var(--mono);font-size:12px;color:var(--accent)}
+  .yes{color:var(--green);font-weight:600}
+  .no{color:var(--ink-faint)}
+
+  .chip{display:inline-block;font-family:var(--ui);font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px}
+  .chip.done{color:var(--green);background:rgba(14,159,110,.1)}
+  .chip.pending{color:var(--ink-faint);background:var(--paper-2)}
+
+  .component-list{display:flex;flex-direction:column;margin:20px 0;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .comp-item{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid var(--line)}
+  .comp-item:last-child{border-bottom:none}
+  .comp-label{background:var(--paper-2);padding:14px 16px;border-right:1px solid var(--line)}
+  .comp-tag{font-family:var(--ui);font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .comp-name{font-family:var(--ui);font-size:13.5px;font-weight:700;line-height:1.25}
+  .comp-body{padding:14px 18px;font-size:15px;color:var(--ink-soft);line-height:1.55}
+  @media(max-width:640px){.comp-item{grid-template-columns:1fr}.comp-label{border-right:none;border-bottom:1px solid var(--line)}}
+
+  .chain{display:flex;align-items:center;gap:0;margin:18px 0;flex-wrap:wrap;font-family:var(--mono)}
+  .chain-item{font-size:12px;background:var(--paper-2);border:1px solid var(--line);padding:6px 12px;flex:1;text-align:center;min-width:110px}
+  .chain-item:first-child{border-radius:6px 0 0 6px}
+  .chain-item:last-child{border-radius:0 6px 6px 0}
+  .chain-arrow{font-size:13px;color:var(--ink-faint);flex-shrink:0;padding:0 4px}
+
+  .steps{counter-reset:step;margin:20px 0;padding:0;list-style:none}
+  .steps li{counter-increment:step;position:relative;padding:13px 0 13px 46px;border-bottom:1px solid var(--line)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{content:counter(step);position:absolute;left:0;top:11px;width:28px;height:28px;border-radius:50%;background:var(--paper-2);border:1px solid var(--line-strong);font-family:var(--ui);font-weight:700;font-size:12px;color:var(--accent);display:flex;align-items:center;justify-content:center}
+  .steps li b{font-family:var(--ui);font-weight:600;font-size:14.5px;display:block;margin-bottom:2px}
+  .steps li span{font-size:14.5px;color:var(--ink-soft)}
+
+  .review-item{display:grid;grid-template-columns:26px 1fr;gap:10px;margin:16px 0;align-items:flex-start}
+  .review-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);padding-top:3px}
+  .review-body{font-size:15.5px}
+  .review-note{width:100%;margin-top:8px;font-family:var(--ui);font-size:12.5px;border:1px solid var(--line);border-radius:4px;padding:8px 10px;background:var(--paper);color:var(--ink);resize:vertical;min-height:36px}
+  .review-note::placeholder{color:var(--ink-faint)}
+  .copy-all-btn{font-family:var(--ui);font-size:12.5px;border:1px solid var(--line);border-radius:5px;padding:6px 14px;background:var(--paper-2);cursor:pointer;color:var(--ink-soft);margin-top:6px}
+  .copy-all-btn:hover{border-color:var(--line-strong);color:var(--ink)}
+
+  hr.rule{border:none;border-top:1px solid var(--line);margin:36px 0}
+  figure{margin:26px 0}
+  figcaption{font-family:var(--ui);font-size:12px;color:var(--ink-faint);margin-top:8px}
+
+  footer{border-top:1px solid var(--line);margin-top:50px;padding:32px 0 70px}
+  footer .fnote{font-family:var(--ui);font-size:13px;color:var(--ink-faint);max-width:42em;line-height:1.6}
+  footer .fnote+.fnote{margin-top:10px}
+
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#top"><span class="dot"></span>DiffDx <em>/ briefing</em></a>
+    <nav>
+      <a href="#problem">Problem</a>
+      <a href="#how">How it works</a>
+      <a href="#results">Results</a>
+      <a href="#concurrency">Concurrency</a>
+      <a href="#limitations">Limitations</a>
+      <a href="#questions">For Prakhar</a>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode" title="Toggle theme">☀</button>
+  </div>
+</header>
+
+<div class="shell" id="top">
+  <aside class="toc-col">
+    <nav class="toc">
+      <h4>Contents</h4>
+      <ol>
+        <li><a href="#problem">The problem</a></li>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#verified">Verified live</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#concurrency">Concurrency</a></li>
+        <li><a href="#critic">The critic, running</a></li>
+        <li><a href="#priorart">Prior art</a></li>
+        <li><a href="#engineering">Engineering: v1 → v2</a></li>
+        <li><a href="#stack">Stack</a></li>
+        <li><a href="#limitations">Limitations</a></li>
+        <li><a href="#questions">For Prakhar</a></li>
+        <li><a href="#review">Review notes</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main class="col-main">
+    <section class="hero">
+      <p class="eyebrow">Project briefing · TechnoBots · MUJ</p>
+      <h1>A diagnostic assistant that grades its own reasoning</h1>
+      <p class="lede">DiffDx conducts adaptive clinical interviews, produces a ranked differential, and scores every question it asks against what it should have asked — measured on a public dataset it did not author.</p>
+      <div class="meta">
+        <span>Mentor: Prakhar Shrivastava</span><span class="sep"></span>
+        <span>Deloitte capstone</span><span class="sep"></span>
+        <span id="verifiedDate">Page generated on load</span>
+      </div>
+      <span class="badge-caution">Research sandbox — not a medical device</span>
+
+      <div class="metrics" id="heroMetrics">
+        <div class="mcard"><div class="mv pending">pending</div><div class="ml">Top-1 accuracy (DDxPlus)</div></div>
+        <div class="mcard"><div class="mv pending">pending</div><div class="ml">Top-3 accuracy (DDxPlus)</div></div>
+        <div class="mcard"><div class="mv pending">pending</div><div class="ml">Safety recall</div></div>
+        <div class="mcard"><div class="mv pending">pending</div><div class="ml">Cases evaluated</div></div>
+      </div>
+    </section>
+
+    <article>
+      <p class="kicker">This page is the evidence page, the mentor-engagement tool, and the thing we present from. Every number here is either traceable to a committed file or explicitly marked as not yet measured — nothing is estimated.</p>
+
+      <!-- 1 -->
+      <h2 id="problem"><span class="num">01 — the problem</span>Clinical triage, in the language clinicians already use</h2>
+      <p>Triage today: a patient describes symptoms; a clinician forms a differential through adaptive questioning, narrowing in on the most likely explanations while watching for red flags that demand immediate escalation. The constraint is <strong>clinician time</strong>, not clinical knowledge — there simply aren't enough hours to have that adaptive conversation with every patient before they're seen.</p>
+      <p>Most consumer symptom checkers that try to fill that gap are static decision trees returning generic information. They don't adapt their questioning turn to turn, and — the part that matters most — <strong>almost none publish accuracy against an external benchmark</strong>. A user has no way to tell a good one from a bad one.</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Today, with a clinician</th><th>Typical symptom checker</th><th>DiffDx</th></tr></thead>
+          <tbody>
+            <tr><td>Adaptive follow-up questions, driven by what's already been learned</td><td>Fixed decision tree, same questions regardless of answers</td><td>Adaptive — next question chosen from the accumulated profile each turn</td></tr>
+            <tr><td>Confidence forms gradually across the conversation</td><td>Binary "possible condition" list, no confidence signal</td><td>Explicit probability distribution over a ranked differential, updated every turn</td></tr>
+            <tr><td>A second clinician can review whether questions were well-chosen</td><td>No review layer — questioning logic is opaque</td><td>A separate critic scores every question against what it should have asked</td></tr>
+            <tr><td>Accuracy is implicitly checked by outcomes over a career</td><td>Rarely published against an external, independently-labelled dataset</td><td>Evaluated against DDxPlus, a public dataset this project did not author (see §4)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 2 -->
+      <h2 id="how"><span class="num">02 — how it works</span>Three loops, and where the model actually sits</h2>
+      <p>There's deterministic code on both sides of every model call — retrieval, safety screening, routing, and every schema boundary are plain Python, not prompted behavior. The three loops:</p>
+
+      <div class="component-list">
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Loop 1</div><div class="comp-name">Actor</div></div>
+          <div class="comp-body">Conducts the interview. Receives the patient's structured profile, compressed conversation history, and 3 retrieved few-shot exemplars each turn; decides the next question and updates a ranked differential with probabilities. Outputs strict JSON, validated against a locked schema.</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Loop 2</div><div class="comp-name">Critic</div></div>
+          <div class="comp-body">Scores each turn on question quality, differential quality, and reasoning quality — and, for flagged turns, states <code>would_have_asked</code>: the question it believes should have been chosen instead. Runs in production, not only offline (see §6) — an automated QA layer over clinical AI decisions.</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Loop 3</div><div class="comp-name">Router</div></div>
+          <div class="comp-body">After a session ends, classifies urgency (Emergency / Urgent / Soon / Routine) and specialty from the top differential, using a disease-to-specialty map covering 600+ conditions, with an ambiguity handler when the top differential is unclear.</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Retrieval</div><div class="comp-name">MMR exemplars</div></div>
+          <div class="comp-body">Sentence-embedding retrieval over a curated exemplar pool, re-ranked by Maximal Marginal Relevance so the 3 selected examples are relevant <em class="term">and</em> diverse, not three near-duplicates of the same case.</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Provider fallback</div><div class="comp-name">Multi-provider retry</div></div>
+          <div class="comp-body">
+            The doctor and critic models are configured independently (<code>loop1/config.yaml</code>'s <code>models.doctor</code>, and the <code>CRITIC_MODEL</code> env var) — deliberately different models, to avoid the critic grading the actor's own outputs with the actor's own biases. Each provider call retries the same model up to 3 times on a 5xx/malformed response before falling through to the next model in that provider's fallback chain, rather than failing the turn outright:
+            <div class="chain">
+              <span class="chain-item">groq/*</span><span class="chain-arrow">→</span>
+              <span class="chain-item">openrouter (3 models)</span><span class="chain-arrow">→</span>
+              <span class="chain-item">groq/qwen (last resort)</span>
+            </div>
+            <div class="chain">
+              <span class="chain-item">gemini/* · cerebras/*</span><span class="chain-arrow">→</span>
+              <span class="chain-item">openrouter/nemotron</span>
+            </div>
+            This shape wasn't designed up front — it's the direct result of hitting real free-tier limits in practice: Groq's per-model token-per-minute cap, Cerebras's card requirement for new accounts, OpenRouter's daily request cap. See <a class="ref" href="https://github.com/Mhervin47/DiffDx2.0/blob/main/loop1/docs/DECISIONS.md">DECISIONS.md</a> for the reasoning behind each infrastructure choice.
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <h2 id="verified"><span class="num">03 — verified live</span>What one diagnostic session actually does, hop by hop</h2>
+      <p>Rather than describe the pipeline in the abstract, here's the literal call sequence for one session — reproduce it yourself against a running instance (<code>docker compose up --build</code>, then substitute a real <code>session_id</code>):</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Call</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td class="mono-cell">POST /api/session/start</td><td>Session created; Loop 1 asks the opening question; live state initialised in Redis (or an in-memory dict if <code>REDIS_URL</code> is unset)</td></tr>
+            <tr><td class="mono-cell">POST /api/session/{id}/turn</td><td>Actor receives the patient's answer, retrieval selects 3 exemplars by MMR, differential updates</td></tr>
+            <tr><td><em>(async, same turn)</em></td><td>Critic scores the turn — <code>question_quality_score</code>, <code>differential_quality_score</code>, <code>reasoning_quality_score</code>, each 0–1</td></tr>
+            <tr><td class="mono-cell">GET /api/session/{id}/report</td><td>Ranked differential, urgency tier, and specialty routing once the session concludes</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:14px;color:var(--ink-faint)">Not run against a live deployment for this page — no server was available in the environment this page was authored in. Run it and paste real request/response values here before presenting; datestamp the section when you do.</p>
+
+      <!-- 4 -->
+      <h2 id="results"><span class="num">04 — results</span>DDxPlus evaluation</h2>
+      <div class="callout pending" id="resultsCallout">
+        <span class="c-lab">Not yet run</span>
+        <p><code>scripts/bake_off.py</code> (the DDxPlus evaluation harness) exists in the repo but has not been executed to produce <code>docs/evidence/eval_results.json</code> or <code>ablation.json</code>. This page fetches those files at load time — once they exist, the hero stat chips and this section fill in automatically with no further edits needed here.</p>
+        <p>Per the build spec this page is based on: <strong>a briefing page with placeholder metrics is worse than no page</strong> — it advertises that the central claim is unmeasured. Run the eval before presenting this section.</p>
+      </div>
+      <div id="resultsFilled" style="display:none">
+        <div class="metrics" id="resultsMetrics"></div>
+        <figure>
+          <canvas id="ablationChart" height="160"></canvas>
+          <figcaption>Top-3 accuracy by retrieval configuration (from <code>ablation.json</code>)</figcaption>
+        </figure>
+      </div>
+
+      <div class="callout">
+        <span class="c-lab">Reading these accurately</span>
+        <p><strong>n=20</strong> is the planned evaluation size — small, chosen because each case runs the full multi-turn pipeline against a rate-limited free-tier provider. That's stable enough to compare configurations against each other and too small to claim clinical validity on its own. DDxPlus ground truth is independently derived; no code in this repository generated the labels.</p>
+      </div>
+
+      <!-- 5 -->
+      <h2 id="concurrency"><span class="num">05 — concurrency</span>What changed when the persistence layer was rebuilt</h2>
+      <p>v1 stored appointments as a single-row JSON blob, read-modify-write, no locking. v2 replaced it with a relational schema and a database-level unique constraint. Rather than assert this fixed anything, we ran 20 concurrent booking attempts against the same doctor and the same slot, on both.</p>
+      <pre id="concurrencyEvidence">Loading loop1/docs/evidence/concurrency.txt…</pre>
+      <p style="font-size:14px;color:var(--ink-faint)">Reproduced verbatim from the committed evidence file — including the honest explanation of why the blob-mode split is 9 successes / 11 rejections rather than a clean 20/20, and why re-running it will not reproduce that exact split. That's a real race being exposed, not a scripted demo.</p>
+
+      <!-- 6 -->
+      <h2 id="critic"><span class="num">06 — the critic, running</span>An automated QA layer over clinical AI decisions</h2>
+      <p>The critic runs in production on every turn, not only in offline evaluation. When it flags a turn, it states what it believes should have been asked instead — illustrative shape below (schema, not a captured session; swap in a real flagged turn from <code>/admin/quality</code> before presenting):</p>
+      <div class="callout amber">
+        <span class="c-lab">Illustrative — schema, not a real session</span>
+        <p><strong>Asked:</strong> <em>"Have you had any recent travel?"</em></p>
+        <p><strong>Critic — would have asked:</strong> <em>"Are you experiencing any shortness of breath or chest pain when you breathe in?"</em></p>
+        <p><strong>Why:</strong> the profile already carried unilateral leg swelling and a positive DVT risk factor; the critic scored the actual question low on question-quality because it didn't pursue the higher-yield pulmonary-embolism screen the accumulated evidence pointed toward.</p>
+      </div>
+
+      <!-- 7 -->
+      <h2 id="priorart"><span class="num">07 — prior art</span>This pattern is not novel — what's uncommon is publishing the number</h2>
+      <p>Adaptive, multi-turn AI symptom checking is an established category. Several commercial products do it, some with real clinical backing and validation far larger than 20 cases. The gap DiffDx sits in isn't the interaction pattern — it's publishing measurable accuracy against an independent dataset alongside an ablation showing which architectural choices earned it.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>System</th><th>Overlaps with us on</th><th>Publishes accuracy on an external benchmark</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Ada Health</strong></td><td>Adaptive multi-turn interview, ranked differential</td><td>Ada has published peer-reviewed validation studies comparing its assessments to clinician judgement — larger and more rigorous than this project's evaluation</td></tr>
+            <tr><td><strong>Isabel</strong></td><td>Differential-diagnosis decision support</td><td>Isabel has published validation studies against clinical case sets, primarily positioned as a clinician-facing tool rather than direct-to-patient</td></tr>
+            <tr><td><strong>Babylon Health</strong></td><td>Chatbot-driven triage, urgency classification</td><td>Published an early comparative accuracy study; the methodology was publicly disputed by clinicians shortly after — a cautionary example for how this kind of claim gets scrutinised</td></tr>
+            <tr><td><strong>K Health</strong></td><td>AI-driven symptom assessment</td><td>Cites internal outcome studies; not consistently benchmarked against a third-party public dataset in the way DDxPlus allows here</td></tr>
+            <tr><td><strong>Practo symptom checker</strong></td><td>Consumer-facing symptom-to-specialty routing (closest to this project's own routing layer)</td><td>No externally-benchmarked accuracy figure found in public materials at time of writing</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:14px;color:var(--ink-faint)">These are drawn from public information and general knowledge, not independently re-verified for this page — check current sources before citing any of these claims to the panel.</p>
+
+      <!-- 8 -->
+      <h2 id="engineering"><span class="num">08 — engineering: v1 → v2</span></h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>v1</th><th>v2</th></tr></thead>
+          <tbody>
+            <tr><td>Persistence</td><td>Single-row JSON blob store, 8 collections in 8 rows</td><td>Relational schema, 3 Alembic migrations, FKs and indexes</td></tr>
+            <tr><td>Concurrency</td><td>Read-modify-write, silent lost updates</td><td>DB-level unique constraint, clean 409s (§5)</td></tr>
+            <tr><td><code>web/api.py</code></td><td>3,892 lines, 93 routes</td><td>67 lines; 15 routers, service layer</td></tr>
+            <tr><td>Auth</td><td>In-memory opaque tokens, lost on restart</td><td>JWT + refresh rotation, RBAC, rate limiting</td></tr>
+            <tr><td>Sessions</td><td>Process memory</td><td>Redis + Postgres persistence</td></tr>
+            <tr><td>Deployment</td><td>Manual</td><td>Docker, Compose, Render (<code>render.yaml</code>)</td></tr>
+            <tr><td>Evaluation</td><td>Harness present, never run</td><td>Harness present — publishing results is the open item this page tracks</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Deliberately excluded</h3>
+      <ul class="clean">
+        <li><strong>Async SQLAlchemy</strong> — the rest of the codebase is sync; mixing concurrency models for no functional gain at this request volume was judged worse than one consistent style.</li>
+        <li><strong>Migrating password hashing to bcrypt</strong> — PBKDF2-SHA256 at 200k iterations is a legitimate OWASP-listed choice; the mismatch was a stale doc comment, not a hashing weakness, so the doc was fixed instead of forcing every user through a re-hash migration.</li>
+        <li><strong>Managed Redis (e.g. AWS ElastiCache)</strong> — a plain Redis container reached via a URL, same pattern as <code>DATABASE_URL</code>. At this scale, a managed service's HA/failover value doesn't justify a standing AWS bill.</li>
+        <li><strong>Kubernetes, Terraform, microservices</strong> — one FastAPI service, one Postgres, one Redis. Splitting further has no scale justification yet and would slow iteration under deadline.</li>
+        <li><strong>Guideline RAG, PII redaction, DPO fine-tuning</strong> — the critic's turn-level scoring builds the training data DPO would consume; the fine-tuning step itself is future work, not built yet.</li>
+        <li><strong>SMS OTP</strong> — no free-tier SMS provider exists at any real send volume; email OTP (Resend/SMTP) covers registration verification instead.</li>
+      </ul>
+
+      <!-- 9 -->
+      <h2 id="stack"><span class="num">09 — stack</span></h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Component</th><th>What it does</th><th>Licence / tier</th></tr></thead>
+          <tbody>
+            <tr><td>FastAPI</td><td>API framework, all 15 routers</td><td>MIT</td></tr>
+            <tr><td>PostgreSQL + SQLAlchemy + Alembic</td><td>Durable relational storage, 3 migrations</td><td>PostgreSQL licence / MIT — free tier on Render for dev</td></tr>
+            <tr><td>Redis</td><td>Live diagnostic-session state, falls back to in-memory if unset</td><td>BSD — free container locally, paid Key Value tier on Render</td></tr>
+            <tr><td>PyJWT + PBKDF2-SHA256</td><td>Auth: JWT access/refresh tokens, password hashing</td><td>MIT</td></tr>
+            <tr><td>Groq / OpenRouter / Cerebras / Gemini</td><td>Doctor + critic LLM inference, provider fallback chain</td><td>Free tiers, rate-limit shape varies per provider (see §2)</td></tr>
+            <tr><td>sentence-transformers + FAISS</td><td>Exemplar embedding + MMR retrieval</td><td>Apache 2.0 / MIT</td></tr>
+            <tr><td>Resend (or SMTP)</td><td>Appointment reminders, registration OTP emails</td><td>Free tier: 3,000 emails/month</td></tr>
+            <tr><td>Docker + Docker Compose</td><td>Local/self-hosted deployment, non-root multi-stage image</td><td>Apache 2.0</td></tr>
+            <tr><td>Render</td><td>Hosted deployment, auto-deploy on push to <code>main</code></td><td>Free/starter tiers</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 10 -->
+      <h2 id="limitations"><span class="num">10 — limitations</span></h2>
+      <ul class="clean">
+        <li><strong>Not a medical device.</strong> Not clinically validated, not regulated, not for use on real patients.</li>
+        <li><strong>n=20 planned evaluation.</strong> Small by design — see §4 for why, and for the honest reading of what that number can and can't support.</li>
+        <li><strong>Ephemeral filesystem on the free/starter deployment tier</strong> means uploaded files (X-rays, lab results) do not survive a restart — object storage (S3-compatible) is the production path, not yet built.</li>
+        <li><strong>Test coverage is 24 files</strong> in <code>loop1/tests/</code>; a larger suite was scoped out under the capstone deadline.</li>
+        <li><strong>The AWS Fargate deployment described in <a class="ref" href="https://github.com/Mhervin47/DiffDx2.0/blob/main/loop1/docs/DECISIONS.md">DECISIONS.md</a> ADR 4 is planned, not deployed</strong> — actual hosting today is Render and self-hosted Docker Compose.</li>
+        <li><strong>Provider fallback adds latency variance.</strong> A turn that exhausts retries on one free-tier model before falling through to the next can take noticeably longer than one that succeeds on the first call — observed directly during development, not simulated.</li>
+      </ul>
+
+      <!-- 11 -->
+      <h2 id="questions"><span class="num">11 — guidance requested</span>For Prakhar, ordered by how much the answer changes what we build next</h2>
+      <ol class="steps">
+        <li><b>Is a 20-case evaluation defensible for a prototype,</b><span>or does the panel expect a larger n even at prototype scale?</span></li>
+        <li><b>Does the critic-as-production-QA framing map onto how clinical AI is actually governed,</b><span>or is quality assurance handled differently in practice at Deloitte's clients?</span></li>
+        <li><b>Is clinical triage the right demo domain for this panel,</b><span>or would a clinical-operations use case land better? The architecture — actor, critic, router — is domain-agnostic.</span></li>
+        <li><b>We're mapping to the DPDP Act and EU AI Act's high-risk classification —</b><span>is there a Deloitte framework we should align our vocabulary with instead?</span></li>
+        <li><b>We report top-1, top-3, and safety recall —</b><span>which would a healthcare client actually ask for first?</span></li>
+      </ol>
+
+      <!-- 12 -->
+      <h2 id="review"><span class="num">12 — review notes</span>Claims a mentor can react to individually</h2>
+      <div id="reviewClaims">
+        <div class="review-item"><div class="review-num">01</div><div class="review-body">Most consumer symptom checkers publish no accuracy against external ground truth; the user cannot distinguish a good one from a bad one.<textarea class="review-note" data-claim="1" placeholder="Note…"></textarea></div></div>
+        <div class="review-item"><div class="review-num">02</div><div class="review-body">A diagnostic system should be evaluated on a dataset its authors did not construct.<textarea class="review-note" data-claim="2" placeholder="Note…"></textarea></div></div>
+        <div class="review-item"><div class="review-num">03</div><div class="review-body">An architectural choice should be justified by an ablation, not by argument.<textarea class="review-note" data-claim="3" placeholder="Note…"></textarea></div></div>
+        <div class="review-item"><div class="review-num">04</div><div class="review-body">The critic belongs in production, not only in evaluation — a QA layer over clinical AI decisions.<textarea class="review-note" data-claim="4" placeholder="Note…"></textarea></div></div>
+        <div class="review-item"><div class="review-num">05</div><div class="review-body">Explainability means citing why a question was asked, not narrating after the fact.<textarea class="review-note" data-claim="5" placeholder="Note…"></textarea></div></div>
+        <div class="review-item"><div class="review-num">06</div><div class="review-body">Correctness under concurrency is a clinical-safety property, not just an engineering one — a lost appointment is a missed consultation.<textarea class="review-note" data-claim="6" placeholder="Note…"></textarea></div></div>
+      </div>
+      <button class="copy-all-btn" id="copyAllNotes">Copy all notes</button>
+
+      <hr class="rule">
+      <p style="font-size:13px;color:var(--ink-faint)">Deeper technical reference: <a class="ref" href="https://github.com/Mhervin47/DiffDx2.0/blob/main/loop1/README.md">loop1/README.md</a> · <a class="ref" href="https://github.com/Mhervin47/DiffDx2.0/blob/main/loop1/docs/ARCHITECTURE.md">ARCHITECTURE.md</a> · <a class="ref" href="https://github.com/Mhervin47/DiffDx2.0/blob/main/loop1/docs/DECISIONS.md">DECISIONS.md</a> · <a class="ref" href="https://github.com/Mhervin47/DiffDx2.0/tree/main/docs/tasks">working specs</a> · <a class="ref" href="index.html">engineering deep-dive (v1 architecture write-up)</a></p>
+    </article>
+
+    <footer>
+      <p class="fnote">DiffDx is a research sandbox built for a Deloitte capstone submission (TechnoBots, MUJ, mentor Prakhar Shrivastava). It is not a medical device, has not been clinically validated, and must not be used on real patients.</p>
+      <p class="fnote">This page fetches <code>docs/evidence/eval_results.json</code> and <code>docs/evidence/ablation.json</code> at load time and fills §4/hero automatically once those files exist — nothing on this page hardcodes a metric that should come from there.</p>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  // TOC active-section highlight
+  var links = [].slice.call(document.querySelectorAll('.toc a'));
+  var map = {};
+  links.forEach(function(a){
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if(el) map[id] = a;
+  });
+  var ids = Object.keys(map);
+  if('IntersectionObserver' in window && ids.length){
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          links.forEach(function(l){l.classList.remove('active')});
+          var a = map[e.target.id];
+          if(a) a.classList.add('active');
+        }
+      });
+    },{rootMargin:'-10% 0px -72% 0px',threshold:0});
+    ids.forEach(function(id){ obs.observe(document.getElementById(id)); });
+  }
+
+  // Theme toggle
+  var btn = document.getElementById('themeToggle');
+  var root = document.documentElement;
+  function isDark(){
+    var stored = localStorage.getItem('diffdx-theme');
+    if(stored) return stored === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function applyTheme(dark){
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    if(btn) btn.textContent = dark ? '☾' : '☀';
+  }
+  applyTheme(isDark());
+  if(btn){
+    btn.addEventListener('click', function(){
+      var next = root.getAttribute('data-theme') !== 'dark';
+      localStorage.setItem('diffdx-theme', next ? 'dark' : 'light');
+      applyTheme(next);
+    });
+  }
+
+  document.getElementById('verifiedDate').textContent = 'Page rendered ' + new Date().toISOString().slice(0,10);
+
+  // Fetch real eval results — never hardcode a number here.
+  // Files don't exist yet (docs/evidence/eval_results.json, ablation.json);
+  // this fills in automatically the moment they're added, no HTML edit needed.
+  fetch('evidence/eval_results.json').then(function(r){
+    if(!r.ok) throw new Error('not found');
+    return r.json();
+  }).then(function(data){
+    var chips = document.querySelectorAll('#heroMetrics .mcard');
+    var vals = [
+      [data.top1_accuracy, 'Top-1 accuracy (DDxPlus)'],
+      [data.top3_accuracy, 'Top-3 accuracy (DDxPlus)'],
+      [data.safety_recall, 'Safety recall'],
+      [data.n_cases, 'Cases evaluated']
+    ];
+    vals.forEach(function(v, i){
+      if(!chips[i]) return;
+      var mv = chips[i].querySelector('.mv');
+      mv.classList.remove('pending');
+      mv.textContent = v[0] !== undefined ? v[0] : '—';
+    });
+    document.getElementById('resultsCallout').style.display = 'none';
+    document.getElementById('resultsFilled').style.display = '';
+  }).catch(function(){ /* stays in the honest pending state */ });
+
+  // Ablation chart — only renders if ablation.json actually exists.
+  fetch('evidence/ablation.json').then(function(r){
+    if(!r.ok) throw new Error('not found');
+    return r.json();
+  }).then(function(data){
+    // Expected shape: [{ "config": "no retrieval", "top3_accuracy": 0.NN }, ...]
+    var canvas = document.getElementById('ablationChart');
+    if(!canvas || typeof Chart === 'undefined' || !Array.isArray(data)) return;
+    new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: data.map(function(d){ return d.config; }),
+        datasets: [{
+          label: 'Top-3 accuracy',
+          data: data.map(function(d){ return d.top3_accuracy; }),
+          backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2563EB'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, max: 1 } }
+      }
+    });
+  }).catch(function(){ /* no ablation.json yet — chart stays blank, section is already flagged pending */ });
+
+  // Concurrency evidence — fetch the real committed file, reproduce verbatim.
+  fetch('https://raw.githubusercontent.com/Mhervin47/DiffDx2.0/main/loop1/docs/evidence/concurrency.txt').then(function(r){
+    if(!r.ok) throw new Error('not found');
+    return r.text();
+  }).then(function(text){
+    document.getElementById('concurrencyEvidence').textContent = text;
+  }).catch(function(){
+    document.getElementById('concurrencyEvidence').textContent =
+      'Could not load loop1/docs/evidence/concurrency.txt from this page. ' +
+      'See that file directly in the repo — it is reproduced verbatim there, ' +
+      'including the honest explanation of the 9/11 blob-mode split.';
+  });
+
+  // Copy-all for review notes
+  var copyBtn = document.getElementById('copyAllNotes');
+  if(copyBtn){
+    copyBtn.addEventListener('click', function(){
+      var notes = [].slice.call(document.querySelectorAll('.review-note'));
+      var text = notes.map(function(n){
+        return 'Claim ' + n.dataset.claim + ': ' + (n.value.trim() || '(no note)');
+      }).join('\n');
+      if(navigator.clipboard){
+        navigator.clipboard.writeText(text).then(function(){
+          copyBtn.textContent = 'Copied';
+          setTimeout(function(){ copyBtn.textContent = 'Copy all notes'; }, 1500);
+        });
+      }
+    });
+    // Persist notes locally per viewer
+    document.querySelectorAll('.review-note').forEach(function(n){
+      var key = 'diffdx-briefing-note-' + n.dataset.claim;
+      try{
+        var saved = localStorage.getItem(key);
+        if(saved) n.value = saved;
+        n.addEventListener('input', function(){ localStorage.setItem(key, n.value); });
+      }catch(e){}
+    });
+  }
+})();
+</script>
+</body>
+</html>

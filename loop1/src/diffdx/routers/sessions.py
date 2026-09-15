@@ -167,8 +167,11 @@ async def tts_proxy(request: Request):
     text = body.get("text", "")
     lang = body.get("lang", "hi-IN")
     # Translate English → target language first
-    translated = _sarvam_translate(text, "en-IN", lang) if lang != "en-IN" else text
-    audio_b64 = _sarvam_tts_b64(translated, lang)
+    translated = (
+        _sarvam_translate(text, "en-IN", lang, call_site="tts_proxy_translate")
+        if lang != "en-IN" else text
+    )
+    audio_b64 = _sarvam_tts_b64(translated, lang, call_site="tts_proxy_tts")
     # Audio synthesis is best-effort: if it fails, still return the translated
     # text so the UI can show it even without a voiceover (see
     # _prefetchSarvamAudio's !data.audio_b64 branch in session.html, which
@@ -292,7 +295,10 @@ def submit_turn(session_id: str, req: TurnRequest, request: Request):
     patient_answer = req.patient_answer
     if lang and lang != "en-IN":
         # Translate patient answer to English so LLM always sees English
-        patient_answer = _sarvam_translate(patient_answer, lang, "en-IN")
+        patient_answer = _sarvam_translate(
+            patient_answer, lang, "en-IN",
+            call_site="patient_answer_translate", session_id=session_id,
+        )
 
     try:
         result = session.submit_answer(patient_answer)

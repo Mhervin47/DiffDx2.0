@@ -77,17 +77,27 @@ def _check_redis() -> dict[str, Any]:
         return {"status": "down", "latency_ms": None, "detail": "Redis unreachable."}
 
 
-def _check_groq() -> dict[str, Any]:
-    # Presence only — never a real API call. A health check polled every 30s
-    # must not make a billable model call, and Groq being slow must never
-    # make this endpoint slow.
-    if settings.groq_api_key:
+def _check_openrouter() -> dict[str, Any]:
+    # Presence only — never a real API call, same reasoning as before: a
+    # health check polled every 30s must not make a billable model call.
+    # Replaces the old Groq pill: GROQ_API_KEY is REQUIRED at startup
+    # (diffdx.config.Settings fails fast without it), so that pill could
+    # only ever read "ok" — it never carried real information. OPENROUTER_API_KEY
+    # is optional and actually gates something: without it the critic is
+    # disabled entirely and loop1.llm's HTTP-429 fallback chain (_FALLBACK_CHAIN)
+    # loses every openrouter/* entry — so "not configured" here is a real,
+    # actionable signal, not a permanently-green pill.
+    if settings.openrouter_api_key:
         return {
             "status": "ok",
             "latency_ms": None,
             "detail": "API key present. Connectivity not tested — health checks do not make billable model calls.",
         }
-    return {"status": "not_configured", "latency_ms": None, "detail": "GROQ_API_KEY unset."}
+    return {
+        "status": "not_configured",
+        "latency_ms": None,
+        "detail": "OPENROUTER_API_KEY unset — critic scoring disabled, and the HTTP-429 fallback chain has fewer options.",
+    }
 
 
 @router.get("/api/admin/health/detail")
@@ -102,5 +112,5 @@ def health_detail(_admin: dict = Depends(require_role("admin"))) -> dict[str, An
         "api": "ok",
         "postgres": _check_postgres(),
         "redis": _check_redis(),
-        "groq": _check_groq(),
+        "openrouter": _check_openrouter(),
     }

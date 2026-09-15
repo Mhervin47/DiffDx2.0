@@ -5,7 +5,7 @@ import logging
 import re
 
 from loop1.config import config
-from loop1.llm import call_llm
+from loop1.llm import LlmUsage, call_llm_with_usage
 from loop1.schemas import ClosingTurn, DiagnosisEntry, PatientProfile
 
 _log = logging.getLogger(__name__)
@@ -45,6 +45,28 @@ def generate_closing_turn(
     """
     Generate a plain-language closing statement for the patient.
     Returns None on any failure (API or parse error) — caller must not crash.
+
+    Thin wrapper over generate_closing_turn_with_usage() that drops the
+    LlmUsage — kept so every existing caller/test (loop1.session, the whole
+    of tests/test_session.py and tests/test_phase6_session.py, which mock
+    this exact name with this exact return shape) needs zero changes.
+    """
+    closing, _usage = generate_closing_turn_with_usage(profile, final_differential, model)
+    return closing
+
+
+def generate_closing_turn_with_usage(
+    profile: PatientProfile,
+    final_differential: list[DiagnosisEntry],
+    model: str | None = None,
+) -> tuple[ClosingTurn | None, LlmUsage | None]:
+    """
+    Same as generate_closing_turn(), but also returns the LlmUsage from the
+    call that produced it (or the last attempted call's usage on failure, or
+    None if the call never got far enough to have one) — so a caller that
+    wants to log token usage/cost for this call (web/api_session.py's
+    _finalize(), previously the one real LLM call per session with zero
+    usage tracking anywhere) can, without duplicating the prompt logic here.
     """
     if model is None:
         model = config["models"]["doctor"]
@@ -75,9 +97,10 @@ def generate_closing_turn(
     ]
 
     max_retries = 2
+    last_usage: LlmUsage | None = None
     for attempt in range(max_retries):
         try:
-            raw = call_llm(
+            raw, last_usage = call_llm_with_usage(
                 model=model,
                 messages=messages,
                 temperature=0,
@@ -86,7 +109,7 @@ def generate_closing_turn(
         except Exception as exc:
             _log.warning("Closing turn LLM call failed (attempt %d): %s", attempt + 1, exc)
             if attempt == max_retries - 1:
-                return None
+                return None, last_usage
             continue
 
         cleaned = _strip_fences(raw)
@@ -98,7 +121,7 @@ def generate_closing_turn(
                 recommended_next_steps=list(data.get("recommended_next_steps", [])),
                 unresolved_patient_questions=list(data.get("unresolved_patient_questions", [])),
                 generated_by=model,
-            )
+            ), last_usage
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
             _log.warning("Closing turn parse error (attempt %d): %s", attempt + 1, exc)
             messages = messages + [
@@ -112,4 +135,4 @@ def generate_closing_turn(
                 },
             ]
 
-    return None
+    return None, last_usage

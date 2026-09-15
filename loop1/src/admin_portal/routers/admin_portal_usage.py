@@ -14,7 +14,11 @@ completion tokens/total tokens/the model that actually served each call
 response (loop1.llm.LlmUsage), not an estimate — and the compressor and
 critic calls, which previously left zero trace, are now logged too
 (call_site="compressor"/"critic"), so per-session cost reflects the whole
-live turn, not just the doctor's own call. The one gap still open: the
+live turn, not just the doctor's own call. A later pass closed a third gap:
+the closing-turn call (loop1.closing_turn.generate_closing_turn_with_usage,
+web/api_session.py's _finalize()) — the one other real LLM call per session,
+generating the patient-facing summary — is now logged too
+(call_site="closing_turn"). The one gap still open: the
 profile updater remains disabled in the live web session by design (a
 CLI/offline-only code path) — see build brief Section 1.2 for why. Required
 verbatim in three places (build brief Section 11.2, honored across the
@@ -36,7 +40,7 @@ from sqlalchemy import func, select
 
 from diffdx.db.engine import get_sessionmaker
 from diffdx.db.models.clinical import DiagnosticSession
-from diffdx.db.models.usage import LlmUsageEvent
+from diffdx.db.models.usage import LlmUsageEvent, SarvamUsageEvent
 from diffdx.dependencies import require_role
 
 router = APIRouter(tags=["admin_portal"])
@@ -45,6 +49,7 @@ _log = logging.getLogger(__name__)
 # routers/admin_portal_usage.py -> routers -> admin_portal -> src -> loop1 (4 parent hops)
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _PRICING_PATH = _REPO_ROOT / "src" / "admin_portal" / "eval" / "pricing.json"
+_SARVAM_PRICING_PATH = _REPO_ROOT / "src" / "admin_portal" / "eval" / "sarvam_pricing.json"
 
 _DEFAULT_WINDOW_DAYS = 14
 _MAX_WINDOW_DAYS = 90
@@ -57,10 +62,12 @@ _MIN_SAMPLE_FOR_P95 = 20
 # wrong about this one; do not conflate them.
 _COVERAGE_NOTE = (
     "Usage figures cover the doctor model's own call, the compressor "
-    "(runs once history exceeds the keep-recent window), and the critic "
-    "(runs on every turn in a background thread) — all three are logged "
-    "separately (see call_site on each record) and summed into these "
-    "totals. The profile updater is disabled by design in the live web "
+    "(runs once history exceeds the keep-recent window), the critic "
+    "(runs on every turn in a background thread), and the closing-turn "
+    "call (the patient-facing summary generated once at session end) — "
+    "all four are logged separately (see call_site on each record) and "
+    "summed into these totals. The profile updater is disabled by design "
+    "in the live web "
     "session (a CLI/offline-only path), so its cost is not, and cannot be, "
     "represented here. Completion tokens and the exact model that served "
     "each call (which can differ from the configured model after an HTTP "
@@ -80,6 +87,26 @@ _EPHEMERALITY_NOTE = (
     "here DOES survive restarts and deploys, same as session counts."
 )
 
+# Sarvam (voice/multilingual) usage is a separate data source from the LLM
+# usage above — bills per character, not per token, has its own table
+# (sarvam_usage_events) and its own pricing file (sarvam_pricing.json), and
+# is reported under its own "voice_usage" key rather than folded into the
+# figures above, so the two never get silently blended into one number.
+_VOICE_COVERAGE_NOTE = (
+    "Covers both Sarvam call sites: POST /api/tts (translate + "
+    "text-to-speech, the voice-playback feature — call_site="
+    "'tts_proxy_translate'/'tts_proxy_tts') and the patient-answer "
+    "translate-back on every non-English turn (call_site="
+    "'patient_answer_translate'). Character counts are real (len() of the "
+    "text actually sent), not estimated — TTS truncates its input to 500 "
+    "characters before synthesis, and the logged char_count reflects that "
+    "truncation. Cost is estimated from sarvam_pricing.json's per-1,000-"
+    "character list rates, which are NOT verified against actual Sarvam "
+    "invoices. POST /api/tts does not receive a session_id in its request "
+    "body, so those records have session_id=null and are excluded from "
+    "per-session figures — only counted in the aggregate totals below."
+)
+
 
 def _load_pricing() -> dict[str, Any]:
     try:
@@ -88,6 +115,79 @@ def _load_pricing() -> dict[str, Any]:
     except Exception:
         _log.warning("Could not load pricing.json at %s", _PRICING_PATH, exc_info=True)
         return {"_default": {"input_usd_per_1k": 0.0005, "output_usd_per_1k": 0.0015}}
+
+
+def _load_sarvam_pricing() -> dict[str, Any]:
+    try:
+        with open(_SARVAM_PRICING_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        _log.warning("Could not load sarvam_pricing.json at %s", _SARVAM_PRICING_PATH, exc_info=True)
+        return {
+            "translate": {"usd_per_1k_chars": 0.023},
+            "tts": {"usd_per_1k_chars": 0.018},
+        }
+
+
+def _sarvam_event_cost(event: "SarvamUsageEvent", pricing: dict) -> float | None:
+    if event.char_count is None:
+        return None
+    rate = pricing.get(event.operation, {}).get("usd_per_1k_chars")
+    if rate is None:
+        return None
+    return event.char_count / 1000 * rate
+
+
+def _sarvam_usage_summary(events: list["SarvamUsageEvent"], days: int) -> dict[str, Any]:
+    """Aggregate Sarvam usage over the window into the shape the admin
+    portal renders — request/char/cost totals, plus breakdowns by operation
+    (translate vs tts) and by target language."""
+    if not events:
+        return {
+            "status": "no_data",
+            "message": (
+                "No voice/translation usage yet for source='live_web' in this window — "
+                "accumulates once a session uses a non-English language or plays back "
+                "voice audio."
+            ),
+            "window_days": days,
+            "coverage_note": _VOICE_COVERAGE_NOTE,
+        }
+
+    pricing = _load_sarvam_pricing()
+    event_costs = [_sarvam_event_cost(e, pricing) for e in events]
+    sum_cost = sum(c for c in event_costs if c is not None)
+
+    by_op: dict[str, dict[str, Any]] = {}
+    by_lang: dict[str, dict[str, Any]] = {}
+    ok_count = 0
+    for e, cost in zip(events, event_costs):
+        if e.ok:
+            ok_count += 1
+        op_row = by_op.setdefault(e.operation, {"operation": e.operation, "count": 0, "chars": 0, "cost_usd_estimated": 0.0})
+        op_row["count"] += 1
+        op_row["chars"] += e.char_count or 0
+        op_row["cost_usd_estimated"] += cost or 0.0
+        if e.language:
+            lang_row = by_lang.setdefault(e.language, {"language": e.language, "count": 0, "chars": 0})
+            lang_row["count"] += 1
+            lang_row["chars"] += e.char_count or 0
+
+    return {
+        "status": "ok",
+        "window_days": days,
+        "requests_total": len(events),
+        "requests_ok": ok_count,
+        "requests_failed": len(events) - ok_count,
+        "chars_total": sum(e.char_count or 0 for e in events),
+        "cost_usd_estimated": round(sum_cost, 6),
+        "by_operation": [
+            {**row, "cost_usd_estimated": round(row["cost_usd_estimated"], 6)}
+            for row in sorted(by_op.values(), key=lambda r: -r["count"])
+        ],
+        "by_language": sorted(by_lang.values(), key=lambda r: -r["count"]),
+        "coverage_note": _VOICE_COVERAGE_NOTE,
+    }
 
 
 def _rate_for_model(pricing: dict, model: str | None) -> dict:
@@ -111,6 +211,31 @@ def _event_cost(event: LlmUsageEvent, pricing: dict) -> float | None:
     model_for_pricing = event.model_actual or event.model_configured
     rates = _rate_for_model(pricing, model_for_pricing)
     return _estimate_cost(event.prompt_tokens, event.completion_tokens_estimated, rates)
+
+
+_CALL_SITE_ROLE = {
+    "initialize": "doctor",
+    "next_question": "doctor",
+    "final_generation": "doctor",
+    "compressor": "compressor",
+    "profile_update": "profile_updater",
+    "critic": "critic",
+    "closing_turn": "closing_turn",
+}
+
+
+def _model_actual_breakdown_by_role(events: list[LlmUsageEvent]) -> dict[str, list[dict[str, Any]]]:
+    """Same computation as _model_actual_breakdown, but grouped by role
+    (doctor/critic/compressor/closing_turn) first. The flat, all-roles-mixed
+    breakdown makes it impossible to tell "the critic is actually being
+    served by model X" from "the doctor is" when they differ — this answers
+    that per-role, so the admin portal can show it next to each role's
+    configured model instead of one blended line."""
+    by_role: dict[str, list[LlmUsageEvent]] = {}
+    for e in events:
+        role = _CALL_SITE_ROLE.get(e.call_site, e.call_site)
+        by_role.setdefault(role, []).append(e)
+    return {role: _model_actual_breakdown(evs)[0] for role, evs in by_role.items()}
 
 
 def _model_actual_breakdown(events: list[LlmUsageEvent]) -> tuple[list[dict[str, Any]], int]:
@@ -187,6 +312,15 @@ def get_usage(
             select(LlmUsageEvent).where(LlmUsageEvent.recorded_at >= window_start)
         ).scalars().all()
 
+        # --- Separate source: sarvam_usage_events (voice/translation,
+        # character-billed — see _sarvam_usage_summary) ---
+        sarvam_all_in_window = db.execute(
+            select(SarvamUsageEvent).where(SarvamUsageEvent.recorded_at >= window_start)
+        ).scalars().all()
+
+    sarvam_live_events = [e for e in sarvam_all_in_window if e.source == _DEFAULT_SOURCE]
+    voice_usage = _sarvam_usage_summary(sarvam_live_events, days)
+
     usage_records_total = len(all_in_window)
     live_events = [e for e in all_in_window if e.source == _DEFAULT_SOURCE]
     excluded_by_source = usage_records_total - len(live_events)
@@ -201,6 +335,7 @@ def get_usage(
             "window_days": days,
             "coverage_note": _COVERAGE_NOTE,
             "notes": [_EPHEMERALITY_NOTE],
+            "voice_usage": voice_usage,
         }
 
     session_ids_with_usage = {e.session_id for e in live_events}
@@ -227,6 +362,7 @@ def get_usage(
     cost_per_session = sum_cost / n_usage_sessions if n_usage_sessions else None
 
     model_actual_breakdown, model_actual_unknown_count = _model_actual_breakdown(live_events)
+    model_actual_breakdown_by_role = _model_actual_breakdown_by_role(live_events)
 
     daily: list[dict[str, Any]] = []
     events_by_day: dict[date, list[LlmUsageEvent]] = {}
@@ -264,6 +400,8 @@ def get_usage(
         "sessions_today": sessions_today,
         "daily": daily,
         "model_actual_breakdown": model_actual_breakdown,
+        "model_actual_breakdown_by_role": model_actual_breakdown_by_role,
+        "voice_usage": voice_usage,
         "counts": {
             "usage_records": usage_records_total,
             "sessions_in_window": sessions_in_window,

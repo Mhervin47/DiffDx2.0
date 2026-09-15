@@ -44,15 +44,15 @@ _BASELINE_MODES = ("a", "b")
 # The five mandatory notes (build brief Section 5.3) — present verbatim (or
 # near it) in every report, regardless of whether the numbers look good.
 _NOTE_COST_UNDERCOUNT = (
-    "mean_cost_per_session_usd_estimated for actor_critic excludes critic-call cost — the critic "
-    "does not run during a real deployed patient session today, only in this offline evaluation "
-    "harness, so excluding it is the correct scope for 'cost per deployed patient session,' not an "
-    "oversight. It ALSO excludes profile_updater and compressor calls, which DO run in every real "
-    "session but whose token usage is not currently logged anywhere in this codebase "
-    "(profile_updater.py/compressor.py both discard usage via call_llm() rather than "
-    "call_llm_with_usage()). True per-session cost for actor_critic is higher than the number shown "
-    "here. Closing this gap requires editing files outside this system's scope and is Phase 2 work, "
-    "not Phase 1."
+    "mean_cost_per_session_usd_estimated for actor_critic is doctor-call cost only, sourced from "
+    "this offline eval harness's own session logs (data/phase7_sessions/) — it excludes the "
+    "critic, compressor, and profile_updater calls. This is a real undercount, not a deliberate "
+    "scope choice: both the doctor and the critic run on every turn of a real deployed patient "
+    "session today (see web/api_session.py's _fire_critic), and live per-session cost covering "
+    "doctor, compressor, critic, and closing-turn calls together is tracked separately in the "
+    "admin portal's Cost & Usage panel (sourced from the llm_usage_events table) — this offline "
+    "benchmark figure just hasn't been extended to pull from that same source yet. True "
+    "per-session cost for actor_critic is higher than the number shown here."
 )
 _NOTE_COMPLETION_ESTIMATED = (
     "All completion-token figures in this report are estimates "
@@ -65,7 +65,8 @@ _NOTE_MODEL_PIPELINE_ASYMMETRY = (
     "(config['models']['doctor'], overridable via baseline_eval.py --model), so this is an "
     "architecture comparison, not a model comparison. The full per-turn model PIPELINE is NOT held "
     "constant, though: profile_updater and compressor models run on every turn of a real "
-    "actor_critic session and never run in the baseline at all."
+    "actor_critic session, and the critic model runs on every turn of a real deployed session too "
+    "(see the cost note above) — none of them run in the baseline at all."
 )
 
 

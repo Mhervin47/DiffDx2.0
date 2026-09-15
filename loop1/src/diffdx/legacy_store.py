@@ -24,6 +24,7 @@ import logging
 import os
 import secrets
 import sqlite3
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -230,10 +231,31 @@ _SARVAM_SPEAKER = {
 }
 
 
-def _sarvam_translate(text: str, source_lang: str, target_lang: str) -> str:
+def _log_sarvam_usage(**kwargs) -> None:
+    """Never raises — a telemetry failure must not fail a live voice/
+    translation request. voice_usage_logger.log_sarvam_usage() already
+    guards its own body the same way; this also catches the import itself
+    failing (e.g. admin_portal not installed)."""
+    try:
+        from admin_portal.instrumentation.voice_usage_logger import log_sarvam_usage
+        log_sarvam_usage(**kwargs)
+    except Exception:
+        _log.warning("Sarvam usage log failed", exc_info=True)
+
+
+def _sarvam_translate(
+    text: str,
+    source_lang: str,
+    target_lang: str,
+    *,
+    call_site: str = "unknown",
+    session_id: str | None = None,
+) -> str:
     """Translate text via Sarvam API. Returns original text on any failure."""
     if not _SARVAM_KEY or not text.strip():
         return text
+    t0 = time.perf_counter()
+    ok, error_type = True, None
     try:
         import httpx
         resp = httpx.post(
@@ -252,16 +274,40 @@ def _sarvam_translate(text: str, source_lang: str, target_lang: str) -> str:
         )
         if resp.status_code == 200:
             return resp.json().get("translated_text", text)
+        ok = False
+        error_type = f"HTTP{resp.status_code}"
         _log.warning("Sarvam translate %s: %s", resp.status_code, resp.text[:200])
     except Exception as exc:
+        ok = False
+        error_type = type(exc).__name__
         _log.warning("Sarvam translate failed: %s", exc)
+    finally:
+        _log_sarvam_usage(
+            session_id=session_id,
+            operation="translate",
+            call_site=call_site,
+            language=target_lang,
+            model="mayura:v1",
+            char_count=len(text),
+            latency_ms=(time.perf_counter() - t0) * 1000,
+            ok=ok,
+            error_type=error_type,
+        )
     return text
 
 
-def _sarvam_tts_b64(text: str, lang: str) -> str | None:
+def _sarvam_tts_b64(
+    text: str,
+    lang: str,
+    *,
+    call_site: str = "unknown",
+    session_id: str | None = None,
+) -> str | None:
     """Call Sarvam TTS and return base64 WAV audio, or None on failure."""
     if not _SARVAM_KEY or not text.strip():
         return None
+    t0 = time.perf_counter()
+    ok, error_type = True, None
     try:
         import httpx
         resp = httpx.post(
@@ -278,10 +324,33 @@ def _sarvam_tts_b64(text: str, lang: str) -> str | None:
         )
         if resp.status_code == 200:
             audios = resp.json().get("audios", [])
-            return audios[0] if audios else None
+            audio = audios[0] if audios else None
+            if audio is None:
+                ok = False
+                error_type = "EmptyAudioList"
+            return audio
+        ok = False
+        error_type = f"HTTP{resp.status_code}"
         _log.warning("Sarvam TTS %s: %s", resp.status_code, resp.text[:200])
     except Exception as exc:
+        ok = False
+        error_type = type(exc).__name__
         _log.warning("Sarvam TTS failed: %s", exc)
+    finally:
+        # Sarvam truncates TTS input to 500 chars (see `text[:500]` above) —
+        # char_count reflects what was actually billed/synthesized, not the
+        # full input string.
+        _log_sarvam_usage(
+            session_id=session_id,
+            operation="tts",
+            call_site=call_site,
+            language=lang,
+            model="bulbul:v2",
+            char_count=min(len(text), 500),
+            latency_ms=(time.perf_counter() - t0) * 1000,
+            ok=ok,
+            error_type=error_type,
+        )
     return None
 
 

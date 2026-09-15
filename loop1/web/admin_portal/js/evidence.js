@@ -39,14 +39,12 @@
   );
 
   if (result.authRequired) {
-    document.getElementById("sample-banner").hidden = true;
     renderAuthRequired(document.getElementById("content"), { what: "the evidence report" });
     return;
   }
 
-  const { data: report, usingMock } = result;
+  const { data: report } = result;
 
-  document.getElementById("sample-banner").hidden = !usingMock;
   document.getElementById("eval-set-size").textContent = report.eval_set_size;
   document.getElementById("generated-at").textContent = report.generated_at;
 

@@ -27,6 +27,31 @@ const AdminPortalMock = {
       { model: "openrouter/meta-llama/llama-3.3-70b-instruct", count: 84, pct: 30.8 },
       { model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free", count: 21, pct: 7.7 },
     ],
+    model_actual_breakdown_by_role: {
+      doctor: [{ model: "openrouter/meta-llama/llama-3.1-8b-instruct", count: 168, pct: 100.0 }],
+      critic: [{ model: "openrouter/meta-llama/llama-3.3-70b-instruct", count: 84, pct: 100.0 }],
+      compressor: [{ model: "openrouter/nvidia/nemotron-3-super-120b-a12b:free", count: 21, pct: 100.0 }],
+    },
+    voice_usage: {
+      status: "ok",
+      window_days: 14,
+      requests_total: 62,
+      requests_ok: 59,
+      requests_failed: 3,
+      chars_total: 8340,
+      cost_usd_estimated: 0.000174,
+      by_operation: [
+        { operation: "translate", count: 40, chars: 5200, cost_usd_estimated: 0.00012 },
+        { operation: "tts", count: 22, chars: 3140, cost_usd_estimated: 0.0000565 },
+      ],
+      by_language: [
+        { language: "hi-IN", count: 34, chars: 4600 },
+        { language: "ta-IN", count: 15, chars: 2100 },
+        { language: "te-IN", count: 13, chars: 1640 },
+      ],
+      coverage_note:
+        "Covers both Sarvam call sites: /api/tts (translate + text-to-speech, used for the voice playback feature) and the patient-answer translate-back on every non-English turn. Character counts are real (len() of the text sent), not estimated. Cost is estimated from sarvam_pricing.json's per-1k-character list rates, which are NOT verified against actual Sarvam invoices.",
+    },
     notes: [],
   },
 
@@ -94,7 +119,7 @@ const AdminPortalMock = {
     api: "ok",
     postgres: { status: "ok", latency_ms: 4.2 },
     redis: { status: "not_configured", latency_ms: null, detail: "REDIS_URL unset — sessions held in-memory." },
-    groq: { status: "ok", latency_ms: null, detail: "API key present. Connectivity not tested — health checks do not make billable model calls." },
+    openrouter: { status: "ok", latency_ms: null, detail: "API key present. Connectivity not tested — health checks do not make billable model calls." },
   },
 
   evidenceReport: {
@@ -210,11 +235,26 @@ const AdminPortalMock = {
       },
     ],
     notes: [
-      "mean_cost_per_session_usd_estimated for actor_critic excludes critic-call cost — the critic does not run during a real deployed patient session today, only in this offline evaluation harness, so excluding it is the correct scope for 'cost per deployed patient session,' not an oversight. It ALSO excludes profile_updater and compressor calls, which DO run in every real session but whose token usage is not currently logged anywhere in this codebase (profile_updater.py/compressor.py both discard usage via call_llm() rather than call_llm_with_usage()). True per-session cost for actor_critic is higher than the number shown here. Closing this gap requires editing files outside this system's scope and is Phase 2 work, not Phase 1.",
+      "mean_cost_per_session_usd_estimated for actor_critic is doctor-call cost only, sourced from this offline eval harness's own session logs (data/phase7_sessions/) — it excludes the critic, compressor, and profile_updater calls. This is a real undercount, not a deliberate scope choice: both the doctor and the critic run on every turn of a real deployed patient session today (see web/api_session.py's _fire_critic), and live per-session cost covering doctor, compressor, critic, and closing-turn calls together is tracked separately in the admin portal's Cost & Usage panel (sourced from the llm_usage_events table) — this offline benchmark figure just hasn't been extended to pull from that same source yet. True per-session cost for actor_critic is higher than the number shown here.",
       "actor_critic's mean_latency_ms_per_session is null because session.py has no wall-clock instrumentation at all — not measurable until Phase 2 adds timing instrumentation to session.py. Baseline latency figures are real wall-clock measurements and are not directly comparable to a missing number.",
       "This eval set has 20 patients. Treat any significance result here as directional, not confirmatory — a larger eval set would be needed for a strong statistical claim. This caveat applies regardless of whether the p-value looks significant or not.",
       "All completion-token figures in this report are estimates (len(json.dumps(doctor_output)) // 4), not measured — loop1.llm never returns a completion-token count for any model call in this codebase, only prompt_tokens. Do not treat these as billed-token-accurate.",
-      "The doctor model is held constant between actor_critic and both baseline modes (config['models']['doctor'], overridable via baseline_eval.py --model), so this is an architecture comparison, not a model comparison. The full per-turn model PIPELINE is NOT held constant, though: profile_updater and compressor models run on every turn of a real actor_critic session and never run in the baseline at all.",
+      "The doctor model is held constant between actor_critic and both baseline modes (config['models']['doctor'], overridable via baseline_eval.py --model), so this is an architecture comparison, not a model comparison. The full per-turn model PIPELINE is NOT held constant, though: profile_updater and compressor models run on every turn of a real actor_critic session, and the critic model runs on every turn of a real deployed session too (see the cost note above) — none of them run in the baseline at all.",
     ],
+  },
+
+  // NOT a real endpoint yet — unlike every other entry in this file, there is
+  // no /api/admin/* route backing this. audit.html's growth section renders
+  // this unconditionally (no fetch attempt) until a real total-doctors/
+  // total-users-over-time endpoint exists to replace it. Always shown with a
+  // visible "sample data" label — see audit.html's growth-section markup.
+  platformGrowth: {
+    total_doctors: 18,
+    total_users: 264,
+    daily: Array.from({ length: 14 }, (_, i) => ({
+      date: new Date(Date.now() - (13 - i) * 86400000).toISOString().slice(0, 10),
+      doctors: Math.round(11 + i * 0.5),
+      users: Math.round(160 + i * 7.4),
+    })),
   },
 };

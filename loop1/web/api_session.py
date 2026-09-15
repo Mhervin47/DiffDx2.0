@@ -25,7 +25,7 @@ except ImportError:
 
 os.environ.setdefault("CRITIC_MODEL", "openrouter/meta-llama/llama-3.3-70b-instruct")
 
-from loop1.closing_turn import generate_closing_turn
+from loop1.closing_turn import generate_closing_turn_with_usage
 from loop1.compressor import compress_context
 from loop1.config import config
 from loop1.doctor import generate_turn_with_usage
@@ -419,9 +419,35 @@ class APISession:
 
         closing = None
         if termination_reason != "safety_stop":
-            closing = generate_closing_turn(
-                self.profile, final_doctor_output.current_differential
-            )
+            t0 = time.perf_counter()
+            ok, error_type, usage = True, None, None
+            try:
+                closing, usage = generate_closing_turn_with_usage(
+                    self.profile, final_doctor_output.current_differential
+                )
+                if closing is None:
+                    ok = False
+                    error_type = "ClosingTurnGenerationFailed"
+            except Exception as exc:
+                ok = False
+                error_type = type(exc).__name__
+                raise
+            finally:
+                if _usage_logger is not None:
+                    latency_ms = (time.perf_counter() - t0) * 1000
+                    _usage_logger.log_turn_usage(
+                        session_id=self.session_id,
+                        turn_index=len(self.history),
+                        call_site="closing_turn",
+                        prompt_tokens=usage.prompt_tokens if usage else None,
+                        completion_tokens=usage.completion_tokens if usage else None,
+                        total_tokens=usage.total_tokens if usage else None,
+                        model_actual=usage.model_actual if usage else None,
+                        doctor_output=None,
+                        latency_ms=latency_ms,
+                        ok=ok,
+                        error_type=error_type,
+                    )
 
         primary = (
             final_doctor_output.current_differential[0].dx

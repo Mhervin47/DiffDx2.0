@@ -164,6 +164,9 @@
     border-color: var(--teal-primary);
     background: var(--teal-dim);
   }
+  .currency-toggle-btn { cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; }
+  a.sop-link { font-size: 11.5px; font-weight: 700; color: var(--teal-primary); text-decoration: none; font-family: var(--font-heading); white-space: nowrap; }
+  a.sop-link:hover { text-decoration: underline; }
 
   /* Shared auth nav — user dropdown menu (admin_portal has its own design
      tokens, mapped onto the same class names auth.js's initAuthNav()
@@ -411,11 +414,29 @@
     background: var(--surface-2);
     backdrop-filter: blur(8px);
     transition: all 0.2s ease;
+    /* Pills are <button>s now, clickable to reveal detail below the row —
+       reset native button chrome so they still look like pills. */
+    cursor: pointer; outline: none; appearance: none;
+    -webkit-appearance: none; color: inherit;
   }
   .health-pill:hover {
     border-color: var(--teal-primary);
     transform: translateY(-1px);
   }
+  .health-pill:focus-visible {
+    border-color: var(--teal-primary);
+    box-shadow: 0 0 0 2px var(--teal-glow);
+  }
+  .health-pill.health-pill-selected {
+    border-color: var(--teal-primary);
+    box-shadow: 0 0 0 1px var(--teal-primary);
+  }
+  .health-detail-panel {
+    margin-top: 10px; font-size: 12.5px; color: var(--text-main);
+    background: var(--surface-2); border: 1px solid var(--border-card);
+    border-radius: 10px; padding: 10px 14px; line-height: 1.5;
+  }
+  .health-detail-panel .health-detail-name { font-weight: 700; margin-right: 4px; }
   .health-pill::before {
     content: ''; width: 8px; height: 8px; border-radius: 50%;
     background: var(--text-muted);
@@ -437,8 +458,6 @@
 
   .pill-neutral::before { background: var(--text-muted); }
   .pill-neutral .health-pill-status { color: var(--text-muted); font-style: italic; }
-
-  .health-checked-at { margin-top: 14px; font-size: 12px; color: var(--text-dim); }
 
   /* Auth Required State */
   .auth-required {
@@ -483,21 +502,46 @@
     font-size: 11px; color: var(--text-muted); margin-top: 4px;
     font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
   }
+  .usage-chart-wrap { position: relative; margin: 14px 0; }
   .usage-chart {
-    width: 100%; height: auto; margin: 14px 0;
-    background: var(--surface-2);
-    border-radius: 10px; padding: 8px 4px;
+    width: 100%; height: auto; display: block;
+    background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
+    border-radius: 12px; padding: 4px 2px;
     border: 1px solid var(--border-card);
   }
-  .usage-chart polyline {
-    stroke-width: 2.5px;
-    filter: drop-shadow(0 0 4px currentColor);
+  .usage-chart-grid { stroke: var(--border-card); stroke-width: 1; }
+  .usage-chart-baseline { stroke: var(--border-card); stroke-width: 1.25; }
+  .usage-chart-axis-label {
+    font-size: 8.5px; fill: var(--text-dim); font-family: var(--font-body);
   }
-  .usage-chart circle {
-    filter: drop-shadow(0 0 3px currentColor);
+  .usage-chart-area { stroke: none; }
+  .usage-chart-line {
+    fill: none; stroke-width: 2.25px; stroke-linecap: round; stroke-linejoin: round;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.18));
   }
+  .usage-chart-dot {
+    stroke: var(--bg-card); stroke-width: 1.5px;
+    transition: r 0.15s ease;
+  }
+  .usage-chart-dot:hover { r: 4.5; cursor: pointer; }
+  .usage-chart-tooltip {
+    position: absolute; pointer-events: none; z-index: 20;
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 10px; padding: 8px 12px; font-size: 11.5px;
+    box-shadow: var(--card-shadow); white-space: nowrap;
+    color: var(--text-main);
+    opacity: 0; visibility: hidden;
+    transform: translate(-50%, calc(-100% - 10px));
+    transition: opacity 0.12s ease;
+  }
+  .usage-chart-tooltip.visible { opacity: 1; visibility: visible; }
+  .usage-chart-tooltip .tt-date {
+    font-weight: 700; font-family: var(--font-heading); margin-bottom: 4px; color: var(--text-main);
+  }
+  .usage-chart-tooltip .tt-row { display: flex; align-items: center; gap: 6px; color: var(--text-muted); line-height: 1.6; }
+  .usage-chart-tooltip .tt-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
   .usage-chart-legend {
-    display: flex; gap: 16px; margin: 2px 0 10px; font-size: 12px; color: var(--text-muted);
+    display: flex; gap: 16px; margin: 8px 0 10px; font-size: 12px; color: var(--text-muted);
   }
   .usage-legend-item { display: inline-flex; align-items: center; gap: 6px; }
   .usage-legend-swatch {
@@ -508,9 +552,24 @@
   .usage-projection { font-style: italic; color: var(--text-main); margin-top: 10px; }
   .usage-coverage-note {
     font-size: 12px; color: var(--text-dim);
-    border-top: 1px solid var(--border-card);
-    padding-top: 12px; margin-top: 12px; line-height: 1.55;
+    line-height: 1.55; margin: 8px 0 0;
   }
+  .coverage-details {
+    border-top: 1px solid var(--border-card);
+    padding-top: 10px; margin-top: 12px;
+  }
+  .coverage-details summary {
+    cursor: pointer; list-style: none;
+    font-size: 12.5px; font-weight: 700;
+    color: var(--teal-primary); font-family: var(--font-heading);
+    display: inline-flex; align-items: center; gap: 5px;
+    user-select: none;
+  }
+  .coverage-details summary::-webkit-details-marker { display: none; }
+  .coverage-details summary::before {
+    content: '▸'; font-size: 10px; transition: transform 0.15s ease;
+  }
+  .coverage-details[open] summary::before { transform: rotate(90deg); }
 
   /* Live-data status row (polling pages) */
   .live-status-row { display: flex; align-items: center; gap: 7px; margin-top: 10px; }
@@ -593,14 +652,13 @@
       <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
-    <a href="/doctor-overview.html" class="topbar-btn">Doctor Portal</a>
     <div id="nav-auth"></div>
   </div>
 </nav>
 
 <!-- Page Header -->
 <header class="page-header">
-  <h1>DiffDx Admin Portal</h1>
+  <h1>Admin Portal</h1>
   <div class="subtitle">Diagnostic-quality evidence for reviewers and hospital stakeholders.</div>
   <div id="admin-nav-root"></div>
 </header>
@@ -612,7 +670,10 @@
   </div>
 
   <div class="card full">
-    <h2>System Health</h2>
+    <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:0 0 16px; padding-bottom:12px; border-bottom:1px solid var(--border-card);">
+      <h2 style="margin:0; padding-bottom:0; border-bottom:none;">System Health</h2>
+      <a class="sop-link" href="sop.html#health">SOP →</a>
+    </div>
     <div id="health-sample-banner" class="banner" hidden>⚠ Sample data — could not reach the health endpoint.</div>
     <div id="health-pills"><p class="muted">Loading…</p></div>
   </div>
@@ -628,12 +689,20 @@
     <div id="usage-content"><p class="muted">Loading…</p></div>
   </div>
 
+  <div class="card">
+    <h2>Voice / Sarvam Usage</h2>
+    <div id="voice-usage-sample-banner" class="banner" hidden>⚠ Sample data — could not reach the usage endpoint.</div>
+    <div id="voice-usage-content"><p class="muted">Loading…</p></div>
+  </div>
+
   <div class="card full next-links-container">
     <h2>Where to go next</h2>
     <p class="muted">
       <a href="evidence.html">Evidence</a> — accuracy, cost, and safety-recall comparison against a
       single-shot baseline, with every caveat attached.<br><br>
-      <a href="quality.html">AI Quality</a> — critic-derived reasoning-quality scores for the actor-critic system.
+      <a href="quality.html">AI Quality</a> — critic-derived reasoning-quality scores for the actor-critic system.<br><br>
+      <a href="architecture-validation.html">Architecture Validation</a> — MEDDxAgent (arXiv:2502.19175)
+      benchmark metrics for our diagnostic-agent architecture.
     </p>
   </div>
 </main>
@@ -673,7 +742,7 @@
   }
 
   function renderRoi(usage, evidence) {
-    const { fmtUsd, fmtPct, el } = AdminPortal;
+    const { fmtUsd, fmtPct, currencySymbol, convertAmount, el } = AdminPortal;
     const root = document.getElementById("roi-content");
     const cards = [];
 
@@ -686,7 +755,7 @@
         sub: null,
       });
       cards.push({
-        value: perSession != null ? `$${(perSession * ROI_PROJECTED_MONTHLY_SESSIONS).toFixed(2)}` : "—",
+        value: perSession != null ? `${currencySymbol()}${convertAmount(perSession * ROI_PROJECTED_MONTHLY_SESSIONS).toFixed(2)}` : "—",
         label: `Projected / month`,
         sub: `at ${ROI_PROJECTED_MONTHLY_SESSIONS.toLocaleString()} sessions — inference only, projection not a measurement`,
       });
@@ -740,51 +809,86 @@
   }
 
   function renderConfig(config, usage) {
-    const el = document.getElementById("config-content");
+    const root = document.getElementById("config-content");
     if (config && config.status === "auth_required") {
-      AdminPortal.renderAuthRequired(el, { what: "model & config info" });
+      AdminPortal.renderAuthRequired(root, { what: "model & config info" });
       return;
     }
     if (!config || config.status === "error") {
-      el.innerHTML = `<p class="muted">Could not load config: ${config && config.message}</p>`;
+      root.innerHTML = `<p class="muted">Could not load config: ${config && config.message}</p>`;
       return;
     }
-    const rows = [
-      ["Doctor model (configured)", config.models?.doctor],
-      ["Compressor model (configured)", config.models?.compressor],
-      ["Profile updater model (configured)", config.models?.profile_updater],
+
+    // model_actual_breakdown_by_role is the live read of what's actually
+    // serving each role's calls (can silently diverge from "configured"
+    // after an HTTP 429 fallback, llm.py's _FALLBACK_CHAIN) — merged into
+    // each model's own row below rather than repeated in a separate
+    // section, so each model appears exactly once.
+    const byRole = (usage && usage.status === "ok" && usage.model_actual_breakdown_by_role) || {};
+
+    // Builds one <dd> for a model row: just the configured name, unless
+    // usage data shows something worth surfacing (multiple models serving
+    // it, or a single model that differs from what's configured) — in
+    // which case "actually serving: ..." is appended inline.
+    function modelDd(configured, roleKey) {
+      const dd = document.createElement("dd");
+      if (configured === undefined || configured === null) {
+        dd.textContent = "—";
+        return dd;
+      }
+      const actual = byRole[roleKey];
+      const divergesOrMultiple =
+        actual && actual.length && !(actual.length === 1 && actual[0].model === configured);
+      if (!divergesOrMultiple) {
+        dd.textContent = configured;
+        return dd;
+      }
+      dd.appendChild(document.createTextNode(configured + " "));
+      const note = document.createElement("span");
+      note.className = "muted";
+      note.style.fontWeight = "400";
+      note.textContent = "— actually serving: " + actual.map((b) => `${b.model} (${b.pct}%)`).join(" · ");
+      dd.appendChild(note);
+      return dd;
+    }
+
+    const modelRows = [
+      ["Doctor model", config.models?.doctor, "doctor"],
+      ["Critic model", config.models?.critic, "critic"],
+      ["Compressor model", config.models?.compressor, "compressor"],
+      ["Profile updater model", config.models?.profile_updater, "profile_updater"],
+    ];
+    const plainRows = [
       ["Doctor prompt version", config.prompt_versions?.doctor],
       ["Confidence threshold", config.thresholds?.confidence_to_stop],
       ["Max turns", config.thresholds?.max_turns],
       ["Git SHA", config.git_sha],
     ];
+
     const dl = document.createElement("dl");
     dl.className = "kv";
-    for (const [label, value] of rows) {
+    for (const [label, configured, roleKey] of modelRows) {
+      const row = document.createElement("div");
+      const dt = document.createElement("dt");
+      dt.textContent = label;
+      row.appendChild(dt);
+      row.appendChild(modelDd(configured, roleKey));
+      dl.appendChild(row);
+    }
+    for (const [label, value] of plainRows) {
       const row = document.createElement("div");
       row.innerHTML = `<dt>${label}</dt><dd>${value === undefined || value === null ? "—" : value}</dd>`;
       dl.appendChild(row);
     }
-    el.innerHTML = "";
-    el.appendChild(dl);
+    root.innerHTML = "";
+    root.appendChild(dl);
 
-    // "Configured" (above) is the intended model from config.yaml — it can
-    // silently diverge from what's actually serving requests after an HTTP
-    // 429 fallback (llm.py's _FALLBACK_CHAIN). This is the live read of
-    // what's actually in the database, never a value baked into a template.
-    const breakdown = usage && usage.status === "ok" && usage.model_actual_breakdown;
-    if (breakdown && breakdown.length) {
-      const unknown = usage.counts && usage.counts.model_actual_unknown;
-      const rows = breakdown
-        .map((b) => `${b.model} — ${b.pct}% (${b.count})`)
-        .join(" · ");
+    if (usage && usage.status === "ok" && usage.counts && usage.counts.model_actual_unknown) {
       const note = document.createElement("p");
       note.className = "muted";
-      note.style.marginTop = "12px";
-      note.textContent = unknown
-        ? `Actually serving (last ${usage.window_days}d): ${rows} · ${unknown} record(s) predate this measurement`
-        : `Actually serving (last ${usage.window_days}d): ${rows}`;
-      el.appendChild(note);
+      note.style.marginTop = "10px";
+      note.textContent = `${usage.counts.model_actual_unknown} usage record(s) in the last ${usage.window_days}d predate actual-model measurement, so "actually serving" above may be incomplete for them.`;
+      root.appendChild(note);
     }
   }
 

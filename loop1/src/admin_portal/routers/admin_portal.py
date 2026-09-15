@@ -52,6 +52,7 @@ import yaml
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
+from diffdx.config import settings as _settings
 from diffdx.dependencies import require_role
 
 _log = logging.getLogger(__name__)
@@ -160,9 +161,19 @@ def get_config(_admin: dict = Depends(require_role("admin"))) -> dict[str, Any]:
     """Live model/prompt/threshold config plus the current git short SHA. Read-only, no editing endpoint.
 
     Also admin-gated now — see get_evidence()'s docstring for why.
+
+    The critic model is NOT in config.yaml's `models` block — it's sourced
+    from the CRITIC_MODEL env var (diffdx.config.settings.critic_model)
+    instead, since it's the one model selection that varies by deployment
+    secret rather than by checked-in config. Merged in here so the admin
+    portal can display "critic model (configured)" the same way it already
+    displays doctor/compressor/profile_updater, without the frontend needing
+    to know about this one field living in a different place.
     """
+    models = dict(_STATIC_CONFIG.get("models", {}))
+    models["critic"] = _settings.critic_model
     return {
-        "models": _STATIC_CONFIG.get("models", {}),
+        "models": models,
         "prompt_versions": _STATIC_CONFIG.get("prompt_versions", {}),
         "thresholds": _STATIC_CONFIG.get("thresholds", {}),
         "git_sha": _GIT_SHA,

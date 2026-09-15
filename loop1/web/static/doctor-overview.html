@@ -1877,6 +1877,19 @@
   </div>
 
   <script>
+    // Role guard — doctor-only page. Client-side check (not a server-side
+    // page route gate): bearer-token auth has no header on a plain browser
+    // navigation, only on a fetch()/XHR call — same pattern already used
+    // by doctor-analytics.html and doctor-profile.html.
+    (function () {
+      const authUser = typeof getAuthUser === 'function' ? getAuthUser() : null;
+      if (!authUser) {
+        window.location.replace('/login.html?next=/doctor-overview.html');
+      } else if (authUser.role !== 'doctor') {
+        window.location.replace('/');
+      }
+    })();
+
     // Theme toggle handling
     const toggleBtn = document.getElementById('theme-toggle');
     if (toggleBtn) {

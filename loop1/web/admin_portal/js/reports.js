@@ -8,6 +8,7 @@
   const { fetchWithMockFallback, renderAuthRequired, el } = AdminPortal;
 
   const state = { status: "open" };
+  let pendingAction = null; // { id, status } for the row-action modal
 
   const REASON_LABELS = {
     non_medical: "Not medical care",
@@ -37,9 +38,9 @@
     const actions = el("div", { class: "report-row-actions" });
     if (item.status === "open") {
       const reviewBtn = el("button", { class: "report-action-btn review" }, "Mark Reviewed");
-      reviewBtn.addEventListener("click", () => updateReport(item.id, "reviewed"));
+      reviewBtn.addEventListener("click", () => openActionModal(item.id, "reviewed"));
       const dismissBtn = el("button", { class: "report-action-btn dismiss" }, "Dismiss");
-      dismissBtn.addEventListener("click", () => updateReport(item.id, "dismissed"));
+      dismissBtn.addEventListener("click", () => openActionModal(item.id, "dismissed"));
       actions.appendChild(reviewBtn);
       actions.appendChild(dismissBtn);
     } else {
@@ -73,9 +74,40 @@
     document.getElementById("reports-total").textContent = `${data.total} total`;
   }
 
-  async function updateReport(id, status) {
-    const admin_note = prompt(status === "reviewed" ? "Note for this review (optional):" : "Reason for dismissing (optional):");
-    if (admin_note === null) return; // cancelled
+  // Review/dismiss note modal — replaces the native prompt() dialog. One
+  // shared modal for both actions; its title/prompt/button text and color
+  // swap based on which action opened it (pendingAction.status).
+  function openActionModal(id, status) {
+    pendingAction = { id, status };
+    const modal = document.getElementById("report-action-modal");
+    const confirmBtn = document.getElementById("report-action-confirm-btn");
+    if (status === "reviewed") {
+      document.getElementById("report-action-modal-title").textContent = "Mark reviewed";
+      document.getElementById("report-action-modal-prompt").textContent = "Note for this review (optional):";
+      confirmBtn.textContent = "Mark Reviewed";
+      confirmBtn.className = "report-modal-confirm-btn review";
+    } else {
+      document.getElementById("report-action-modal-title").textContent = "Dismiss this report";
+      document.getElementById("report-action-modal-prompt").textContent = "Reason for dismissing (optional):";
+      confirmBtn.textContent = "Dismiss";
+      confirmBtn.className = "report-modal-confirm-btn dismiss";
+    }
+    document.getElementById("report-action-note").value = "";
+    modal.hidden = false;
+    document.getElementById("report-action-note").focus();
+  }
+
+  function closeActionModal() {
+    pendingAction = null;
+    document.getElementById("report-action-modal").hidden = true;
+  }
+
+  async function confirmAction() {
+    if (!pendingAction) return;
+    const { id, status } = pendingAction;
+    const admin_note = document.getElementById("report-action-note").value;
+    const confirmBtn = document.getElementById("report-action-confirm-btn");
+    confirmBtn.disabled = true;
     try {
       const token = typeof getAuthToken === "function" ? getAuthToken() : null;
       const res = await fetch(`/api/admin/message-reports/${id}`, {
@@ -88,11 +120,23 @@
         alert(`Update failed: ${data.detail || res.status}`);
         return;
       }
+      closeActionModal();
       await load();
     } catch (err) {
       alert(`Update failed: ${err.message}`);
+    } finally {
+      confirmBtn.disabled = false;
     }
   }
+
+  document.getElementById("report-action-cancel-btn").addEventListener("click", closeActionModal);
+  document.getElementById("report-action-confirm-btn").addEventListener("click", confirmAction);
+  document.getElementById("report-action-modal").addEventListener("click", (e) => {
+    if (e.target.id === "report-action-modal") closeActionModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("report-action-modal").hidden) closeActionModal();
+  });
 
   document.getElementById("reports-filter-form").addEventListener("submit", (e) => {
     e.preventDefault();

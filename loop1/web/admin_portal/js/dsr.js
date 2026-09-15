@@ -6,6 +6,7 @@
   const { fetchWithMockFallback, renderAuthRequired, el } = AdminPortal;
 
   let selectedSubject = null;
+  let denyRequestId = null;
 
   // ── Pending Requests panel ──────────────────────────────────────────
   // A thin front door: no "approve" here — approving a request IS an
@@ -30,7 +31,7 @@
         window.scrollTo({ top: document.querySelector(".card:nth-of-type(2)")?.offsetTop ?? 0, behavior: "smooth" });
       });
       const denyBtn = el("button", { class: "dsr-deny-btn" }, "Deny");
-      denyBtn.addEventListener("click", () => denyRequest(item.id));
+      denyBtn.addEventListener("click", () => openDenyModal(item.id));
       list.appendChild(el("div", { class: "dsr-pending-row" }, [info, denyBtn]));
     }
   }
@@ -44,9 +45,29 @@
     renderPendingRequests(result.data.items || []);
   }
 
-  async function denyRequest(requestId) {
-    const note = prompt("Reason for denying this request (shown to the patient):");
-    if (note === null) return;
+  // Deny-reason modal — replaces the native prompt() dialog. Opens on a
+  // "Deny" click, stores which request it's for in denyRequestId, and the
+  // actual API call happens from the modal's own confirm button below.
+  function openDenyModal(requestId) {
+    denyRequestId = requestId;
+    const modal = document.getElementById("dsr-deny-modal");
+    const textarea = document.getElementById("dsr-deny-reason");
+    textarea.value = "";
+    modal.hidden = false;
+    textarea.focus();
+  }
+
+  function closeDenyModal() {
+    denyRequestId = null;
+    document.getElementById("dsr-deny-modal").hidden = true;
+  }
+
+  async function confirmDeny() {
+    if (!denyRequestId) return;
+    const requestId = denyRequestId;
+    const note = document.getElementById("dsr-deny-reason").value;
+    const confirmBtn = document.getElementById("dsr-deny-confirm-btn");
+    confirmBtn.disabled = true;
     try {
       const token = typeof getAuthToken === "function" ? getAuthToken() : null;
       const res = await fetch(`/api/admin/dsr-requests/${requestId}/deny`, {
@@ -59,11 +80,23 @@
         alert(`Deny failed: ${data.detail || res.status}`);
         return;
       }
+      closeDenyModal();
       await loadPendingRequests();
     } catch (err) {
       alert(`Deny failed: ${err.message}`);
+    } finally {
+      confirmBtn.disabled = false;
     }
   }
+
+  document.getElementById("dsr-deny-cancel-btn").addEventListener("click", closeDenyModal);
+  document.getElementById("dsr-deny-confirm-btn").addEventListener("click", confirmDeny);
+  document.getElementById("dsr-deny-modal").addEventListener("click", (e) => {
+    if (e.target.id === "dsr-deny-modal") closeDenyModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("dsr-deny-modal").hidden) closeDenyModal();
+  });
 
   function renderSearchResults(items) {
     const list = document.getElementById("dsr-results");

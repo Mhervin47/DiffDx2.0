@@ -1298,11 +1298,26 @@
 
 <script src="/auth.js"></script>
 <script>
-if (typeof getAuthToken === 'function' && getAuthToken()) {
-  const _u = typeof getAuthUser === 'function' ? getAuthUser() : null;
-  const _dest = _u?.role === 'admin' ? '/admin_portal/index.html' : _u?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html';
-  window.location.replace(_dest);
-}
+// A cached token can be stale (expired — access tokens live 15 minutes —
+// or a dev server restart rotated the signing key) without localStorage
+// knowing it. Redirecting off this page on that alone, as this used to do,
+// stranded a user with a bad cached token: they'd land on a role-gated
+// page, its own guard would find no *valid* session and try to send them
+// back to /login, and /login would just bounce them forward again — never
+// reaching the sign-in form to actually re-authenticate. Validate against
+// the server first; only redirect away on a real, live session.
+(async function () {
+  if (typeof getAuthToken !== 'function' || !getAuthToken()) return;
+  try {
+    const res = await fetch('/api/auth/me', { headers: typeof authHeaders === 'function' ? authHeaders() : {} });
+    if (!res.ok) { if (typeof clearAuth === 'function') clearAuth(); return; }
+    const me = await res.json();
+    const _dest = me?.role === 'admin' ? '/admin_portal/index.html' : me?.role === 'doctor' ? '/doctor-overview.html' : '/patient-overview.html';
+    window.location.replace(_dest);
+  } catch (e) {
+    if (typeof clearAuth === 'function') clearAuth();
+  }
+})();
 
 const _redirect = new URLSearchParams(location.search).get('next') || '/patient-overview.html';
 

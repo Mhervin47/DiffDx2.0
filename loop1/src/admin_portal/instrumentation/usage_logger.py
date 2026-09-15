@@ -59,7 +59,7 @@ def _resolve_model_configured(call_site: str) -> str | None:
     try:
         from loop1.config import config
 
-        if call_site in ("initialize", "next_question", "final_generation"):
+        if call_site in ("initialize", "next_question", "final_generation", "closing_turn"):
             return config["models"]["doctor"]
         if call_site == "compressor":
             return config["models"]["compressor"]

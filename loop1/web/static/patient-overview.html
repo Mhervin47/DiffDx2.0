@@ -1455,6 +1455,20 @@
   </div>
 
   <script>
+    // Role guard — patient-only page. Bearer-token auth can't be checked at
+    // the server-side page route (a plain browser navigation carries no
+    // Authorization header, only a fetch()/XHR call can), so this has to be
+    // a client-side redirect — same pattern doctor-analytics.html already
+    // uses for its own role check.
+    (function () {
+      const authUser = typeof getAuthUser === 'function' ? getAuthUser() : null;
+      if (!authUser) {
+        window.location.replace('/login.html?next=/patient-overview.html');
+      } else if (authUser.role !== 'patient') {
+        window.location.replace('/');
+      }
+    })();
+
     // Theme toggle handling
     const toggleBtn = document.getElementById('theme-toggle');
     if (toggleBtn) {

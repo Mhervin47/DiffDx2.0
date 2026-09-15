@@ -86,13 +86,14 @@ environment.
   said "always null" — no longer accurate as of Phase 2 (see below); kept
   updated here rather than left to quietly mislead a future reader.
 - **actor_critic's cost figure is a known undercount of true production
-  cost.** It correctly excludes critic-call cost (the critic never runs in a
-  real deployed session, only in this offline harness) but it *also*
-  excludes `profile_updater` and `compressor` calls, which **do** run on
-  every real turn but whose token usage isn't logged anywhere in this
-  codebase (`call_llm()` discards it; only `call_llm_with_usage()`, used
-  solely by the doctor's own call, keeps it). Closing that second gap means
-  editing files outside this system's scope — Phase 2, not Phase 1.
+  cost.** It's doctor-call cost only, from this offline harness's own
+  session logs — it excludes critic, `profile_updater`, and `compressor`
+  cost. That's a real gap, not a deliberate scope choice: the critic **does**
+  run on every turn of a real deployed session (`web/api_session.py`'s
+  `_fire_critic`), same as `profile_updater`/`compressor`. Live per-session
+  cost covering all four call sites is tracked separately in the admin
+  portal's Cost & Usage panel (`llm_usage_events`); this offline benchmark
+  figure just hasn't been wired to pull from that same source yet.
 - **Any significance result (McNemar) is directional, not confirmatory.**
   At n=20 patients, treat it as suggestive evidence, not proof, regardless of
   which way the p-value points.
@@ -315,14 +316,21 @@ and the reasoning behind it. In short:
 
 ## What is still not measured
 
-- **Compressor and critic token usage in the live web session** — both
-  discard usage via `call_llm()`; `/api/admin/usage`'s coverage note states
-  this every time it's shown, not just once here.
+- **Compressor and critic token usage in the live web session** — both now
+  logged for real (`call_site="compressor"`/`"critic"` on `llm_usage_events`,
+  via `call_llm_with_usage()`, not the token-discarding `call_llm()`). This
+  used to be a real gap; it isn't one anymore — `/api/admin/usage`'s
+  coverage note states what's covered every time it's shown, not just once
+  here, and it's the authority if this doc and that note ever disagree.
+  `profile_updater` remains the one call site genuinely disabled in the live
+  web session (a CLI/offline-only path) — that part of the old gap is real.
 - **The actual model that served a request after an HTTP 429 fallback** —
-  `llm.py`'s `_FALLBACK_CHAIN` can silently reroute to a different
-  provider/model; `model_actual` exists as a field specifically so it can be
-  filled in if `llm.py` is ever changed to report it, and is `null`
-  everywhere until then.
+  this is now measured, not a gap: `llm.py`'s `LlmUsage.model_actual` is set
+  to the model that actually answered on every successful call, and every
+  live call site threads it through to `log_turn_usage()`. `/api/admin/usage`
+  surfaces it as `model_actual_breakdown`/`model_actual_breakdown_by_role`.
+  Only records logged before this field existed are `null`
+  (`model_actual_unknown` in the response).
 - **Phase 2's own timing instrumentation only covers the doctor model's own
   call** — same gap as the cost figures, for the same reason.
 - **Doctor-account seeding was not reviewed or touched** — this work only

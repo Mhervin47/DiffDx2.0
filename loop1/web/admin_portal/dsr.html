@@ -168,6 +168,9 @@
     border-color: var(--teal-primary);
     background: var(--teal-dim);
   }
+  .currency-toggle-btn { cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; }
+  a.sop-link { font-size: 11.5px; font-weight: 700; color: var(--teal-primary); text-decoration: none; font-family: var(--font-heading); white-space: nowrap; }
+  a.sop-link:hover { text-decoration: underline; }
 
   /* Shared auth nav — user dropdown menu (admin_portal has its own design
      tokens, mapped onto the same class names auth.js's initAuthNav()
@@ -485,6 +488,48 @@
   }
   .dsr-retained-note { margin-top: 12px; font-style: italic; color: var(--text-muted); }
 
+  /* Deny-request modal — replaces the native prompt() dialog */
+  .dsr-modal-overlay {
+    position: fixed; inset: 0; z-index: 100000;
+    background: rgba(5, 13, 24, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  /* The [hidden] attribute's UA-stylesheet display:none loses to the class
+     rule above (author styles beat user-agent styles at equal specificity,
+     hidden attribute or not) — without this, the modal rendered open on
+     every page load instead of only after a Deny click. */
+  .dsr-modal-overlay[hidden] { display: none; }
+  .dsr-modal {
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 14px; padding: 24px; max-width: 440px; width: 100%;
+    box-shadow: var(--card-shadow);
+  }
+  html.dark-theme .dsr-modal { background: #0A1525; backdrop-filter: blur(20px); }
+  .dsr-modal h3 {
+    font-family: var(--font-heading); font-size: 16px; font-weight: 800;
+    color: var(--text-main); margin-bottom: 8px;
+  }
+  .dsr-modal p.muted { margin-bottom: 10px; }
+  .dsr-modal textarea {
+    width: 100%; background: var(--input-bg); border: 1px solid var(--border-card);
+    color: var(--text-main); border-radius: 8px; padding: 10px 12px; font-size: 13px;
+    font-family: var(--font-body); resize: vertical; min-height: 76px;
+  }
+  .dsr-modal textarea:focus {
+    outline: none; border-color: var(--teal-primary); box-shadow: 0 0 0 3px var(--teal-glow);
+  }
+  .dsr-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+  .dsr-modal-actions button {
+    padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border-card);
+    background: var(--surface-2); color: var(--text-main);
+    cursor: pointer; font-size: 13px; font-family: var(--font-heading);
+    font-weight: 600; transition: all 0.2s ease;
+  }
+  .dsr-modal-actions button:hover { border-color: var(--teal-primary); }
+  .dsr-modal-danger-btn { background: var(--danger) !important; border-color: var(--danger) !important; color: #fff !important; }
+  .dsr-modal-danger-btn:hover { opacity: 0.88; border-color: var(--danger) !important; }
+
   /* Actions */
   #dsr-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
   #dsr-actions button {
@@ -587,7 +632,6 @@
       <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
       <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
-    <a href="/doctor-overview.html" class="topbar-btn">Doctor Portal</a>
     <div id="nav-auth"></div>
   </div>
 </nav>
@@ -626,7 +670,10 @@
     </div>
 
     <div class="dsr-erase-box">
-      <h3>Erase this subject</h3>
+      <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:0 0 12px;">
+        <h3 style="margin:0;">Erase this subject</h3>
+        <a class="sop-link" href="sop.html#dsr">SOP →</a>
+      </div>
       <div class="dsr-toggle-row">
         <input type="checkbox" id="dsr-dry-run-toggle" checked>
         <label for="dsr-dry-run-toggle" style="margin:0;">Dry run — preview only, deletes nothing</label>
@@ -643,6 +690,19 @@
     <div id="dsr-receipt" hidden></div>
   </div>
 </main>
+
+<div id="dsr-deny-modal" class="dsr-modal-overlay" hidden>
+  <div class="dsr-modal" role="dialog" aria-modal="true" aria-labelledby="dsr-deny-modal-title">
+    <h3 id="dsr-deny-modal-title">Deny this request</h3>
+    <p class="muted">Reason for denying this request (shown to the patient):</p>
+    <textarea id="dsr-deny-reason" rows="3" placeholder="Optional — leave blank for no reason given"></textarea>
+    <div class="dsr-modal-actions">
+      <button type="button" id="dsr-deny-cancel-btn">Cancel</button>
+      <button type="button" id="dsr-deny-confirm-btn" class="dsr-modal-danger-btn">Deny request</button>
+    </div>
+  </div>
+</div>
+
 <script src="/auth.js"></script>
 <script src="js/admin-common.js"></script>
 <script src="js/mock.js"></script>

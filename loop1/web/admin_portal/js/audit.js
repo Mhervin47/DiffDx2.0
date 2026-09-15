@@ -11,7 +11,7 @@
 (function () {
   const { fetchWithMockFallback, renderAuthRequired, el } = AdminPortal;
 
-  const state = { actor: "", action: "", resource_type: "", from: "", to: "", offset: 0, limit: 50 };
+  const state = { actor: "", from: "", to: "", offset: 0, limit: 50 };
   const POLL_MS = 30000;
   let pollTimer = null;
   let deepLinkApplied = false;
@@ -20,8 +20,6 @@
   function buildQuery() {
     const params = new URLSearchParams();
     if (state.actor) params.set("actor", state.actor);
-    if (state.action) params.set("action", state.action);
-    if (state.resource_type) params.set("resource_type", state.resource_type);
     if (state.from) params.set("from", state.from);
     if (state.to) params.set("to", state.to);
     params.set("limit", String(state.limit));
@@ -29,9 +27,23 @@
     return params.toString();
   }
 
+  // Date on one line, time on the next — a raw ISO string ("2026-01-01T12:03:00")
+  // crammed into one cell was hard to scan across a whole table of rows.
+  function renderTimestampCell(ts) {
+    if (!ts) return el("td", {}, "—");
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return el("td", {}, ts);
+    const dateStr = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return el("td", {}, [
+      el("div", { class: "ts-date" }, dateStr),
+      el("div", { class: "ts-time" }, timeStr),
+    ]);
+  }
+
   function renderRow(item) {
     const tr = el("tr", { id: `audit-row-${item.id}` });
-    tr.appendChild(el("td", {}, item.ts || "—"));
+    tr.appendChild(renderTimestampCell(item.ts));
     tr.appendChild(el("td", {}, `${item.actor_name} (${item.actor_role})`));
     tr.appendChild(el("td", {}, item.action));
     tr.appendChild(el("td", {}, item.resource_type || "—"));
@@ -90,8 +102,6 @@
   document.getElementById("audit-filter-form").addEventListener("submit", (e) => {
     e.preventDefault();
     state.actor = document.getElementById("f-actor").value.trim();
-    state.action = document.getElementById("f-action").value.trim();
-    state.resource_type = document.getElementById("f-resource-type").value.trim();
     state.from = document.getElementById("f-from").value;
     state.to = document.getElementById("f-to").value;
     state.offset = 0;
@@ -100,7 +110,7 @@
 
   document.getElementById("audit-filter-reset").addEventListener("click", () => {
     document.getElementById("audit-filter-form").reset();
-    Object.assign(state, { actor: "", action: "", resource_type: "", from: "", to: "", offset: 0 });
+    Object.assign(state, { actor: "", from: "", to: "", offset: 0 });
     load();
   });
 
@@ -122,6 +132,90 @@
     }
   });
 
+  // Growth section (total doctors/users + 14-day trend) — mock only, no
+  // fetch: there's no real endpoint for this yet (see mock.js's
+  // platformGrowth entry). Two series sharing one x-axis but each scaled
+  // to its own max, same approach as index.html's usage.js Cost & Usage
+  // chart — a shared y-axis would flatten "doctors" (tens) next to "users"
+  // (hundreds) into a near-flat line.
+  function renderGrowthChart(daily) {
+    const width = 560, height = 110, pad = 16;
+    const maxDoctors = Math.max(1, ...daily.map((d) => d.doctors));
+    const maxUsers = Math.max(1, ...daily.map((d) => d.users));
+    const stepX = daily.length > 1 ? (width - pad * 2) / (daily.length - 1) : 0;
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("class", "growth-chart");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Total doctors and users, last " + daily.length + " days");
+
+    function points(valueFn, max) {
+      return daily
+        .map((d, i) => {
+          const x = pad + i * stepX;
+          const y = height - pad - (valueFn(d) / max) * (height - pad * 2);
+          return `${x},${y}`;
+        })
+        .join(" ");
+    }
+
+    function line(valueFn, max, cls, colorVar) {
+      const polyline = document.createElementNS(svgNS, "polyline");
+      polyline.setAttribute("points", points(valueFn, max));
+      polyline.setAttribute("fill", "none");
+      polyline.setAttribute("class", cls);
+      polyline.style.stroke = `var(${colorVar})`;
+      svg.appendChild(polyline);
+
+      daily.forEach((d, i) => {
+        const x = pad + i * stepX;
+        const y = height - pad - (valueFn(d) / max) * (height - pad * 2);
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttribute("cx", x);
+        circle.setAttribute("cy", y);
+        circle.setAttribute("r", "2.5");
+        circle.setAttribute("class", cls);
+        circle.style.fill = `var(${colorVar})`;
+        const title = document.createElementNS(svgNS, "title");
+        title.textContent = `${d.date}: ${d.doctors} doctors, ${d.users} users`;
+        circle.appendChild(title);
+        svg.appendChild(circle);
+      });
+    }
+
+    line((d) => d.doctors, maxDoctors, "growth-chart-doctors", "--teal-primary");
+    line((d) => d.users, maxUsers, "growth-chart-users", "--purple-accent");
+    return svg;
+  }
+
+  function renderGrowth() {
+    const data = AdminPortalMock.platformGrowth;
+    const docEl = document.getElementById("growth-total-doctors");
+    const userEl = document.getElementById("growth-total-users");
+    if (docEl) docEl.textContent = data.total_doctors.toLocaleString();
+    if (userEl) userEl.textContent = data.total_users.toLocaleString();
+
+    const wrap = document.getElementById("growth-chart-wrap");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    wrap.appendChild(renderGrowthChart(data.daily));
+    wrap.appendChild(
+      el("div", { class: "growth-chart-legend" }, [
+        el("span", { class: "growth-legend-item" }, [
+          el("span", { class: "growth-legend-swatch growth-chart-doctors" }),
+          "Doctors",
+        ]),
+        el("span", { class: "growth-legend-item" }, [
+          el("span", { class: "growth-legend-swatch growth-chart-users" }),
+          "Users",
+        ]),
+      ])
+    );
+  }
+
+  renderGrowth();
   schedule();
   setInterval(renderUpdatedAgo, 1000);
 })();

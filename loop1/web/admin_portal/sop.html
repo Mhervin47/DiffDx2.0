@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-theme">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiffDx Admin — SOP</title>
+<script>
+  if (localStorage.getItem('theme') === 'light') {
+    document.documentElement.classList.remove('dark-theme');
+  } else {
+    document.documentElement.classList.add('dark-theme');
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Noto+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #F1F5F9;
+    --bg-card: #FFFFFF;
+    --surface-1: #FFFFFF;
+    --surface-2: #F8FAFC;
+    --surface-3: #F1F5F9;
+    --border-card: #CBD5E1;
+    --border: #CBD5E1;
+    --teal-primary: #0D9488;
+    --teal-glow: rgba(13, 148, 136, 0.15);
+    --teal-dim: rgba(13, 148, 136, 0.12);
+    --blue-secondary: #2563EB;
+    --purple-accent: #6D28D9;
+    --warn: #D97706;
+    --warn-dim: rgba(217, 119, 6, 0.08);
+    --warn-border: rgba(217, 119, 6, 0.30);
+    --danger: #EF4444;
+    --text-main: #0F172A;
+    --text-muted: #475569;
+    --text-dim: #64748B;
+    --nav-bg: rgba(255, 255, 255, 0.92);
+    --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+    --input-bg: #F8FAFC;
+    --font-heading: 'Sora', sans-serif;
+    --font-body: 'Noto Sans', sans-serif;
+  }
+  html.dark-theme {
+    --bg-dark: #050D18;
+    --bg-card: #0A1525;
+    --surface-1: #0A1525;
+    --surface-2: #0E1B2E;
+    --surface-3: #13243C;
+    --border-card: rgba(150, 180, 210, 0.10);
+    --border: rgba(150, 180, 210, 0.12);
+    --teal-primary: #19C6AD;
+    --teal-glow: rgba(25, 198, 173, 0.20);
+    --teal-dim: rgba(25, 198, 173, 0.12);
+    --blue-secondary: #4C8FF5;
+    --purple-accent: #8174E8;
+    --warn: #F59E0B;
+    --warn-dim: rgba(245, 158, 11, 0.08);
+    --warn-border: rgba(245, 158, 11, 0.30);
+    --danger: #EF4444;
+    --text-main: #EAF2FA;
+    --text-muted: #8FA2B9;
+    --text-dim: #64748B;
+    --nav-bg: rgba(5, 13, 24, 0.85);
+    --card-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    --input-bg: #0C192A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(143, 162, 185, 0.06) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse 85% 65% at 50% 30%, black 40%, transparent 95%);
+  }
+  html:not(.dark-theme) .bg-grid { background-image: radial-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px); }
+  .bg-glow-left {
+    position: fixed; top: -120px; left: -120px; width: 650px; height: 650px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(25, 198, 173, 0.12) 0%, transparent 70%);
+    filter: blur(100px); pointer-events: none; z-index: 0;
+  }
+  html:not(.dark-theme) .bg-glow-left { background: radial-gradient(circle, rgba(13, 148, 136, 0.08) 0%, transparent 70%); }
+  .bg-glow-right {
+    position: fixed; top: 180px; right: -120px; width: 700px; height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(129, 116, 232, 0.09) 0%, transparent 70%);
+    filter: blur(120px); pointer-events: none; z-index: 0;
+  }
+  html:not(.dark-theme) .bg-glow-right { background: radial-gradient(circle, rgba(109, 40, 217, 0.06) 0%, transparent 70%); }
+
+  .admin-topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--nav-bg);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border-bottom: 1px solid var(--border-card);
+    padding: 0 32px; height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  .topbar-brand { display: inline-flex; align-items: center; gap: 12px; }
+  .brand-logo-link { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-symbol { width: 28px; height: 28px; filter: drop-shadow(0 0 10px rgba(25, 198, 173, 0.45)); }
+  .logo-text { font-family: var(--font-heading); font-size: 18px; font-weight: 800; color: var(--text-main); letter-spacing: -.03em; }
+  .logo-accent {
+    background: linear-gradient(90deg, #19C6AD, #4C8FF5);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .admin-badge {
+    font-family: var(--font-heading); font-size: 10px; font-weight: 800;
+    padding: 3px 9px; border-radius: 9999px;
+    background: var(--teal-dim); color: var(--teal-primary);
+    border: 1px solid rgba(25, 198, 173, 0.3); letter-spacing: .06em;
+  }
+  .topbar-actions { display: flex; align-items: center; gap: 10px; }
+  .topbar-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 15px; border-radius: 9999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-card);
+    color: var(--text-muted); font-family: var(--font-heading);
+    font-size: 12.5px; font-weight: 600; text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .topbar-btn:hover { color: var(--teal-primary); border-color: var(--teal-primary); background: var(--teal-dim); }
+  .currency-toggle-btn { cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; }
+
+  .nav-user-menu { position: relative; display: inline-flex; align-items: center; }
+  .nav-user-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-card);
+    border-radius: 9999px; padding: 4px 12px 4px 4px;
+    cursor: pointer; color: var(--text-main);
+    font-family: var(--font-heading); font-size: 13px;
+    transition: all 0.2s ease;
+  }
+  .nav-user-btn:hover { border-color: var(--teal-primary); color: var(--teal-primary); background: var(--teal-dim); }
+  .nav-user-btn svg { color: var(--text-muted); transition: transform 0.2s ease, color 0.2s ease; flex-shrink: 0; }
+  .nav-user-btn:hover svg { color: var(--teal-primary); }
+  .nav-user-btn[aria-expanded="true"] svg { transform: rotate(180deg); color: var(--teal-primary); }
+  .nav-user-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal-primary), var(--purple-accent));
+    color: #fff !important; font-size: 13px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-family: var(--font-heading);
+    box-shadow: 0 2px 10px var(--teal-glow);
+  }
+  .nav-user-name { font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--text-main); font-family: var(--font-heading); }
+  .nav-user-dropdown {
+    display: none;
+    position: absolute; right: 0; top: calc(100% + 8px);
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 14px; min-width: 220px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden; z-index: 99999;
+  }
+  html.dark-theme .nav-user-dropdown { backdrop-filter: blur(20px) saturate(1.3); }
+  .nav-user-dropdown.open { display: flex; flex-direction: column; }
+  .nav-user-dropdown-header { padding: 14px 18px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border-card); }
+  .nav-user-dropdown-header div:first-child { font-weight: 700; font-size: 13.5px; color: var(--text-main); font-family: var(--font-heading); letter-spacing: -0.01em; }
+  .nav-user-dropdown-header div:last-child { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; word-break: break-all; }
+  .nav-user-dropdown-item {
+    display: flex; align-items: center; width: 100%; text-align: left;
+    padding: 11px 18px; font-size: 13px; font-weight: 600;
+    color: var(--text-main);
+    background: transparent; border: none; border-radius: 0;
+    cursor: pointer; text-decoration: none; box-shadow: none;
+    font-family: var(--font-heading);
+    transition: background 0.15s ease, color 0.15s ease;
+    box-sizing: border-box;
+  }
+  .nav-user-dropdown-item:hover { background: var(--teal-dim); color: var(--teal-primary); }
+  .nav-user-dropdown-item--danger { color: var(--danger) !important; border-top: 1px solid var(--border-card); }
+  .nav-user-dropdown-item--danger:hover { color: var(--danger) !important; background: rgba(239, 68, 68, 0.08) !important; }
+  .nav-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    position: relative;
+    width: 36px; height: 36px; min-width: 36px; min-height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+  }
+  .nav-icon-btn:hover { border-color: var(--teal-primary); color: var(--teal-primary); }
+  .theme-toggle-btn {
+    width: 36px; height: 36px; min-width: 36px; min-height: 36px;
+    border-radius: 50%; padding: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    color: var(--text-main); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease; outline: none;
+  }
+  .theme-toggle-btn:hover { border-color: var(--teal-primary); color: var(--teal-primary); transform: scale(1.05); }
+  .theme-toggle-btn .sun-icon { display: none; }
+  .theme-toggle-btn .moon-icon { display: block; }
+  html.dark-theme .theme-toggle-btn .moon-icon { display: none; }
+  html.dark-theme .theme-toggle-btn .sun-icon { display: block; }
+
+  header.page-header { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 32px 32px 16px; }
+  h1 { font-family: var(--font-heading); font-size: 26px; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; margin-bottom: 6px; }
+  .subtitle { color: var(--text-muted); font-size: 14px; line-height: 1.5; }
+
+  .admin-nav {
+    display: inline-flex; gap: 6px; margin-top: 18px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-card);
+    padding: 5px; border-radius: 9999px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--card-shadow);
+  }
+  html.dark-theme .admin-nav { background: rgba(14, 27, 46, 0.85); }
+  .admin-nav a { color: var(--text-muted); text-decoration: none; padding: 8px 18px; border-radius: 9999px; font-size: 13px; font-family: var(--font-heading); font-weight: 600; transition: all 0.25s ease; }
+  .admin-nav a:hover { color: var(--text-main); background: var(--teal-dim); }
+  .admin-nav a.active { background: var(--teal-dim); color: var(--teal-primary); border: 1px solid rgba(25, 198, 173, 0.35); box-shadow: 0 0 14px var(--teal-glow); }
+
+  main { position: relative; z-index: 10; max-width: 1200px; margin: 0 auto; padding: 16px 32px 80px; }
+  @media (max-width: 850px) { main { padding: 16px 20px 60px; } }
+
+  .muted { color: var(--text-muted); font-size: 12.5px; }
+  code { font-family: monospace; background: var(--surface-3); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+
+  /* Table of contents — anchors only, no descriptions */
+  nav.sop-toc {
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 14px; padding: 14px 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--card-shadow);
+  }
+  html.dark-theme nav.sop-toc { background: rgba(10, 21, 37, 0.82); backdrop-filter: blur(20px); }
+  nav.sop-toc a { color: var(--teal-primary); text-decoration: none; font-family: var(--font-heading); font-weight: 700; font-size: 13px; }
+  nav.sop-toc a:hover { text-decoration: underline; }
+  nav.sop-toc span.sep { color: var(--text-dim); }
+
+  section.sop-section { margin-bottom: 32px; scroll-margin-top: 80px; }
+  section.sop-section > h2 {
+    font-family: var(--font-heading); font-size: 18px; font-weight: 800;
+    color: var(--text-main); margin-bottom: 4px; letter-spacing: -0.01em;
+  }
+  section.sop-section > p.scope {
+    color: var(--text-muted); font-size: 13px; margin-bottom: 14px; line-height: 1.5;
+  }
+
+  /* Accordion — reused verbatim from evidence.html's .methodology pattern */
+  details.methodology {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 14px; padding: 16px 22px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 10px;
+  }
+  html.dark-theme details.methodology { background: rgba(10, 21, 37, 0.82); backdrop-filter: blur(20px); }
+  details.methodology summary {
+    cursor: pointer; font-family: var(--font-heading); font-weight: 700; font-size: 13.5px;
+    color: var(--text-main); list-style: none; display: flex; align-items: center; gap: 8px;
+    user-select: none;
+  }
+  details.methodology summary::-webkit-details-marker { display: none; }
+  details.methodology summary::before { content: '▸'; color: var(--teal-primary); transition: transform 0.2s ease; font-size: 12px; }
+  details.methodology[open] summary::before { transform: rotate(90deg); }
+  details.methodology .sop-body {
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-card);
+    font-size: 13px; line-height: 1.6; color: var(--text-main);
+  }
+  .sop-body dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; }
+  .sop-body dt {
+    font-family: var(--font-heading); font-size: 10.5px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--teal-primary); white-space: nowrap; padding-top: 2px;
+  }
+  .sop-body dd { color: var(--text-main); }
+  .sop-body dd.escalate { color: var(--danger); }
+  .sop-body dd.escalate.none { color: var(--text-dim); }
+
+  a.sop-link {
+    font-size: 11.5px; font-weight: 700; color: var(--teal-primary);
+    text-decoration: none; font-family: var(--font-heading); white-space: nowrap;
+  }
+  a.sop-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow-left" aria-hidden="true"></div>
+<div class="bg-glow-right" aria-hidden="true"></div>
+
+<nav class="admin-topbar">
+  <div class="topbar-brand">
+    <a href="index.html" class="brand-logo-link">
+      <svg class="logo-symbol" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="pi-ring" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#8174E8"/></linearGradient>
+          <linearGradient id="pi-ft" x1="13" y1="14" x2="19" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#4C8FF5"/></linearGradient>
+          <linearGradient id="pi-fb" x1="13" y1="14" x2="19" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#19C6AD"/><stop offset="100%" stop-color="#8174E8"/></linearGradient>
+        </defs>
+        <circle cx="14" cy="14" r="12.5" stroke="url(#pi-ring)" stroke-width="1.25" fill="rgba(25,198,173,.08)"/>
+        <line x1="6" y1="14" x2="13" y2="14" stroke="#19C6AD" stroke-width="2" stroke-linecap="round"/>
+        <path d="M13 14 L19 8.5" stroke="url(#pi-ft)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M13 14 L19 19.5" stroke="url(#pi-fb)" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="20" cy="8.5" r="2" fill="#4C8FF5"/>
+        <circle cx="20" cy="19.5" r="2" fill="#8174E8"/>
+      </svg>
+      <span class="logo-text">Diff<span class="logo-accent">/Dx</span></span>
+    </a>
+    <span class="admin-badge">ADMIN CONSOLE</span>
+  </div>
+  <div class="topbar-actions">
+    <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
+      <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <div id="nav-auth"></div>
+  </div>
+</nav>
+
+<header class="page-header">
+  <h1>SOP</h1>
+  <div class="subtitle">Operator runbook for this admin portal — what each status means, and what to do about it.</div>
+  <div id="admin-nav-root"></div>
+</header>
+
+<main>
+  <nav class="sop-toc" aria-label="Table of contents">
+    <a href="#health">Health</a><span class="sep">·</span>
+    <a href="#dsr">DSR</a><span class="sep">·</span>
+    <a href="#audit">Audit</a><span class="sep">·</span>
+    <a href="#evidence-quality">Evidence &amp; Quality</a><span class="sep">·</span>
+    <a href="#usage">Usage</a><span class="sep">·</span>
+    <a href="#accounts">Accounts</a>
+  </nav>
+
+  <section class="sop-section" id="health">
+    <h2>Health panel</h2>
+    <p class="scope"><code>index.html</code>'s System Health card, <code>health.js</code>, <code>GET /api/admin/health/detail</code>.</p>
+
+    <details class="methodology">
+      <summary>API pill</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>You're looking at the health card and wondering what "API: down" would mean.</dd>
+        <dt>Meaning</dt><dd>There is no "down" state for this pill — <code>health.py</code>'s handler hardcodes <code>"api": "ok"</code> unconditionally in every response it returns, because if you received a response at all, the API answered. A genuinely unreachable API doesn't render a red pill; the whole panel instead shows "Status unavailable — could not reach the health endpoint."</dd>
+        <dt>Action</dt><dd>If the panel shows that fallback message instead of pills, that's your actual "API is down" signal — treat it accordingly.</dd>
+        <dt>Escalate if</dt><dd class="escalate">The panel shows "Status unavailable" for more than one polling cycle (30s) — this is patient-facing downtime, page whoever owns the deploy immediately.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Postgres pill: down</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Postgres pill reads <code>down</code>.</dd>
+        <dt>Meaning</dt><dd>The check is a raw <code>SELECT 1</code> with a 2s timeout, so this means Postgres is genuinely unreachable — identity, appointments, diagnostic sessions, and <code>llm_usage_events</code> are all unavailable. The appointment double-booking guard (a partial unique index, <code>uq_appointments_doctor_slot_active</code>, on <code>appointments(doctor_id, slot_datetime)</code> for non-cancelled rows) is enforced by Postgres itself — it provides no protection while the database is down.</dd>
+        <dt>Action</dt><dd>Check <code>DATABASE_URL</code> and the DB host's own status directly; this is not a code-side fix.</dd>
+        <dt>Escalate if</dt><dd class="escalate">Immediately — this is the single highest-severity pill on this panel.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Redis pill: not_configured</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Redis pill reads <code>not_configured</code>.</dd>
+        <dt>Meaning</dt><dd><code>REDIS_URL</code> is unset. This is the expected steady state in this deployment, not an error — <code>session_store.py</code>'s in-memory fallback is handling live sessions. Read it as informational, not actionable, unless this deployment is specifically supposed to have Redis configured right now.</dd>
+        <dt>Action</dt><dd>None, if this is the intended deployment state.</dd>
+        <dt>Escalate if</dt><dd class="escalate">This status changes to <code>down</code> (next entry), or a server restart/redeploy is planned while it reads <code>not_configured</code> (see next entry).</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Redis pill: down, or a restart is planned while not_configured</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Redis pill reads <code>down</code> (configured but unreachable) — or any restart/redeploy is planned while it reads <code>not_configured</code>.</dd>
+        <dt>Meaning</dt><dd>Every in-progress diagnostic interview is held only in process memory right now. A restart drops those sessions with no resume path — patients mid-interview lose the conversation. This doesn't show up as an error anywhere else on this panel; the app keeps serving new sessions fine, it just can't survive a restart cleanly.</dd>
+        <dt>Action</dt><dd>Before restarting/redeploying for any reason in this state, warn whoever is doing the deploy that in-progress sessions will be lost — this is a coordination step, not a code fix.</dd>
+        <dt>Escalate if</dt><dd class="escalate">This state persists for a production deployment expected to run with Redis — file it as a real incident, not a shrug.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>OpenRouter pill: ok</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>OpenRouter pill reads <code>ok</code>.</dd>
+        <dt>Meaning</dt><dd><code>OPENROUTER_API_KEY</code> is present. This does not test connectivity — a 30s-polled health check must never make a billable model call, so this is presence-only. A green OpenRouter pill does not mean the critic or the HTTP-429 fallback chain is actually reachable right now.</dd>
+        <dt>Action</dt><dd>If critic scores are missing or turns are failing to fall back correctly while this pill shows <code>ok</code>, don't trust the pill — check application logs for provider activity directly (<code>_FALLBACK_CHAIN</code> in <code>llm.py</code>).</dd>
+        <dt>Escalate if</dt><dd class="escalate">Failures are reported and this pill is the only signal you have — that combination ("no live visibility into provider health") is itself worth escalating, separately from the underlying provider issue.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>OpenRouter pill: not_configured</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>OpenRouter pill reads <code>not_configured</code>.</dd>
+        <dt>Meaning</dt><dd><code>OPENROUTER_API_KEY</code> is optional (no default, no boot-time requirement — unlike <code>GROQ_API_KEY</code>, see next entry), so seeing this is not contradictory or unusual on its own. It is, however, a real, actionable fact: the critic is disabled, and the HTTP-429 fallback chain has fewer options than it would otherwise.</dd>
+        <dt>Action</dt><dd>If this deployment is meant to run the critic, set the key. If it's deliberately running doctor-only, no action needed — but don't read this pill as "everything's fine," it means a real feature is off.</dd>
+        <dt>Escalate if</dt><dd class="escalate">The critic being off wasn't a deliberate decision for this deployment.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Why there's no Groq pill</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Looking for a Groq status pill and not finding one.</dd>
+        <dt>Meaning</dt><dd><code>GROQ_API_KEY</code> is required at boot with no default (<code>config.py</code>'s <code>Settings</code> class) — the app cannot start without it, so a pill for it could only ever read <code>ok</code> on a running instance. It was removed from this panel and replaced with the OpenRouter pill above, which actually carries information (OpenRouter is optional and gates the critic).</dd>
+        <dt>Action</dt><dd>None — this is intentional.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A.</dd>
+      </dl></div>
+    </details>
+  </section>
+
+  <section class="sop-section" id="dsr">
+    <h2>Data Subject Request console</h2>
+    <p class="scope"><code>dsr.html</code>, <code>dsr.py</code>.</p>
+
+    <details class="methodology">
+      <summary>About to run a real (non-dry-run) erasure</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>The dry-run checkbox is unchecked and you're about to click erase.</dd>
+        <dt>Meaning</dt><dd>This is irreversible. It touches the relational tables directly (<code>users</code>, <code>diagnostic_sessions</code>, <code>session_turns</code>, <code>appointments</code>, <code>message_threads</code>, <code>uploaded_files</code>, plus everything else that cascades off <code>users</code> via <code>ON DELETE CASCADE</code>), the blob store (<code>appointments</code>, <code>messages</code>, <code>session_report:{id}</code>), and two on-disk log locations (<code>logs/sessions/session_{id}.jsonl</code>, <code>logs/final_records/final_{id}.json</code>). It's gated behind <code>ADMIN_PORTAL_ENABLE_DSR_ERASE</code> (returns a clear 501 error until set) specifically because of that blast radius.</dd>
+        <dt>Action</dt><dd>Always run dry-run first and read the full inventory it returns before running the real erase. Confirm the target user/patient independently (name + email + account creation date) before proceeding — there is no undo.</dd>
+        <dt>Escalate if</dt><dd class="escalate"><code>ADMIN_PORTAL_ENABLE_DSR_ERASE</code> is not set and you believe it should be — that's a deliberate infrastructure decision, not a bug; get sign-off before changing it, don't just set the env var.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Erase receipt has a non-empty "warnings" field</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>The response from a completed erase includes one or more entries in <code>warnings</code>.</dd>
+        <dt>Meaning</dt><dd>The relational transaction (identity deletion + audit pseudonymization) committed successfully, but the best-effort follow-up (blob store and/or on-disk log cleanup) partially failed — true cross-store atomicity isn't achievable with this architecture. A non-empty <code>warnings</code> field means real PHI may still exist outside the database.</dd>
+        <dt>Action</dt><dd>Read every entry in <code>warnings</code>, identify exactly which store/file failed to clear, and manually verify and clean it up — this does not happen automatically on retry.</dd>
+        <dt>Escalate if</dt><dd class="escalate">Any warning is present — this is not a "log it and move on" field, it always needs a documented manual follow-up.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Audit entry shows actor_name: "unknown" after an erase</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>An audit row for the erased subject now shows <code>actor_name: "unknown"</code>.</dd>
+        <dt>Meaning</dt><dd>Expected. The audit trail is never deleted, but the erased user's <code>actor_user_id</code> is deliberately repointed via <code>uuid.uuid5(fixed_namespace, real_id)</code> to a pseudonymous shadow user (empty name) so the foreign key survives without re-identifying anyone. This is the one place in the codebase an audit row is ever mutated after being written — see the Audit section below.</dd>
+        <dt>Action</dt><dd>None required for this specific case.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A — informational only. Don't confuse with the failed-login case in the Audit section, which produces the identical text for a different reason.</dd>
+      </dl></div>
+    </details>
+  </section>
+
+  <section class="sop-section" id="audit">
+    <h2>Audit log</h2>
+    <p class="scope"><code>audit.html</code>, <code>audit.py</code>.</p>
+
+    <details class="methodology">
+      <summary>Reviewing entries with actor_name: "unknown"</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>An entry's actor shows as <code>unknown</code>.</dd>
+        <dt>Meaning</dt><dd>Two distinct causes produce this, and the table alone doesn't distinguish them: (1) a failed login attempt — wrong email <em>or</em> wrong password against a real account, both log with no actor — or (2) a pseudonymized entry left behind by a completed DSR erasure (see above).</dd>
+        <dt>Action</dt><dd>Cross-check the entry's action type and timestamp — a <code>login_failed</code> action is case (1); anything else near a known DSR erase timestamp is case (2).</dd>
+        <dt>Escalate if</dt><dd class="escalate">A cluster of case-(1) entries against the same or similar emails in a short window — that's a credential-stuffing/brute-force pattern, not routine noise.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Any mutation seemingly needed on an audit row</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>A row looks wrong and someone wants it corrected or removed directly.</dd>
+        <dt>Meaning</dt><dd>No row is ever deleted anywhere in this codebase — that part is a hard rule. It is not, however, strictly append-only in the fullest sense: <code>dsr.py</code>'s erasure flow performs one narrow, deliberate <code>UPDATE</code> that repoints <code>actor_user_id</code> to a pseudonym during a DSR erase (see above). That's the single sanctioned exception, and it exists for a compliance reason, not for correcting mistakes.</dd>
+        <dt>Action</dt><dd>If a row is factually wrong, add a new row documenting the correction; never attempt to patch the old one directly in the database outside the DSR erasure path.</dd>
+        <dt>Escalate if</dt><dd class="escalate">Someone requests direct DB-level editing of an audit row for any reason other than a DSR erasure — that request itself is the thing to flag upward, regardless of the stated reason.</dd>
+      </dl></div>
+    </details>
+  </section>
+
+  <section class="sop-section" id="evidence-quality">
+    <h2>Evidence, AI Quality, Reports</h2>
+    <p class="scope"><code>evidence.html</code>, <code>quality.html</code>, <code>reports.html</code>, <code>compare_report.py</code>.</p>
+
+    <details class="methodology">
+      <summary>Citing a cost figure from the comparison report externally</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>About to quote <code>actor_critic</code>'s cost-per-session figure in a demo, writeup, or stakeholder update.</dd>
+        <dt>Meaning</dt><dd>It's doctor-call cost only, sourced from this offline eval harness's own session logs — it excludes critic, compressor, and profile_updater cost. That's a real undercount, not a deliberate scope choice: the doctor and the critic both run on every turn of a real deployed session (<code>web/api_session.py</code>'s <code>_fire_critic</code>); this offline report simply hasn't been wired to pull from the live cost source yet.</dd>
+        <dt>Action</dt><dd>Never quote this figure as production cost in isolation. For a real per-session cost figure, use the Cost &amp; Usage panel on the Overview page instead — it's sourced live from <code>llm_usage_events</code> and covers doctor, compressor, critic, and closing-turn calls together (see the Usage section below). If you must cite this report's number, attach the undercount caveat every time.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A — standing caveat, not an incident.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Citing a significance result (McNemar) from the comparison report</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>About to present a p-value or accuracy delta from the Evidence page as conclusive.</dd>
+        <dt>Meaning</dt><dd>Directional only, never confirmatory — regardless of which way the p-value points. The eval-set size is not fixed at any particular number; it's read live from <code>data/ddxplus_eval_set.json</code> (check <code>eval_set_size</code> in the report itself, don't assume a figure from memory), and each individual comparison's McNemar <code>n</code> is further narrowed to only the patients both actor-critic and that specific baseline were actually run on.</dd>
+        <dt>Action</dt><dd>Read the report's own <code>n</code> and <code>n_discordant</code> for the specific comparison you're citing rather than quoting a remembered number; present the result as "suggestive," never as proof.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Citing safety-recall numbers</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>About to cite the red-flag top-3 recall figure.</dd>
+        <dt>Meaning</dt><dd>Rests on the DDXPlus dataset's own severity field by default, not clinician review — unless the report's <code>label_provenance</code> field shows real overrides. Overrides are applied deliberately via <code>red_flag_labels.py --set PATIENT_ID true|false --labeled-by NAME</code>, which is mandatory to supply a labeler name for; a prior automatic pass never clobbers a real override once applied.</dd>
+        <dt>Action</dt><dd>Check <code>label_provenance.automatic</code> vs. <code>label_provenance.override</code> before trusting the number — it reports exactly how many labels are automatic vs. a real, named override.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A — check the provenance field, then proceed accordingly.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Comparing the comparison-report numbers to what a real patient session actually costs/does</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>Trying to reconcile this offline benchmark with live production behavior.</dd>
+        <dt>Meaning</dt><dd>The live web path and the offline CLI harness these numbers come from are not the same pipeline. Live: doctor, compressor, critic (background thread), and the closing-turn call all run and are logged (<code>call_site</code> on each <code>llm_usage_events</code> row) — <code>profile_updater</code> is the one call deliberately disabled in the live web session (rate-limit reasons), a CLI/offline-only path instead. <code>GET /api/admin/usage</code>'s own <code>coverage_note</code> field states this exactly, generated fresh in every response.</dd>
+        <dt>Action</dt><dd>Trust <code>/api/admin/usage</code>'s own <code>coverage_note</code> over any static doc text (including this page) when the two disagree — it reflects the current state of the code, not a point-in-time writeup.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A.</dd>
+      </dl></div>
+    </details>
+  </section>
+
+  <section class="sop-section" id="usage">
+    <h2>Usage &amp; cost tracking</h2>
+    <p class="scope"><code>usage.js</code>, <code>GET /api/admin/usage</code>.</p>
+
+    <details class="methodology">
+      <summary>Determining which LLM provider actually served a specific request after a suspected 429/fallback event</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>A turn was slow or failed and you suspect the fallback chain rerouted the request to a different provider.</dd>
+        <dt>Meaning</dt><dd>This is answerable — <code>model_actual</code> on each <code>llm_usage_events</code> row is populated with the exact model that served that specific call (post-fallback), for every successful call. <code>/api/admin/usage</code>'s <code>model_actual_breakdown</code> (all roles blended) and <code>model_actual_breakdown_by_role</code> (doctor/critic/compressor/closing_turn broken out separately) both surface this on the Overview page's Model &amp; Config card, next to each role's configured model.</dd>
+        <dt>Action</dt><dd>Check the "actually serving" line next to the relevant role on the Overview page rather than guessing from logs alone. A small number of very old records predate this field (<code>model_actual_unknown</code> in the response) and are excluded from the percentages, not silently folded in.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A — this is a working, live signal, not a known gap.</dd>
+      </dl></div>
+    </details>
+  </section>
+
+  <section class="sop-section" id="accounts">
+    <h2>Admin account management</h2>
+    <p class="scope"><code>scripts/seed_admin.py</code>.</p>
+
+    <details class="methodology">
+      <summary>Need to create a new admin account</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>A new admin needs an account.</dd>
+        <dt>Meaning</dt><dd>No default admin password exists anywhere in this codebase; <code>ADMIN_SEED_EMAIL</code> and <code>ADMIN_SEED_PASSWORD</code> are both required, and the script refuses to run without both set. It checks for an existing user by email first and skips (does nothing) if one is already there — it does not upsert and does not error on a duplicate.</dd>
+        <dt>Action</dt><dd>Run <code>ADMIN_SEED_EMAIL=... ADMIN_SEED_PASSWORD=... PYTHONPATH=src python scripts/seed_admin.py</code> from <code>loop1/</code>, after <code>alembic upgrade head</code> has run. Safe to re-run against an already-seeded email.</dd>
+        <dt>Escalate if</dt><dd class="escalate none">N/A — routine operation, no approval gate exists for this one (unlike DSR erasure).</dd>
+      </dl></div>
+    </details>
+  </section>
+</main>
+
+<script src="/auth.js"></script>
+<script src="js/admin-common.js"></script>
+<script>
+  AdminPortal.mountNav("sop.html");
+
+  const toggleBtn = document.getElementById('theme-toggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark-theme');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+  }
+
+  // Deep-link support: a #health/#dsr/... hash must land with every
+  // <details> in that section already open, not collapsed — a link from
+  // another page pointing at a specific caveat is useless if the reader
+  // has to know to click it open themselves first.
+  function openSectionFromHash() {
+    const id = decodeURIComponent(location.hash.replace(/^#/, ''));
+    if (!id) return;
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.querySelectorAll('details').forEach((d) => { d.open = true; });
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  window.addEventListener('DOMContentLoaded', openSectionFromHash);
+  window.addEventListener('hashchange', openSectionFromHash);
+</script>
+</body>
+</html>

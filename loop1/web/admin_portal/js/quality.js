@@ -24,14 +24,11 @@
   const result = await fetchWithMockFallback("/api/admin/quality", mockQuality);
 
   if (result.authRequired) {
-    document.getElementById("sample-banner").hidden = true;
     renderAuthRequired(document.getElementById("content"), { what: "AI quality scores" });
     return;
   }
 
   const { data, usingMock } = result;
-
-  document.getElementById("sample-banner").hidden = !usingMock;
 
   renderStaticBadge();
 

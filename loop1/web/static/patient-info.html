@@ -1614,6 +1614,21 @@
     }
   </script>
   <script src="/auth.js"></script>
+  <script>
+    // Role guard — NOT a login requirement: login.html's "Continue as
+    // guest" link goes straight here, so anonymous access is intentional
+    // (sessions can start without an account). Only block a signed-in
+    // admin/doctor from using the patient intake flow. Client-side, not a
+    // server-side page route gate: bearer-token auth has no header on a
+    // plain browser navigation, only on a fetch()/XHR call — and this has
+    // to run after /auth.js (just above) has defined getAuthUser().
+    (function () {
+      const authUser = typeof getAuthUser === 'function' ? getAuthUser() : null;
+      if (authUser && authUser.role !== 'patient') {
+        window.location.replace('/');
+      }
+    })();
+  </script>
   <script src="/consent-modal.js"></script>
 </body>
 </html>

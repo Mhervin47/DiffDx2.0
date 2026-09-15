@@ -228,7 +228,7 @@ against `/api/patient/*`/`/api/doctor/*`.
 Phase 3's — is behind `require_role("admin")`, including
 `/api/admin/evidence`, `/api/admin/quality`, and `/api/admin/config`.
 
-Those three were originally left deliberately public (`Admin_Portal.md`:
+Those three were originally left deliberately public (the original build brief's reasoning:
 "if a judge has to log in to see accuracy numbers, they will not see
 them"), and that's still the right default to revisit if judge/reviewer
 access without an account ever matters again — but the project owner
@@ -385,7 +385,7 @@ Phase 1 or Phase 2.
 
 - **`reports.html`** (+ `js/reports.js`) — the moderation queue for `POST /api/messages/report`
   (a patient or doctor flagging the other side of a conversation for using messaging outside of
-  medical care — see `MESSAGE_REPORTING_PLAN.md` at the repo root). Filterable by status
+  medical care). Filterable by status
   (open/reviewed/dismissed), with "Mark Reviewed"/"Dismiss" row actions. Backend:
   `admin_portal/routers/reports.py` (`GET /api/admin/message-reports`,
   `PATCH /api/admin/message-reports/{id}`), reading `MessageReport`

@@ -130,7 +130,7 @@ voice usage).
   checklist instead; the AI's full differential and confidence scores stay available, but only
   inside a collapsed "Technical Details" section meant for clinicians and reviewers. A direct
   response to mentor feedback that naming a specific disease — from a system that explicitly isn't
-  a diagnosis — risks unnecessary patient panic. See `REPORT_PAGE_REDESIGN.md`.
+  a diagnosis — risks unnecessary patient panic.
 
 ## Architecture
 
@@ -261,16 +261,6 @@ the v1 → v2 table below for why.
 - [`docs/tasks/`](docs/tasks/) — the working specs this project was actually built from, in order
 - [`loop1/src/admin_portal/README.md`](loop1/src/admin_portal/README.md) — admin console: DSR
   queue, audit log, usage/cost tracking, message reports, system health, and the operator SOP
-- [`REPORT_PAGE_REDESIGN.md`](REPORT_PAGE_REDESIGN.md) — the patient-safe diagnosis disclosure
-  redesign, section by section
-- [`DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md`](DOCTOR_CONFIRMED_DIAGNOSIS_PLAN.md) — why the
-  doctor-confirmed diagnosis is a separate field, not derived from the AI's own differential
-- [`SUGGESTED_TESTS_EXPANSION_PLAN.md`](SUGGESTED_TESTS_EXPANSION_PLAN.md) — persistence, the
-  automatic "check for more tests" pass, and the three surfaces that read from it
-- [`POST_VISIT_RESULTS_NOTIFICATION_PLAN.md`](POST_VISIT_RESULTS_NOTIFICATION_PLAN.md) — why a
-  "seen" appointment still needs to notify the doctor when results land afterward
-- [`MESSAGE_REPORTING_PLAN.md`](MESSAGE_REPORTING_PLAN.md) — the 7-day messaging window and the
-  admin-reviewed report queue
 - [Architecture write-up](https://mhervin47.github.io/DiffDx/) — how the actor-critic design adapts
   RL concepts to multi-turn diagnosis
 

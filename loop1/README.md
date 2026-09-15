@@ -1,6 +1,5 @@
 # DiffDx — AI-Assisted Medical Diagnostic System
 
-> **Research sandbox only. Not for clinical use. No real patients.**
 
 DiffDx is a multi-turn AI diagnostic dialogue system built around an **Actor-Critic (A2C)** architecture. A doctor LLM (actor) conducts structured patient interviews to build a differential diagnosis. A separate critic LLM scores each turn for quality. The full pipeline — from conversation to specialist routing — is exposed through a web application with patient and doctor portals.
 

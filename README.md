@@ -234,20 +234,7 @@ grouped by what each table is actually for:
   counts, latency, cost), `EmailOtp`.
 
 The blob store (`legacy_store.py`, a single JSON-per-collection table predating this schema) is
-being cut over table-by-table in dual-write phases — see `docs/tasks/` for the exact sequence and
-the v1 → v2 table below for why.
-
-## v1 → v2
-
-| | v1 | v2 |
-|---|---|---|
-| Persistence | Single-row JSON blob store, 8 collections in 8 rows | Relational schema, 3 Alembic migrations, FKs and indexes |
-| Concurrency | Read-modify-write, silent lost updates | DB-level unique constraint, clean 409s — see `loop1/docs/evidence/concurrency.txt` |
-| `web/api.py` | 3,892 lines, 93 routes | 67 lines; 22 routers, service layer |
-| Auth | In-memory opaque tokens, lost on restart | JWT + refresh rotation, RBAC, rate limiting |
-| Sessions | Process memory | Redis + Postgres persistence |
-| Deployment | Manual | Docker, Compose, Render (`render.yaml`) |
-| Evaluation | Harness present, never run | Harness present — publishing results is still open work (see Results above) |
+being cut over table-by-table in dual-write phases — see `docs/tasks/` for the exact sequence.
 
 ## Docs index
 

@@ -37,10 +37,28 @@ services:
         sync: false
       - key: SARVAM_API_KEY
         sync: false
+      # Auto-wired to the Key Value instance declared below, same as
+      # DATABASE_URL above.
       - key: REDIS_URL
-        sync: false
+        fromService:
+          type: keyvalue
+          name: diffdx-redis
+          property: connectionString
       - key: RESEND_FROM
         sync: false
+  # Optional — only used so session_store.py can share diagnostic-session
+  # state across restarts/multiple instances (see src/diffdx/session_store.py);
+  # a single instance works fine without it, just re-fetch a session mid-
+  # conversation is lost if that instance restarts. Free plan is 25MB,
+  # single node, no persistence guarantee across host maintenance — fine
+  # for session state (small, short-lived), not a fit for anything that
+  # needs to survive a Redis restart. ipAllowList empty = only reachable
+  # from other services in this account's private network, not the public
+  # internet.
+  - type: keyvalue
+    name: diffdx-redis
+    plan: free
+    ipAllowList: []
 
 databases:
   # Render's free Postgres tier is deliberately time-limited (expires ~30

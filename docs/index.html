@@ -1,602 +1,179 @@
-<title>Dense feedback for sparse rewards: the DiffDx diagnostic architecture</title>
-<meta name="description" content="How DiffDx adapts an Actor-Critic design to multi-turn medical diagnosis — the seven RL components, exemplars, DDXPlus evaluation, and safety-first routing.">
+<title>The DiffDx Field Guide</title>
+<meta name="description" content="A complete reference for DiffDx — the three-loop diagnostic architecture, the patient-safe report, everything that happens after booking, all three portals, and how it's deployed.">
 <style>
   :root{
-    --paper:#FBFCFE;
-    --paper-2:#F1F5F9;
-    --paper-3:#E9EFF6;
-    --ink:#10203A;
-    --ink-soft:#47586E;
-    --ink-faint:#7C8AA0;
-    --line:#DCE4EE;
-    --line-strong:#C4D0DE;
-    --teal:#067B90;
-    --teal-bright:#00B4D8;
-    --green:#0E9F6E;
-    --red:#E5484D;
-    --amber:#B9781A;
-    --shadow:0 1px 2px rgba(16,32,58,.04),0 8px 30px rgba(16,32,58,.06);
-    --topbar-bg:rgba(251,252,254,.88);
-    --code-bg:#0C1A30;
-    --code-text:#D5DEEB;
-    --maxw:740px;
-    --ui:"SF Pro Display",system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
-    --serif:Georgia,"Palatino Linotype","Book Antiqua",Palatino,serif;
+    --paper:#FAFAFA; --paper-2:#F2F2F2; --paper-3:#E8E8E8;
+    --ink:#1A1A1A; --ink-soft:#4A4A4A; --ink-faint:#888;
+    --line:#DEDEDE; --line-strong:#C0C0C0;
+    --accent:#2563EB; --red:#DC2626; --green:#15803D; --amber:#B45309;
+    --topbar-bg:rgba(250,250,250,.94); --code-bg:#F0F0F0; --code-text:#1A1A1A;
+    --ui:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+    --serif:Georgia,'Times New Roman',serif;
     --mono:"SF Mono","Cascadia Code","Fira Code",Consolas,"Courier New",monospace;
   }
-
-  /* ── dark mode: media query default ── */
   @media(prefers-color-scheme:dark){
-    :root{
-      --paper:#0D1620;
-      --paper-2:#131E2C;
-      --paper-3:#192637;
-      --ink:#DDE6F0;
-      --ink-soft:#8BA4BE;
-      --ink-faint:#557090;
-      --line:#1F3048;
-      --line-strong:#2A4060;
-      --teal:#23BFDA;
-      --teal-bright:#5DD5EE;
-      --green:#2CC88A;
-      --red:#F06569;
-      --amber:#D4923A;
-      --shadow:0 1px 3px rgba(0,0,0,.3),0 8px 32px rgba(0,0,0,.4);
-      --topbar-bg:rgba(13,22,32,.88);
-      --code-bg:#080F18;
-      --code-text:#C8D8EC;
+    :root:not([data-theme="light"]){
+      --paper:#141414; --paper-2:#1E1E1E; --paper-3:#282828;
+      --ink:#E4E4E4; --ink-soft:#ABABAB; --ink-faint:#666;
+      --line:#2E2E2E; --line-strong:#444;
+      --accent:#60A5FA; --red:#F87171; --green:#4ADE80; --amber:#FBBF24;
+      --topbar-bg:rgba(20,20,20,.94); --code-bg:#1E1E1E; --code-text:#D4D4D4;
     }
   }
-
-  /* ── explicit overrides via data-theme toggle ── */
   :root[data-theme="dark"]{
-    --paper:#0D1620;
-    --paper-2:#131E2C;
-    --paper-3:#192637;
-    --ink:#DDE6F0;
-    --ink-soft:#8BA4BE;
-    --ink-faint:#557090;
-    --line:#1F3048;
-    --line-strong:#2A4060;
-    --teal:#23BFDA;
-    --teal-bright:#5DD5EE;
-    --green:#2CC88A;
-    --red:#F06569;
-    --amber:#D4923A;
-    --shadow:0 1px 3px rgba(0,0,0,.3),0 8px 32px rgba(0,0,0,.4);
-    --topbar-bg:rgba(13,22,32,.88);
-    --code-bg:#080F18;
-    --code-text:#C8D8EC;
+    --paper:#141414; --paper-2:#1E1E1E; --paper-3:#282828;
+    --ink:#E4E4E4; --ink-soft:#ABABAB; --ink-faint:#666;
+    --line:#2E2E2E; --line-strong:#444;
+    --accent:#60A5FA; --red:#F87171; --green:#4ADE80; --amber:#FBBF24;
+    --topbar-bg:rgba(20,20,20,.94); --code-bg:#1E1E1E; --code-text:#D4D4D4;
   }
-  :root[data-theme="light"]{
-    --paper:#FBFCFE;
-    --paper-2:#F1F5F9;
-    --paper-3:#E9EFF6;
-    --ink:#10203A;
-    --ink-soft:#47586E;
-    --ink-faint:#7C8AA0;
-    --line:#DCE4EE;
-    --line-strong:#C4D0DE;
-    --teal:#067B90;
-    --teal-bright:#00B4D8;
-    --green:#0E9F6E;
-    --red:#E5484D;
-    --amber:#B9781A;
-    --shadow:0 1px 2px rgba(16,32,58,.04),0 8px 30px rgba(16,32,58,.06);
-    --topbar-bg:rgba(251,252,254,.88);
-    --code-bg:#0C1A30;
-    --code-text:#D5DEEB;
-  }
+
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
-  body{
-    background:var(--paper);color:var(--ink);
-    font-family:var(--serif);font-size:19px;line-height:1.65;
-    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
-  }
-  ::selection{background:rgba(0,180,216,.22)}
+  body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.82;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  ::selection{background:color-mix(in srgb, var(--accent) 22%, transparent)}
+  a{color:var(--accent)}
+  img,svg{max-width:100%}
 
-  /* layout */
   @media(min-width:1080px){
-    .shell{display:grid;grid-template-columns:230px minmax(0,var(--maxw)) 1fr;gap:56px;max-width:1200px;margin:0 auto;padding:0 32px;align-items:start}
-    .toc-col{position:sticky;top:0;height:100vh;padding-top:96px;overflow-y:auto}
-    .col-main{padding-top:96px}
+    .shell{display:grid;grid-template-columns:220px minmax(0,740px) 1fr;gap:56px;max-width:1180px;margin:0 auto;padding:0 32px;align-items:start}
+    .toc-col{position:sticky;top:0;height:100vh;padding-top:88px;overflow-y:auto;border-right:1px solid var(--line);padding-right:12px}
+    .col-main{padding-top:88px}
   }
-  .col-main{min-width:0;padding-top:20px;padding-bottom:80px}
+  .col-main{min-width:0;padding:20px 20px 80px;max-width:780px;margin:0 auto}
 
-  /* topbar */
-  .topbar{
-    position:sticky;top:0;z-index:40;
-    background:var(--topbar-bg);
-    backdrop-filter:saturate(140%) blur(10px);
-    border-bottom:1px solid var(--line);
-    transition:background .25s,border-color .25s;
-  }
-  .topbar-inner{max-width:1200px;margin:0 auto;padding:13px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-  .brand{font-family:var(--ui);font-weight:700;letter-spacing:-.02em;font-size:15.5px;color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:10px}
-  .brand .dot{width:9px;height:9px;border-radius:2px;background:var(--teal-bright);box-shadow:0 0 0 3px rgba(0,180,216,.16)}
+  .topbar{position:sticky;top:0;z-index:40;background:var(--topbar-bg);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-inner{max-width:1180px;margin:0 auto;padding:13px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .brand{font-family:var(--ui);font-weight:600;font-size:14px;letter-spacing:.01em;color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:9px}
+  .brand .dot{width:8px;height:8px;border-radius:2px;background:var(--accent)}
   .brand em{font-style:normal;color:var(--ink-faint);font-weight:500}
-  .topbar nav{font-family:var(--ui);font-size:13px;display:flex;gap:20px}
+  .topbar nav{font-family:var(--ui);font-size:13px;display:flex;gap:18px}
   .topbar nav a{color:var(--ink-soft);text-decoration:none}
-  .topbar nav a:hover{color:var(--teal)}
-  @media(max-width:640px){.topbar nav{display:none}}
+  .topbar nav a:hover{color:var(--accent)}
+  @media(max-width:760px){.topbar nav{display:none}}
+  .theme-toggle{border:1px solid var(--line);border-radius:5px;padding:3px 9px;font-size:13px;background:none;cursor:pointer;color:var(--ink-soft);font-family:var(--ui)}
+  .theme-toggle:hover{border-color:var(--line-strong);color:var(--ink)}
 
-  /* hero */
-  .hero{padding:60px 0 16px}
-  .eyebrow{font-family:var(--ui);text-transform:uppercase;letter-spacing:.16em;font-size:11.5px;font-weight:600;color:var(--teal);margin-bottom:20px}
-  h1{font-family:var(--ui);font-weight:700;font-size:clamp(30px,5.2vw,48px);line-height:1.06;letter-spacing:-.032em;margin-bottom:22px;color:var(--ink);text-wrap:balance}
-  .lede{font-size:20px;line-height:1.58;color:var(--ink-soft);margin-bottom:30px;max-width:36em}
-  .meta{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;font-family:var(--ui);font-size:13px;color:var(--ink-faint);padding-bottom:8px}
-  .meta .sep{width:4px;height:4px;border-radius:50%;background:var(--line-strong)}
-  .tag{font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--red);border:1px solid rgba(229,72,77,.35);background:rgba(229,72,77,.06);padding:3px 9px;border-radius:100px}
-
-  /* differential card */
-  .diffcard{
-    margin:34px 0 8px;background:linear-gradient(180deg,#0C1A30 0%,#0A1526 100%);
-    border-radius:16px;padding:26px 26px 24px;box-shadow:var(--shadow);color:#E8EEF6;position:relative;overflow:hidden;
-  }
-  .diffcard .dc-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
-  .diffcard .dc-title{font-family:var(--ui);font-weight:600;font-size:13px;letter-spacing:.02em;color:#9FB2C9}
-  .dc-turn{font-family:var(--mono);font-size:12px;color:#6B80A0}
-  .bar{display:grid;grid-template-columns:160px 1fr 46px;align-items:center;gap:14px;margin:11px 0;font-family:var(--ui)}
-  .bar .lab{font-size:13.5px;color:#CFD9E6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bar .track{height:9px;border-radius:100px;background:rgba(255,255,255,.07);overflow:hidden}
-  .bar .fill{height:100%;border-radius:100px;transform-origin:left;animation:grow 1.1s cubic-bezier(.2,.7,.2,1) both}
-  .bar .val{font-family:var(--mono);font-size:12.5px;text-align:right;color:#9FB2C9;font-variant-numeric:tabular-nums}
-  .bar.em .lab{color:#FF9EA1}
-  .fill.f-red{background:linear-gradient(90deg,#E5484D,#FF7A7E)}
-  .fill.f-teal{background:linear-gradient(90deg,#00B4D8,#4FD3EE)}
-  .fill.f-slate{background:linear-gradient(90deg,#59708F,#8CA0BC)}
-  .fill.f-amber{background:linear-gradient(90deg,#B9781A,#E09540)}
-  @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-  .dc-foot{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--ui);font-size:12.5px;color:#8497AE;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .dc-foot .pill{font-family:var(--mono);font-size:11px;color:#0A1526;background:#00B4D8;padding:2px 8px;border-radius:5px;font-weight:600}
-
-  /* toc */
-  .toc h4{font-family:var(--ui);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;font-weight:600}
+  .toc h4{font-family:var(--ui);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;font-weight:600}
   .toc ol{list-style:none;counter-reset:toc}
-  .toc li{counter-increment:toc;margin-bottom:3px}
-  .toc a{
-    font-family:var(--ui);font-size:13px;line-height:1.35;color:var(--ink-soft);text-decoration:none;
-    display:grid;grid-template-columns:22px 1fr;gap:6px;padding:5px 8px;border-radius:7px;transition:background .15s,color .15s;
-  }
-  .toc a::before{content:counter(toc,decimal-leading-zero);font-family:var(--mono);font-size:11px;color:var(--ink-faint);padding-top:1px}
+  .toc li{counter-increment:toc;margin-bottom:2px}
+  .toc a{font-family:var(--ui);font-size:12.8px;line-height:1.35;color:var(--ink-soft);text-decoration:none;display:grid;grid-template-columns:20px 1fr;gap:6px;padding:5px 8px;border-radius:6px}
+  .toc a::before{content:counter(toc,decimal-leading-zero);font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);padding-top:1px}
   .toc a:hover{background:var(--paper-2);color:var(--ink)}
-  .toc a.active{background:rgba(0,180,216,.09);color:var(--teal)}
-  .toc a.active::before{color:var(--teal)}
+  .toc a.active{color:var(--accent);font-weight:600}
+  .toc a.active::before{color:var(--accent)}
 
-  /* article */
-  article{padding-bottom:40px}
-  article h2{
-    font-family:var(--ui);font-weight:700;font-size:26px;letter-spacing:-.02em;line-height:1.16;
-    margin:60px 0 6px;padding-top:14px;color:var(--ink);scroll-margin-top:80px;text-wrap:balance;
-  }
-  article h2 .num{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--teal);display:block;margin-bottom:9px;letter-spacing:0}
-  article h3{font-family:var(--ui);font-weight:600;font-size:18px;letter-spacing:-.01em;margin:32px 0 6px;color:var(--ink)}
-  article p{margin:16px 0}
-  article a.ref{color:var(--teal);text-decoration:none;border-bottom:1px solid rgba(6,123,144,.3)}
-  article a.ref:hover{border-color:var(--teal)}
+  .hero{padding:48px 0 32px;text-align:left}
+  .eyebrow,.kicker{font-family:var(--ui);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);display:block;margin-bottom:14px;font-weight:600}
+  .hero h1{font-family:var(--ui);font-weight:700;font-size:clamp(28px,4.6vw,42px);line-height:1.18;letter-spacing:-.02em;color:var(--ink);text-wrap:balance;margin-bottom:18px}
+  .hero .lede{font-family:var(--serif);font-size:18px;line-height:1.7;color:var(--ink-soft);max-width:640px}
+  .meta{display:flex;flex-wrap:wrap;gap:9px 16px;align-items:center;font-family:var(--ui);font-size:12.5px;color:var(--ink-faint);margin-top:20px}
+  .meta .sep{width:3px;height:3px;border-radius:50%;background:var(--line-strong)}
+
+  article h2{font-family:var(--ui);font-size:19px;font-weight:650;letter-spacing:-.005em;border-top:1px solid var(--line);padding-top:26px;margin-top:54px;color:var(--ink);scroll-margin-top:80px;text-wrap:balance}
+  article h2 .num{display:inline-block;font-family:var(--mono);font-size:12.5px;color:var(--ink-faint);font-weight:500;margin-right:7px}
+  article h3{font-family:var(--ui);font-weight:600;font-size:15.5px;margin:30px 0 8px;color:var(--ink)}
+  article p{margin:15px 0}
+  article > p.lead-p{font-size:18px}
   strong{font-weight:600;color:var(--ink)}
   em.term{font-style:italic;color:var(--ink)}
-  code{font-family:var(--mono);font-size:.82em;background:var(--paper-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#0B4C5A}
-  .kicker{font-family:var(--ui);font-size:14px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.14em;font-weight:600;margin-bottom:30px}
+  code{font-family:var(--mono);font-size:.82em;background:var(--code-bg);border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:var(--code-text)}
 
-  /* lists */
-  ul.clean{list-style:none;padding:0;margin:18px 0}
-  ul.clean li{position:relative;padding-left:26px;margin:10px 0;font-size:18px}
-  ul.clean li::before{content:"";position:absolute;left:2px;top:12px;width:7px;height:7px;border-radius:2px;background:var(--teal-bright)}
+  ul.clean{list-style:none;padding:0;margin:16px 0}
+  ul.clean li{position:relative;padding-left:22px;margin:9px 0;font-size:16.5px;line-height:1.6}
+  ul.clean li::before{content:"";position:absolute;left:2px;top:11px;width:6px;height:6px;border-radius:1px;background:var(--accent)}
 
-  /* callout */
-  .callout{margin:28px 0;padding:20px 24px;border-radius:12px;background:var(--paper-2);border:1px solid var(--line);border-left:3px solid var(--teal-bright)}
-  .callout .c-lab{font-family:var(--ui);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--teal);margin-bottom:8px}
-  .callout p{margin:0;font-size:17.5px}
-  .callout p+p{margin-top:10px}
+  .callout{margin:24px 0;padding:14px 18px;border-radius:0;background:var(--paper-2);border-left:2px solid var(--line-strong)}
+  .callout.accent{border-left-color:var(--accent)}
   .callout.warn{border-left-color:var(--red)}
-  .callout.warn .c-lab{color:var(--red)}
-  .callout.warn{background:rgba(229,72,77,.04)}
   .callout.green{border-left-color:var(--green)}
-  .callout.green .c-lab{color:var(--green)}
-  .callout.amber{border-left-color:var(--amber)}
-  .callout.amber .c-lab{color:var(--amber)}
+  .c-lab{display:block;font-family:var(--ui);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;color:var(--ink-faint);font-weight:600}
+  .callout.accent .c-lab{color:var(--accent)}
+  .callout p{margin:0;font-size:15.5px;color:var(--ink-soft)}
+  .callout p+p{margin-top:8px}
 
-  /* code block */
-  pre{
-    margin:24px 0;background:var(--code-bg);color:var(--code-text);border-radius:12px;padding:20px 22px;overflow-x:auto;
-    font-family:var(--mono);font-size:13px;line-height:1.75;box-shadow:var(--shadow);
-  }
-  pre .cm{color:#5B7093}
-  pre .ky{color:#5FD0EA}
-  pre .st{color:#9BE7B4}
-  pre .nm{color:#F0B37E}
-  pre .fn{color:#C8A2F8}
-  pre .op{color:#8CA0BC}
-  .pre-label{font-family:var(--ui);font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin:24px 0 4px}
-
-  /* tables */
-  .tbl-wrap{margin:26px 0;overflow-x:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
-  table{border-collapse:collapse;width:100%;font-size:15px;font-family:var(--ui)}
-  caption{caption-side:top;text-align:left;font-family:var(--ui);font-size:12px;color:var(--ink-faint);padding:0 0 10px;letter-spacing:.02em}
-  th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
-  thead th{background:var(--paper-2);font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft)}
-  tbody tr:last-child td{border-bottom:none}
+  .tbl-wrap{margin:22px 0;overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+  table{border-collapse:collapse;width:100%;font-family:var(--ui);font-size:13.5px}
+  th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);background:var(--paper-2);border:1px solid var(--line);padding:9px 13px;font-weight:600}
+  td{border:1px solid var(--line);padding:9px 13px;vertical-align:top;color:var(--ink-soft)}
+  td:first-child{color:var(--ink)}
+  tbody tr:last-child td{border-bottom:1px solid var(--line)}
   td strong{color:var(--ink)}
-  .mono-cell{font-family:var(--mono);font-size:13px;color:var(--teal)}
 
-  /* chips */
-  .chip{display:inline-block;font-family:var(--ui);font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:100px;letter-spacing:.02em}
-  .chip.done{color:var(--green);background:rgba(14,159,110,.1)}
-  .chip.active{color:var(--amber);background:rgba(185,120,26,.12)}
-  .chip.soon{color:var(--ink-faint);background:var(--paper-2)}
-
-  /* figure */
-  figure{margin:34px 0}
-  figure svg{width:100%;height:auto;display:block;background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
-  figcaption{font-family:var(--ui);font-size:13px;color:var(--ink-faint);margin-top:12px;text-align:center}
-
-  /* step list */
-  .steps{counter-reset:step;margin:22px 0;padding:0;list-style:none}
-  .steps li{counter-increment:step;position:relative;padding:16px 0 16px 56px;border-bottom:1px solid var(--line)}
+  .steps{counter-reset:step;margin:20px 0;padding:0;list-style:none}
+  .steps li{counter-increment:step;position:relative;padding:14px 0 14px 46px;border-bottom:1px solid var(--line)}
   .steps li:last-child{border-bottom:none}
-  .steps li::before{
-    content:counter(step);position:absolute;left:0;top:14px;
-    width:34px;height:34px;border-radius:9px;background:var(--paper-2);border:1px solid var(--line-strong);
-    font-family:var(--ui);font-weight:700;font-size:14px;color:var(--teal);
-    display:flex;align-items:center;justify-content:center;
-  }
-  .steps li b{font-family:var(--ui);font-weight:600;font-size:16px;color:var(--ink);display:block;margin-bottom:3px}
-  .steps li span{font-size:16.5px;color:var(--ink-soft)}
+  .steps li::before{content:counter(step);position:absolute;left:0;top:14px;width:26px;height:26px;border-radius:50%;background:var(--paper-2);border:1px solid var(--line-strong);font-family:var(--ui);font-weight:600;font-size:11px;color:var(--ink-soft);display:flex;align-items:center;justify-content:center}
+  .steps li b{font-family:var(--ui);font-weight:600;font-size:15px;color:var(--ink);display:block;margin-bottom:3px}
+  .steps li span{font-size:15.5px;color:var(--ink-soft)}
   .steps li code{font-size:12px}
 
-  /* component breakdown */
-  .component-list{display:flex;flex-direction:column;gap:0;margin:24px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
-  .comp-item{display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--line)}
+  .component-list{display:flex;flex-direction:column;gap:0;margin:22px 0;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .comp-item{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid var(--line)}
   .comp-item:last-child{border-bottom:none}
-  .comp-label{background:var(--paper-2);padding:18px 18px;border-right:1px solid var(--line)}
-  .comp-tag{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
-  .comp-name{font-family:var(--ui);font-size:14px;font-weight:700;color:var(--ink);line-height:1.2}
-  .comp-impl{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-top:5px}
-  .comp-body{padding:16px 20px;font-size:16.5px;color:var(--ink-soft);line-height:1.55}
-  .comp-body strong{color:var(--ink)}
+  @media(max-width:640px){.comp-item{grid-template-columns:1fr}.comp-label{border-bottom:1px solid var(--line)!important;border-right:none!important}}
+  .comp-label{background:var(--paper-2);padding:16px 16px;border-right:1px solid var(--line)}
+  .comp-tag{font-family:var(--ui);font-size:11px;font-weight:600;color:var(--ink-soft);letter-spacing:.04em}
+  .comp-name{font-family:var(--ui);font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.25;margin-top:4px}
+  .comp-body{padding:15px 18px;font-family:var(--serif);font-size:15px;color:var(--ink-soft);line-height:1.58}
   .comp-body code{font-size:12px}
-  @media(max-width:640px){.comp-item{grid-template-columns:1fr}.comp-label{border-right:none;border-bottom:1px solid var(--line)}}
 
-  /* exemplar anatomy */
-  .anatomy{background:var(--code-bg);border-radius:12px;overflow:hidden;margin:24px 0;box-shadow:var(--shadow)}
-  .anatomy-head{padding:10px 18px;background:color-mix(in srgb,var(--code-bg) 60%,#101F35);border-bottom:1px solid rgba(255,255,255,.07);font-family:var(--mono);font-size:12px;color:#6B80A0;display:flex;justify-content:space-between;align-items:center}
-  .anatomy-head span{font-size:11px;color:#3D5270}
-  .anatomy-body{padding:18px 20px}
-  .af{display:grid;grid-template-columns:140px 1fr;gap:8px 14px;margin:6px 0;font-family:var(--ui);font-size:13.5px}
-  .af .fk{color:#5FD0EA;font-family:var(--mono);font-size:12.5px}
-  .af .fv{color:#D5DEEB}
-  .af .fv.st{color:#9BE7B4}
-  .af .fv.nm{color:#F0B37E}
-  .af .ann{color:#5B7093;font-size:12px;grid-column:2;margin-top:-5px;font-family:var(--ui)}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:9px;margin:18px 0}
+  .mcard{background:var(--paper-2);border:1px solid var(--line);border-radius:4px;padding:13px 14px;text-align:center}
+  .mcard .mv{font-family:var(--ui);font-size:23px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1}
+  .mcard .ml{font-family:var(--ui);font-size:11px;color:var(--ink-soft);margin-top:5px;line-height:1.3}
 
-  /* turn trace */
-  .turn-trace{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:24px 0}
-  .tt-head{padding:10px 18px;background:var(--paper-3);border-bottom:1px solid var(--line);font-family:var(--ui);font-size:12px;font-weight:600;color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase}
-  .tt-row{display:grid;grid-template-columns:70px 1fr;border-bottom:1px solid var(--line)}
-  .tt-row:last-child{border-bottom:none}
-  .tt-n{padding:14px 18px;background:var(--paper-3);font-family:var(--mono);font-size:12px;color:var(--teal);font-weight:600;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;justify-content:flex-start;padding-top:16px}
-  .tt-n small{color:var(--ink-faint);font-family:var(--ui);font-size:10px;font-weight:400}
-  .tt-body{padding:14px 18px}
-  .tt-label{font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px}
-  .tt-q{font-size:16px;color:var(--ink);font-family:var(--ui);font-weight:600}
-  .tt-a{font-size:15.5px;color:var(--ink-soft);margin-top:8px}
-  .tt-diff{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
-  .tt-dx{font-family:var(--mono);font-size:11.5px;color:var(--teal);background:rgba(6,123,144,.1);border:1px solid rgba(6,123,144,.2);padding:2px 8px;border-radius:5px;font-variant-numeric:tabular-nums}
-  .tt-dx.hi{color:#E5484D;background:rgba(229,72,77,.08);border-color:rgba(229,72,77,.2)}
-
-  /* schema card */
-  .schema-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0}
-  @media(max-width:700px){.schema-grid{grid-template-columns:1fr}}
-  .scard{background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:16px}
-  .scard h4{font-family:var(--ui);font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:.01em}
-  .sfield{display:flex;flex-direction:column;gap:1px;margin:6px 0;font-size:13px}
-  .sfield .fn{font-family:var(--mono);font-size:12px;color:var(--teal)}
-  .sfield .ft{font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
-
-  /* metric row */
-  .metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:20px 0}
-  .mcard{background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;text-align:center}
-  .mcard .mv{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--teal-bright);font-variant-numeric:tabular-nums;line-height:1}
-  .mcard .ml{font-family:var(--ui);font-size:12px;color:var(--ink-faint);margin-top:5px;line-height:1.3}
-
-  /* provider chain */
-  .chain{display:flex;align-items:center;gap:0;margin:20px 0;flex-wrap:wrap}
-  .chain-item{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);padding:6px 12px;border-radius:0;flex:1;text-align:center;min-width:120px}
-  .chain-item:first-child{border-radius:8px 0 0 8px}
-  .chain-item:last-child{border-radius:0 8px 8px 0}
-  .chain-arrow{font-size:14px;color:var(--ink-faint);flex-shrink:0;padding:0 4px}
-  .chain-item .cl{font-size:10px;color:var(--ink-faint);display:block;font-family:var(--ui);margin-top:2px}
-
-  /* rule chips inline */
-  .rule-row{display:flex;flex-direction:column;gap:14px;margin:20px 0}
-  .rule-item{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:flex-start}
-  .rule-num{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--teal);padding-top:2px}
-  .rule-body{font-size:17px;color:var(--ink-soft)}
-  .rule-body strong{color:var(--ink)}
-
-  /* routing */
-  .routing-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0}
+  .routing-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}
   @media(max-width:600px){.routing-flow{grid-template-columns:1fr}}
-  .rcard{border:1px solid var(--line);border-radius:10px;padding:16px;background:var(--paper-2)}
-  .rcard .rc-label{font-family:var(--ui);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-faint);margin-bottom:10px}
-  .rcard .rc-val{font-family:var(--ui);font-size:15px;font-weight:600;color:var(--ink);line-height:1.3}
-  .rcard .rc-sub{font-size:13px;color:var(--ink-faint);margin-top:4px}
-  .rcard.danger{border-color:rgba(229,72,77,.35);background:rgba(229,72,77,.04)}
+  .rcard{border:1px solid var(--line);border-radius:4px;padding:14px;background:var(--paper-2)}
+  .rcard .rc-label{font-family:var(--ui);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:8px}
+  .rcard .rc-val{font-family:var(--ui);font-size:14px;font-weight:600;color:var(--ink);line-height:1.3}
+  .rcard .rc-sub{font-size:12.5px;color:var(--ink-faint);margin-top:4px}
+  .rcard.danger{border-left:2px solid var(--red)}
   .rcard.danger .rc-label{color:var(--red)}
-  .rcard.safe{border-color:rgba(14,159,110,.3);background:rgba(14,159,110,.04)}
+  .rcard.safe{border-left:2px solid var(--green)}
   .rcard.safe .rc-label{color:var(--green)}
 
-  hr.rule{border:none;border-top:1px solid var(--line);margin:44px 0}
+  .chip{display:inline-block;font-family:var(--ui);font-size:10.8px;font-weight:600;padding:2px 9px;border-radius:100px;letter-spacing:.02em}
+  .chip.done{color:var(--green);background:color-mix(in srgb, var(--green) 14%, transparent)}
+  .chip.active{color:var(--amber);background:color-mix(in srgb, var(--amber) 14%, transparent)}
+  .chip.soon{color:var(--ink-faint);background:var(--paper-2)}
 
-  /* footer */
-  footer{border-top:1px solid var(--line);margin-top:60px;padding:40px 0 80px}
-  footer .fnote{font-family:var(--ui);font-size:13.5px;color:var(--ink-faint);max-width:42em;line-height:1.6}
-  footer .cite{margin-top:22px;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.7}
-
-  /* theme toggle button */
-  .theme-toggle{
-    display:flex;align-items:center;justify-content:center;
-    width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
-    background:var(--paper-2);cursor:pointer;
-    font-size:16px;line-height:1;flex-shrink:0;
-    transition:background .2s,border-color .2s;
-    color:var(--ink-soft);
-  }
-  .theme-toggle:hover{background:var(--paper-3);border-color:var(--line-strong);color:var(--ink)}
-  .theme-toggle:focus-visible{outline:2px solid var(--teal-bright);outline-offset:2px}
-  /* body colour transitions so the flip feels smooth */
-  body,
-  .topbar,
-  article h2,article h3,article p,strong,
-  .callout,.tbl-wrap,pre,.anatomy,.turn-trace,
-  .component-list,.scard,.mcard,.rcard,.chain-item,.sv-card{
-    transition:background .22s,border-color .22s,color .18s,box-shadow .22s;
-  }
-
-  /* ═══════════════════════════════════════════
-     ACADEMIC REDESIGN
-     Minimal editorial — serif body, clean layout
-     ═══════════════════════════════════════════ */
-
-  /* Token overrides — neutral palette, single accent */
-  :root{
-    --paper:#FAFAFA;
-    --paper-2:#F2F2F2;
-    --paper-3:#E8E8E8;
-    --ink:#1A1A1A;
-    --ink-soft:#4A4A4A;
-    --ink-faint:#888;
-    --line:#DEDEDE;
-    --line-strong:#C0C0C0;
-    --teal:#2563EB;
-    --teal-bright:#2563EB;
-    --topbar-bg:rgba(250,250,250,.94);
-    --code-bg:#F0F0F0;
-    --code-text:#1A1A1A;
-    --shadow:none;
-    --body-glow:none;
-  }
-  @media(prefers-color-scheme:dark){
-    :root{
-      --paper:#141414;
-      --paper-2:#1E1E1E;
-      --paper-3:#282828;
-      --ink:#E4E4E4;
-      --ink-soft:#ABABAB;
-      --ink-faint:#666;
-      --line:#2E2E2E;
-      --line-strong:#444;
-      --teal:#60A5FA;
-      --teal-bright:#60A5FA;
-      --topbar-bg:rgba(20,20,20,.94);
-      --code-bg:#1E1E1E;
-      --code-text:#D4D4D4;
-      --shadow:none;
-      --body-glow:none;
-    }
-  }
-  :root[data-theme="dark"]{
-    --paper:#141414;--paper-2:#1E1E1E;--paper-3:#282828;
-    --ink:#E4E4E4;--ink-soft:#ABABAB;--ink-faint:#666;
-    --line:#2E2E2E;--line-strong:#444;
-    --teal:#60A5FA;--teal-bright:#60A5FA;
-    --topbar-bg:rgba(20,20,20,.94);
-    --code-bg:#1E1E1E;--code-text:#D4D4D4;
-    --shadow:none;--body-glow:none;
-  }
-  :root[data-theme="light"]{
-    --paper:#FAFAFA;--paper-2:#F2F2F2;--paper-3:#E8E8E8;
-    --ink:#1A1A1A;--ink-soft:#4A4A4A;--ink-faint:#888;
-    --line:#DEDEDE;--line-strong:#C0C0C0;
-    --teal:#2563EB;--teal-bright:#2563EB;
-    --topbar-bg:rgba(250,250,250,.94);
-    --code-bg:#F0F0F0;--code-text:#1A1A1A;
-    --shadow:none;--body-glow:none;
-  }
-
-  /* Fonts — serif body */
-  body{
-    font-family:Georgia,'Times New Roman',serif;
-    font-size:17px;
-    line-height:1.82;
-    background-image:none;
-  }
-
-  /* Topbar — slim, minimal */
-  .topbar{
-    height:auto;
-    padding:13px 40px;
-    box-shadow:none;
-  }
-  .brand{font-size:14px;font-weight:600;letter-spacing:.01em;font-family:system-ui,-apple-system,sans-serif}
-  .nav-link{font-size:13px;font-family:system-ui,-apple-system,sans-serif}
-  .theme-toggle{border:1px solid var(--line);border-radius:5px;padding:3px 9px;font-size:13px;background:none;cursor:pointer;color:var(--ink-soft)}
-
-  /* Hero */
-  .hero{padding:52px 0 36px;text-align:left}
-  .hero h1{font-size:1.9rem;font-weight:700;line-height:1.25;letter-spacing:-.015em;font-family:system-ui,-apple-system,sans-serif}
-  .hero .lead{font-family:Georgia,'Times New Roman',serif;font-size:1rem;line-height:1.75;color:var(--ink-soft);max-width:600px}
-
-  /* Kicker */
-  .kicker{font-family:system-ui,sans-serif;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);display:block;margin-bottom:14px;border-left:none;padding-left:0}
-
-  /* Section headings — top rule + inline num */
-  article h2{
-    font-family:system-ui,-apple-system,sans-serif;
-    font-size:1.08rem;
-    font-weight:650;
-    letter-spacing:-.005em;
-    padding-left:0;
-    border-left:none;
-    border-top:1px solid var(--line);
-    padding-top:28px;
-    margin-top:60px;
-  }
-  article h2 .num{
-    display:inline;
-    font-size:.78rem;
-    color:var(--ink-faint);
-    font-weight:500;
-    margin-right:6px;
-  }
-  article h2 .num::after{display:none}
-  article h3{
-    font-family:system-ui,-apple-system,sans-serif;
-    font-size:.95rem;
-    font-weight:600;
-  }
-  article h3::after{display:none}
-
-  /* Code blocks — plain, light bg */
-  pre{
-    background-color:var(--code-bg);
-    background-image:none;
-    color:var(--code-text);
-    border:1px solid var(--line);
-    border-radius:4px;
-    padding:18px 20px;
-    box-shadow:none;
-    font-size:12.5px;
-    line-height:1.65;
-  }
-  code{background:var(--code-bg);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-size:.82em;color:var(--code-text)}
-  .pre-label{font-family:system-ui,sans-serif;font-size:.72rem;color:var(--ink-faint);display:block;margin-bottom:6px;letter-spacing:.04em}
-  .pre-label::before{display:none}
-
-  /* Bilingual conversation demo */
   .lang-picker{display:flex;align-items:center;gap:10px;margin:20px 0 0}
-  .lang-picker label{font-family:system-ui,sans-serif;font-size:.78rem;color:var(--ink-faint)}
-  .lang-picker select{font-family:system-ui,sans-serif;font-size:.84rem;padding:5px 10px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);cursor:pointer;appearance:auto}
-  .bilingual-demo{border:1px solid var(--line);border-radius:4px;overflow:hidden;margin:12px 0 28px;font-size:.88rem}
-  .bd-header{background:var(--paper-2);border-bottom:1px solid var(--line);padding:9px 16px;font-family:system-ui,sans-serif;font-size:.7rem;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+  .lang-picker label{font-family:var(--ui);font-size:12.5px;color:var(--ink-faint)}
+  .lang-picker select{font-family:var(--ui);font-size:13.5px;padding:6px 11px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);cursor:pointer}
+  .bilingual-demo{border:1px solid var(--line);border-radius:4px;overflow:hidden;margin:12px 0 28px;font-size:14px}
+  .bd-header{background:var(--paper-2);border-bottom:1px solid var(--line);padding:10px 16px;font-family:var(--ui);font-size:11px;color:var(--ink-faint);letter-spacing:.07em;text-transform:uppercase;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .bd-header span{color:var(--ink-soft);font-weight:600}
   .bd-turn{padding:14px 18px;border-bottom:1px solid var(--line)}
   .bd-turn:last-child{border-bottom:none}
   .bd-turn.doctor{background:var(--paper)}
   .bd-turn.patient{background:var(--paper-2)}
-  .bd-role{font-family:system-ui,sans-serif;font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px;display:flex;align-items:center;gap:6px}
-  .bd-lang{font-family:system-ui,sans-serif;font-size:.6rem;padding:1px 5px;border-radius:3px;border:1px solid var(--line);color:var(--ink-faint);background:var(--paper-3);font-weight:500;letter-spacing:.04em}
-  .bd-primary{font-family:Georgia,'Times New Roman',serif;color:var(--ink);line-height:1.5;margin-bottom:5px}
-  .bd-translation{font-family:system-ui,sans-serif;font-size:.78rem;color:var(--ink-faint);font-style:italic}
-  .bd-translation::before{content:'→ ';opacity:.5}
+  .bd-role{font-family:var(--ui);font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .bd-lang{font-family:var(--ui);font-size:10px;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink-faint);background:var(--paper-3);font-weight:500;letter-spacing:.03em}
+  .bd-primary{font-family:var(--serif);color:var(--ink);line-height:1.5;margin-bottom:5px;font-size:15px}
+  .bd-translation{font-family:var(--ui);font-size:12.5px;color:var(--ink-faint);font-style:italic}
+  .bd-translation::before{content:'\2192  ';opacity:.6}
 
-  /* Callouts — simple left rule, no icons */
-  .callout{background:var(--paper-2);border-left:2px solid var(--line-strong);border-radius:0;padding:14px 18px;backdrop-filter:none}
-  .callout.warn{border-left-color:#C05621}
-  .callout.green{border-left-color:#276749}
-  .callout.amber{border-left-color:#975A16}
-  .c-lab{display:block;font-family:system-ui,sans-serif;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
-  .callout .c-lab::before{display:none}
+  hr.rule{border:none;border-top:1px solid var(--line);margin:40px 0}
 
-  /* DiffCard — academic bordered box */
-  .diffcard{background:var(--paper-2);border:1px solid var(--line);border-radius:6px;box-shadow:none}
-  .dc-side.old,.dc-side.new{background:transparent}
-  .dc-side.old{border-right:1px solid var(--line)}
-  .dc-label{font-family:system-ui,sans-serif;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
-  .dc-side.new .dc-label{color:var(--ink-faint)}
-  .dc-head{font-family:Georgia,serif;font-size:.95rem;color:var(--ink);font-weight:600}
-  .dc-body{color:var(--ink-soft);font-size:.85rem;font-family:Georgia,serif}
-  .dc-tag{background:var(--paper-3);color:var(--ink-soft);border:1px solid var(--line);font-family:system-ui,sans-serif;font-size:.68rem}
-  .dc-turn{border-top:1px solid var(--line)}
+  footer{border-top:1px solid var(--line);margin-top:56px;padding:36px 0 70px}
+  footer .fnote{font-family:var(--ui);font-size:13px;color:var(--ink-faint);max-width:42em;line-height:1.6}
+  footer .cite{margin-top:18px;background:var(--paper-2);border:1px solid var(--line);border-radius:4px;padding:14px 16px;font-family:var(--mono);font-size:12px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.65}
 
-  /* Component list */
-  .component-list{border:1px solid var(--line);border-radius:4px;border-left-width:1px;border-left-color:var(--line)}
-  .comp-label{background:var(--paper-2)}
-  .comp-tag{font-family:system-ui,sans-serif;font-size:.75rem;font-weight:600;color:var(--ink-soft);display:block}
-  .comp-tag::before{display:none}
-  .comp-body{font-family:Georgia,serif;font-size:.88rem}
-
-  /* Steps */
-  .steps li{padding-left:48px}
-  .steps li::before{
-    background:var(--paper-2);border:1px solid var(--line-strong);
-    color:var(--ink-soft);font-family:system-ui,sans-serif;font-size:11px;font-weight:600;
-    box-shadow:none;border-radius:50%;width:26px;height:26px;top:16px;
-  }
-  .step-label{font-family:system-ui,sans-serif;font-size:.78rem;letter-spacing:.06em;font-weight:600;color:var(--ink-faint);text-transform:uppercase}
-
-  /* Cards — no shadow, flat border */
-  .scard,.mcard,.rcard{box-shadow:none;border:1px solid var(--line);border-radius:4px;transition:none}
-  .scard:hover,.mcard:hover,.rcard:hover{transform:none;box-shadow:none;border-color:var(--line-strong)}
-  .scard h4{font-family:system-ui,sans-serif;font-size:.75rem;font-weight:600;letter-spacing:.06em;color:var(--ink-faint);text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
-
-  /* Metric values */
-  .mcard .mv{font-family:system-ui,sans-serif;background:none;-webkit-background-clip:unset;background-clip:unset;-webkit-text-fill-color:var(--teal);color:var(--teal)}
-  .mcard .ml{font-family:system-ui,sans-serif;font-size:.78rem;color:var(--ink-soft)}
-
-  /* Anatomy block */
-  .anatomy{border:1px solid var(--line);border-radius:4px;background:var(--code-bg);color:var(--code-text)}
-  .anatomy-head{font-family:system-ui,sans-serif;background:var(--paper-3);border-bottom:1px solid var(--line)}
-  .tt-q,.tt-a{font-family:Georgia,serif;font-size:.88rem}
-
-  /* Turn trace */
-  .turn-trace{border:1px solid var(--line);border-radius:4px}
-  .turn-trace th{font-family:system-ui,sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.06em;color:var(--ink-faint);text-transform:uppercase;border:1px solid var(--line);background:var(--paper-2)}
-  .turn-trace td{border:1px solid var(--line);font-family:Georgia,serif;font-size:.85rem}
-
-  /* Tables */
-  table{border-collapse:collapse;font-family:system-ui,sans-serif;font-size:.85rem}
-  th{font-size:.72rem;letter-spacing:.04em;color:var(--ink-faint);background:var(--paper-2);border:1px solid var(--line);padding:8px 12px;font-weight:600}
-  td{border:1px solid var(--line);padding:8px 12px}
-
-  /* Chain */
-  .chain{font-family:system-ui,sans-serif}
-  .chain-step{background:var(--paper-2);border:1px solid var(--line);border-radius:4px}
-  .chain-arrow{color:var(--ink-faint)}
-
-  /* Routing cards */
-  .rcard.danger{border-left:2px solid #C05621}
-  .rcard.safe{border-left:2px solid #276749}
-  .routing-flow .rcard:hover{transform:none;box-shadow:none}
-
-  /* TOC */
-  .toc a{font-family:system-ui,sans-serif;font-size:.8rem}
-  .toc a.active{color:var(--teal);font-weight:600;background:none}
-  @media(min-width:1080px){.toc-col{border-right:1px solid var(--line);padding-right:12px}}
-
-  /* Figure */
-  figure{overflow-x:auto}
-  figure svg{min-width:480px}
-  figcaption{font-family:system-ui,sans-serif;font-size:.78rem;color:var(--ink-faint)}
-
-  @media(prefers-reduced-motion:reduce){
-    *{animation:none!important;transition:none!important}
-    html{scroll-behavior:auto}
-  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}
 </style>
 
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="#top"><span class="dot"></span>DiffDx <em>/ engineering notes</em></a>
+    <a class="brand" href="#top"><span class="dot"></span>DiffDx <em>/ field guide</em></a>
     <nav>
-      <a href="#loop1">Loop 1</a>
-      <a href="#icl">ICL</a>
-      <a href="#loop2">Loop 2</a>
-      <a href="#loop3">Loop 3</a>
-      <a href="#web">Product</a>
+      <a href="#loops">Architecture</a>
+      <a href="#journey">Journey</a>
+      <a href="#after">After booking</a>
+      <a href="#portals">Portals</a>
+      <a href="#deploy">Deploy</a>
+      <a href="architecture-notes.html">RL deep-dive →</a>
     </nav>
     <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode" title="Toggle theme">☀</button>
   </div>
@@ -607,708 +184,299 @@
     <nav class="toc">
       <h4>Contents</h4>
       <ol>
-        <li><a href="#why">Sparse rewards</a></li>
-        <li><a href="#a2c">Actor-Critic for language</a></li>
-        <li><a href="#arch">Architecture at a glance</a></li>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#loops">Three loops, one session</a></li>
         <li><a href="#loop1">Loop 1 — the doctor turn</a></li>
-        <li><a href="#reasoning">Nine-step reasoning chain</a></li>
-        <li><a href="#profile">PatientProfile &amp; updater</a></li>
-        <li><a href="#icl">Teaching by example (ICL)</a></li>
-        <li><a href="#retrieval">FAISS + MMR retrieval</a></li>
-        <li><a href="#prompts">The prompt system</a></li>
-        <li><a href="#compress">Keeping context small</a></li>
         <li><a href="#loop2">Loop 2 — the critic</a></li>
-        <li><a href="#ddxplus">DDXPlus evaluation</a></li>
         <li><a href="#loop3">Loop 3 — routing</a></li>
-        <li><a href="#web">From pipeline to product</a></li>
-        <li><a href="#multilingual">Ten languages via Sarvam AI</a></li>
+        <li><a href="#journey">A session, start to finish</a></li>
+        <li><a href="#disclosure">The patient-safe report</a></li>
+        <li><a href="#after">Life after booking</a></li>
+        <li><a href="#portals">Three portals</a></li>
+        <li><a href="#admin">Inside the admin console</a></li>
+        <li><a href="#data">Data model</a></li>
+        <li><a href="#auth">Auth &amp; access control</a></li>
+        <li><a href="#lang">Ten languages, one model</a></li>
+        <li><a href="#stack">Tech stack</a></li>
+        <li><a href="#deploy">Deployment</a></li>
         <li><a href="#decisions">Decisions that paid off</a></li>
-        <li><a href="#open">Open problems</a></li>
+        <li><a href="#open">What's still open</a></li>
       </ol>
     </nav>
   </aside>
 
   <main class="col-main">
     <section class="hero">
-      <p class="eyebrow">System deep-dive</p>
-      <h1>Dense feedback for sparse rewards</h1>
-      <p class="lede">A correct diagnosis arrives once, at the very end of a conversation that can run fifteen questions deep. DiffDx borrows a trick from reinforcement learning — a separate critic that scores every turn — and builds a full three-loop diagnostic pipeline around it.</p>
+      <span class="eyebrow">Complete reference</span>
+      <h1>The DiffDx field guide</h1>
+      <p class="lede">Not the pitch, not the research note — the whole thing. How a conversation becomes a
+        differential, how a differential becomes a specialist recommendation instead of a diagnosis, and
+        everything the product actually does once a patient has a doctor of their own.</p>
       <div class="meta">
-        <span>Build log</span><span class="sep"></span>
-        <span>~28 min read</span><span class="sep"></span>
-        <span>Architecture &amp; internals</span><span class="sep"></span>
-      </div>
-
-      <div class="diffcard" aria-label="Example differential after four turns">
-        <div class="dc-head">
-          <span class="dc-title">Working differential — Actor-Critic state snapshot</span>
-          <span class="dc-turn">turn 04 · conf 0.42 · actor: llama-3.1-8b</span>
-        </div>
-        <div class="bar em"><span class="lab">Pulmonary embolism</span><span class="track"><span class="fill f-red" style="width:55%"></span></span><span class="val">0.55</span></div>
-        <div class="bar"><span class="lab">Pneumonia</span><span class="track"><span class="fill f-teal" style="width:30%;animation-delay:.12s"></span></span><span class="val">0.30</span></div>
-        <div class="bar"><span class="lab">Musculoskeletal</span><span class="track"><span class="fill f-slate" style="width:10%;animation-delay:.24s"></span></span><span class="val">0.10</span></div>
-        <div class="bar"><span class="lab">Pericarditis</span><span class="track"><span class="fill f-amber" style="width:5%;animation-delay:.36s"></span></span><span class="val">0.05</span></div>
-        <div class="dc-foot">
-          <span class="pill">safety override</span>
-          <span>PE at 0.55 routes to emergency care — a 20% emergency still beats an 80% benign lead</span>
-          <span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:#5B7093">reward: Q=0.87 D=0.79 R=0.82</span>
-        </div>
+        <span>Reference</span><span class="sep"></span>
+        <span>~20 min read</span><span class="sep"></span>
+        <span>Architecture + product, end to end</span>
       </div>
     </section>
 
     <article>
-      <p class="kicker">DiffDx is a multi-turn diagnostic dialogue system built on an Actor-Critic loop. A doctor model interviews a patient to build a ranked differential; a critic grades every question; a router turns the result into a specialty referral. Here is how every piece works — and why it is shaped the way it is.</p>
+      <p class="kicker">DiffDx is a full patient-doctor telehealth product built around an AI-conducted diagnostic
+        interview. Three model roles run every session — an actor that asks questions, a critic that grades
+        them live, and a router that decides who the patient should see. Everything downstream of that —
+        booking, messaging, records, oversight — is built to the same rule: the AI proposes, a licensed human
+        confirms, and nothing is hidden from the people responsible for it.</p>
 
       <!-- 01 -->
-      <h2 id="why"><span class="num">01 — the problem</span>Sparse rewards, long dialogues</h2>
-      <p>Medical diagnosis is an awkward learning problem. The only unambiguous signal — was the final diagnosis correct? — arrives once, at the end of a conversation that can span fifteen turns. Everything before that is a sequence of questions that were either well-chosen or weren't, and there is no label at the turn level telling you which.</p>
-      <p>Training a model against that lone terminal reward is possible but wasteful. The reward is <strong>sparse</strong> (one bit, at the end) and <strong>delayed</strong> (many actions removed from the outcome). The model has to guess which of its fifteen questions deserves credit for a correct final answer — this is the classic <em class="term">credit-assignment</em> problem, and it gets worse as the episode length grows.</p>
-      <p>DiffDx sidesteps it by not trying to fine-tune yet. Instead it builds the scaffolding first: a system that runs real diagnostic dialogues and a critic that scores every turn as it happens, producing the dense intermediate feedback that a single terminal reward cannot. The data-collection architecture is the product of Loop 1 and Loop 2. Preference-tuning those critic-scored sessions is the next loop.</p>
+      <h2 id="overview"><span class="num">01 — what this is</span>One conversation, three parties</h2>
+      <p class="lead-p">A patient opens a chat, describes what's wrong, and answers questions for a few minutes.
+        Underneath, that's a live diagnostic session: an adaptive interview producing a ranked differential
+        that updates after every answer. On top of it sits everything a real clinic needs — booking a real
+        doctor, a chart that survives past the conversation, messaging, test results, and a console for the
+        people responsible for the AI's behavior in the first place.</p>
+      <p>The three parties never share one screen. A patient sees guidance. A doctor sees the full transcript
+        with the AI's own self-grading attached. An admin sees neither patient nor doctor data by default —
+        they see the system: audit trail, cost, safety recall, and a queue of anything either side has flagged.</p>
 
       <!-- 02 -->
-      <h2 id="a2c"><span class="num">02 — the framing</span>Actor-Critic, adapted for language</h2>
-      <p>The design maps standard <strong>Actor-Critic (A2C)</strong> reinforcement learning onto a diagnostic dialogue. In classic A2C, an actor generates actions in an environment, a critic estimates how good those actions are, and the advantage function measures how much better an action was than what the critic expected. The policy improves from that signal.</p>
-      <p>The translation to language is direct but requires one extension: the environment is a patient — real, or simulated from a structured record. Every session generates up to fifteen (state, action, reward) tuples, one per turn. Those tuples are the eventual training data for DPO fine-tuning. Here is what each component means concretely.</p>
-
-      <div class="component-list">
-        <div class="comp-item">
-          <div class="comp-label">
-            <div class="comp-tag">State</div>
-            <div class="comp-name">PatientProfile</div>
-            <div class="comp-impl">schemas.py</div>
-          </div>
-          <div class="comp-body">
-            The full knowledge state at the start of each turn. It accumulates across turns and is the document passed to the actor on every call. Fields: <code>demographics</code>, <code>chief_complaint</code>, <code>symptoms</code> (current only, with onset/severity), <code>history</code> (past/chronic: medical, medications, allergies, family, social), <code>ruled_out</code> and <code>ruled_in</code> (diagnoses only — not denied symptoms), <code>free_notes</code>, and <code>running_summary</code> (LLM-generated compression of older turns). The schema is locked: fields can be added, never renamed or removed, so every evaluator written today reads sessions from any prior phase without a migration.
-          </div>
-        </div>
-        <div class="comp-item">
-          <div class="comp-label">
-            <div class="comp-tag">Action</div>
-            <div class="comp-name">DoctorTurnOutput</div>
-            <div class="comp-impl">schemas.py · doctor.py</div>
-          </div>
-          <div class="comp-body">
-            The actor's output on each turn — a strict JSON object carrying: <code>turn_index</code>, <code>current_differential</code> (list of <code>{dx, prob}</code> pairs that must update from the prior turn's values), <code>biggest_uncertainty</code> (the single information gap limiting further narrowing), <code>candidate_questions</code> (2–4 options), <code>chosen_question</code> (plain language, one question only — no bundling), <code>rationale</code> (references specific dialogue evidence, not generic phrases), <code>confidence_to_stop</code> (0.0–1.0 cumulative confidence), <code>should_stop</code> (true when confidence ≥ 0.75), and <code>safety_flags</code> (for immediate danger only — not clinical symptoms).
-          </div>
-        </div>
-        <div class="comp-item">
-          <div class="comp-label">
-            <div class="comp-tag">Reward</div>
-            <div class="comp-name">TurnCritique</div>
-            <div class="comp-impl">critic.py · critic_turn_v0_1.txt</div>
-          </div>
-          <div class="comp-body">
-            Three 0–1 scores computed by a blind critic after the session. <strong>Question quality score</strong> — was this the highest-yield question to ask at this moment? <strong>Differential quality score</strong> — does the updated probability distribution correctly reflect the accumulated evidence? <strong>Reasoning quality score</strong> — does the rationale reference specific dialogue evidence and name the hypothesis being tested? The critic never sees the patient's answer or the ground-truth diagnosis. This is forward-looking evaluation: it judges the question before the response lands. A great question that led to a wrong answer still scores highly; a lazy one that fluked into the right answer scores low. The composite reward <code>R = mean(Q + D + reasoning) / 3</code>.
-          </div>
-        </div>
-        <div class="comp-item">
-          <div class="comp-label">
-            <div class="comp-tag">Advantage</div>
-            <div class="comp-name">A(s, a) = R − V(s)</div>
-            <div class="comp-impl">aggregator.py</div>
-          </div>
-          <div class="comp-body">
-            How much better this particular action was than the expected baseline for the current profile state. A positive advantage means the actor chose a question the critic rated above average for sessions at a similar diagnostic moment; a negative advantage means it underperformed the baseline. Advantage is the scalar that will drive DPO preference-pair construction: turns with high positive advantage become "chosen" examples; turns with negative advantage become "rejected" examples for the same state. The credit-assignment problem that makes terminal rewards hard to learn from is solved here — each turn gets its own advantage, not a shared end-of-episode signal.
-          </div>
-        </div>
-        <div class="comp-item">
-          <div class="comp-label">
-            <div class="comp-tag">Value</div>
-            <div class="comp-name">V(s)</div>
-            <div class="comp-impl">aggregator.py</div>
-          </div>
-          <div class="comp-body">
-            The expected cumulative diagnostic quality achievable from the current state — the baseline that advantage is measured against. V(s) is currently estimated from session-level aggregate critic scores across sessions with similar profile states; it is not yet a learned value network. As annotated sessions accumulate, the baseline becomes more precise. For now, turns from a session that scores above the session-mean reward are treated as positive-advantage; turns below are treated as negative-advantage. This is a deliberate simplification — the architecture supports a full learned V(s) when data is sufficient.
-          </div>
-        </div>
-        <div class="comp-item">
-          <div class="comp-label">
-            <div class="comp-tag">Actor</div>
-            <div class="comp-name">Doctor LLM</div>
-            <div class="comp-impl">doctor.py · doctor_v0_6.txt</div>
-          </div>
-          <div class="comp-body">
-            The policy that maps a <code>PatientProfile</code> state to a <code>DoctorTurnOutput</code> action. The actor is <strong>not fine-tuned</strong> — it is a prompted large language model (<code>llama-3.1-8b-instruct</code> by default) guided by a versioned system prompt and three dynamically retrieved exemplars per turn. The prompt enforces a nine-step reasoning chain before any JSON is output. Base-rate calibration, evidence-based differential updating, mandatory diagnostic breadth, and plain-language communication are all hard-coded constraints in the prompt — they are not expected to emerge from the model's pretraining alone. This design lets the architecture collect high-quality training data now; the actor will be fine-tuned on that data in a future loop.
-          </div>
-        </div>
-        <div class="comp-item">
-          <div class="comp-label">
-            <div class="comp-tag">Environment model</div>
-            <div class="comp-name">DDXPlus simulator</div>
-            <div class="comp-impl">patient_simulator.py</div>
-          </div>
-          <div class="comp-body">
-            The environment model used for offline evaluation — a simulated patient grounded in a DDXPlus record. Unlike a real patient, the simulator's ground truth is known, enabling automatic accuracy measurement. It answers doctor questions truthfully in natural language, cross-referencing the structured evidence dict before each response to prevent invented symptoms. A leakage scan regenerates any response that accidentally names the ground-truth pathology. A <code>disclosed_symptoms</code> set tracks what has been revealed to prevent contradictions across turns. The simulator is not used during real patient sessions — only during the Loop 2 evaluation pipeline.
-          </div>
-        </div>
-      </div>
-
-      <div class="callout">
-        <p class="c-lab">Why a turn-level critic</p>
-        <p>The critic evaluates <em class="term">reasoning quality</em>, not outcomes. It never needs a ground-truth diagnosis to judge whether a question was the highest-yield thing to ask at a given moment — which is exactly the signal a terminal reward cannot supply. A great question that leads to a wrong answer still gets a high critic score; a lazy question that flukes into a correct answer still gets a low one.</p>
-      </div>
-      <p>Today, the critic runs <em class="term">post-hoc</em> — after a session ends, not during it. The advantage A(s,a) can be computed from the collected scores but is not yet fed back into the actor at inference time. Collecting well-annotated (state, action, reward) tuples at scale is the current work.</p>
-
-      <!-- 04 -->
-      <h2 id="arch"><span class="num">04 — the map</span>The architecture at a glance</h2>
-      <p>Three decoupled loops feed a web application. Each was built in sequence; later loops read artifacts written by earlier ones — log files, final records, routing decisions. They never call back. That one-directional dependency is what makes each loop independently testable and replaceable.</p>
-
-      <figure aria-label="DiffDx architecture: Loop 1 actor turn cycle and Loop 2 per-turn critic feedback cycle">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1160" role="img" aria-label="DiffDx architecture: Loop 1 actor turn cycle and Loop 2 per-turn critic feedback cycle" style="border-radius:14px;box-shadow:var(--shadow);width:100%;height:auto;display:block">
-<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
-<rect x="0" y="0" width="1500" height="1160" rx="16" fill="#1c1c1b"/>
-<rect x="220" y="60" width="360" height="70" rx="12" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="1.5"/>
-<text x="400.0" y="93.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#2C2C2A">Patient profile</text>
-<text x="400.0" y="115.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#5F5E5A">complaint · symptoms · history</text>
-<path d="M400 130 L400 184" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="220" y="190" width="360" height="300" rx="14" fill="#AFA9EC" stroke="#534AB7" stroke-width="1.5"/>
-<text x="400" y="222" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="19" font-weight="600" fill="#26215C">Prompt assembly</text>
-<rect x="245" y="242" width="310" height="50" rx="8" fill="#CECBF6" stroke="#7F77DD" stroke-width="1"/>
-<text x="400" y="273" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" fill="#3C3489">1 · System role</text>
-<rect x="245" y="300" width="310" height="50" rx="8" fill="#CECBF6" stroke="#7F77DD" stroke-width="1"/>
-<text x="400" y="331" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" fill="#3C3489">2 · Compressed context</text>
-<rect x="245" y="358" width="310" height="50" rx="8" fill="#CECBF6" stroke="#7F77DD" stroke-width="1"/>
-<text x="400" y="389" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" fill="#3C3489">3 · ICL exemplars ×3</text>
-<rect x="245" y="416" width="310" height="50" rx="8" fill="#CECBF6" stroke="#7F77DD" stroke-width="1"/>
-<text x="400" y="447" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="17" fill="#3C3489">4 · Live turn history</text>
-<path d="M400 490 L400 544" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="220" y="550" width="360" height="80" rx="12" fill="#B5D4F4" stroke="#185FA5" stroke-width="1.5"/>
-<text x="400.0" y="597.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="19" font-weight="600" fill="#0C447C">Actor LLM</text>
-<path d="M400 630 L400 694" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="220" y="700" width="360" height="80" rx="12" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="1.5"/>
-<text x="400.0" y="738.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#2C2C2A">Structured JSON</text>
-<text x="400.0" y="760.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#5F5E5A">dx · question · confidence</text>
-<path d="M400 780 L400 808" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<polygon points="400,815 540,890 400,965 260,890" fill="#FAC775" stroke="#BA7517" stroke-width="1.5"/>
-<text x="400" y="884" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="19" font-weight="600" fill="#633806">Stop?</text>
-<text x="400" y="908" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14" fill="#854F0B">conf &gt; 0.75 or 15 turns</text>
-<path d="M400 965 L400 1024" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<text x="414" y="1000" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#9c9a92">yes</text>
-<rect x="220" y="1030" width="360" height="80" rx="12" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="1.5"/>
-<text x="400.0" y="1068.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#2C2C2A">Session saved</text>
-<text x="400.0" y="1090.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#5F5E5A">PostgreSQL → Loop 2</text>
-<rect x="40" y="255" width="160" height="70" rx="12" fill="#9FE1CB" stroke="#0F6E56" stroke-width="1.5"/>
-<text x="120.0" y="288.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#04342C">Compression</text>
-<text x="120.0" y="310.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#0F6E56">running summary</text>
-<path d="M200 290 L212 290 L212 325 L216 325" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="40" y="365" width="160" height="70" rx="12" fill="#9FE1CB" stroke="#0F6E56" stroke-width="1.5"/>
-<text x="120.0" y="398.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#04342C">ICL retrieval</text>
-<text x="120.0" y="420.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#0F6E56">FAISS + MMR</text>
-<path d="M200 400 L212 400 L212 383 L216 383" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<path d="M540 890 L660 890 L660 333 L584 333" fill="none" stroke="#73726c" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#a)"/>
-<text x="552" y="878" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#9c9a92">no · next turn</text>
-<rect x="728" y="70" width="172" height="92" rx="12" fill="#9FE1CB" stroke="#0F6E56" stroke-width="1.5" stroke-dasharray="6 4"/>
-<text x="814.0" y="114.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#04342C">Loop 1 retrieval</text>
-<text x="814.0" y="136.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#0F6E56">exemplar bank</text>
-<rect x="920" y="70" width="360" height="70" rx="12" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="1.5"/>
-<text x="1100.0" y="103.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#2C2C2A">Actor turn output</text>
-<text x="1100.0" y="125.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#5F5E5A">structured JSON, turn N</text>
-<path d="M1100 140 L1100 224" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="920" y="230" width="360" height="80" rx="12" fill="#EBB7A3" stroke="#C75A38" stroke-width="1.5"/>
-<text x="1100.0" y="268.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#7A2E15">Critic LLM</text>
-<text x="1100.0" y="290.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#993C1D">scores each turn · Gemma</text>
-<path d="M1100 310 L1100 360 L990 360 L990 414" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<path d="M1100 310 L1100 360 L1310 360 L1310 414" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="850" y="420" width="280" height="80" rx="12" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="1.5"/>
-<text x="990.0" y="458.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#2C2C2A">Turn score</text>
-<text x="990.0" y="480.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#5F5E5A">relevance · diff · reason</text>
-<rect x="1170" y="420" width="280" height="80" rx="12" fill="#FAC775" stroke="#BA7517" stroke-width="1.5"/>
-<text x="1310.0" y="458.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#633806">Safety flag</text>
-<text x="1310.0" y="480.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#854F0B">red-flag check</text>
-<path d="M990 500 L990 535 L1100 535 L1100 554" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<path d="M1310 500 L1310 535 L1100 535" fill="none" stroke="#888780" stroke-width="1.5"/>
-<rect x="920" y="560" width="360" height="70" rx="12" fill="#D3D1C7" stroke="#5F5E5A" stroke-width="1.5"/>
-<text x="1100.0" y="593.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#2C2C2A">Accumulated scores</text>
-<text x="1100.0" y="615.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#5F5E5A">across all turns</text>
-<path d="M1100 630 L1100 685 L990 685 L990 714" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="850" y="720" width="280" height="80" rx="12" fill="#9FE1CB" stroke="#0F6E56" stroke-width="1.5"/>
-<text x="990.0" y="758.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#04342C">Exemplar bank</text>
-<text x="990.0" y="780.0" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#0F6E56">high-scoring sessions</text>
-<path d="M850 760 L700 760 L700 116 L726 116" fill="none" stroke="#73726c" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#a)"/>
-<path d="M1280 595 L1465 595 L1465 105 L1284 105" fill="none" stroke="#73726c" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#a)"/>
-<text x="1374" y="96" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="15" fill="#9c9a92">next turn</text>
-<text x="840" y="1055" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="16" fill="#9c9a92">coral = critic (per turn) · amber = safety flag · teal = feedback into Loop 1</text>
-        </svg>
-        <figcaption>Left: Loop 1 actor turn cycle — patient profile → prompt assembly (system role + compressed context + ICL exemplars ×3 + live history) → Actor LLM → structured JSON → stop decision. Right: Loop 2 critic cycle — actor output → Critic LLM (blind) → turn score + safety flag → accumulated scores → exemplar bank feeds back into Loop 1 retrieval. Dashed lines = feedback paths.</figcaption>
-      </figure>
-
-      <!-- 05 -->
-      <h2 id="loop1"><span class="num">05 — the engine</span>Loop 1: the doctor turn, step by step</h2>
-      <p>Every question the doctor asks follows the same five-step outer loop. The state entering a turn is a <code>PatientProfile</code>; the output is a strict-JSON <code>DoctorTurnOutput</code> carrying the updated differential, chosen question, rationale, and stop signal. Between turns, a second lighter call — the profile updater — extracts new information from the patient's answer and merges it into the profile before the next turn begins.</p>
-      <ol class="steps">
-        <li>
-          <b>Build the retrieval query</b>
-          <span>Concatenate <code>chief_complaint</code> + <code>running_summary</code> + the five highest-severity symptom names into a single string. This query will change turn by turn as the profile evolves.</span>
-        </li>
-        <li>
-          <b>Retrieve three exemplars</b>
-          <span>The query is embedded with <code>all-MiniLM-L6-v2</code> (384-dim, on-device), then FAISS + MMR selects three worked clinical examples relevant to the current diagnostic moment. The retrieval re-runs every turn because the profile — and therefore the best exemplars — changes.</span>
-        </li>
-        <li>
-          <b>Load the versioned doctor prompt</b>
-          <span>Pull <code>prompts/doctor_v0_6.txt</code> from disk. The version is recorded in <code>model_metadata</code> so any session can be replayed against any past prompt version exactly.</span>
-        </li>
-        <li>
-          <b>Assemble the full prompt</b>
-          <span>System half = the doctor prompt (clinical rules + nine-step reasoning instructions) + the three exemplars injected under an "Exemplar demonstrations" header. User half = the patient profile JSON + compressed turn history. The exemplar section is always labelled clearly to distinguish it from the real patient's data.</span>
-        </li>
-        <li>
-          <b>Call, parse, validate, retry</b>
-          <span>Call the actor LLM. Strip any markdown fences (some models add them despite instruction). Parse JSON. Validate against the <code>DoctorTurnOutput</code> Pydantic schema. On failure, feed the parse error back to the LLM and retry up to three times. On a rate-limit (429), switch to the next provider immediately — no sleep.</span>
-        </li>
-      </ol>
-
-      <h3>The provider fallback chain</h3>
-      <p>All LLM calls flow through a single interface. On 429 the next provider is tried immediately. On 5xx, exponential backoff via <code>tenacity</code> kicks in. The model that actually answered is always logged in <code>model_metadata</code> so sessions are reproducible and model-swaps are visible in the data.</p>
-      <div class="chain">
-        <div class="chain-item">llama-3.1-8b-instruct<span class="cl">actor · primary</span></div>
-        <div class="chain-arrow">→</div>
-        <div class="chain-item">groq/llama-4-scout<span class="cl">429 fallback 1</span></div>
-        <div class="chain-arrow">→</div>
-        <div class="chain-item">openrouter/free<span class="cl">429 fallback 2</span></div>
-        <div class="chain-arrow">→</div>
-        <div class="chain-item">cerebras<span class="cl">fallback 3</span></div>
-        <div class="chain-arrow">→</div>
-        <div class="chain-item">gemini<span class="cl">fallback 4</span></div>
-      </div>
-
-      <h3>Termination conditions</h3>
-      <p>The session loop terminates on the first of three events. If <code>confidence_to_stop</code> reaches <strong>0.75</strong>, the prompt itself sets <code>should_stop: true</code> and the loop exits cleanly. The session config's <code>confidence_to_stop: 0.55</code> threshold provides a secondary check: the loop monitors the value each turn and can exit even if the actor hasn't set the stop flag. The hard cap of <strong>15 turns</strong> fires regardless. On any emergency phrase in patient input, a <em class="term">safety stop</em> fires immediately — the session terminates, the patient sees an emergency services message, and <code>termination_reason</code> is logged as <code>"safety_stop"</code>.</p>
-
-      <!-- 06 -->
-      <h2 id="reasoning"><span class="num">06 — inside the turn</span>The nine-step reasoning chain</h2>
-      <p>Before the actor writes a single JSON field, the doctor prompt forces a chain-of-thought through nine steps in a fixed order. This is injected as the last section of the system prompt, and the LLM must complete all nine before it is permitted to output the JSON object. The reasoning is visible in the rationale field and in the model's pre-JSON thinking when temperature is above zero.</p>
-      <div class="rule-row">
-        <div class="rule-item"><span class="rule-num">1</span><div class="rule-body"><strong>Scan prior turns.</strong> Review the patient profile and all turn history. State explicitly what is already known — this prevents the actor from ignoring information already documented.</div></div>
-        <div class="rule-item"><span class="rule-num">2</span><div class="rule-body"><strong>Identify what the latest answer revealed.</strong> Name every diagnosis the answer shifts, in which direction, and by how much. Reference the previous turn's differential numbers as the starting point — not the chief complaint.</div></div>
-        <div class="rule-item"><span class="rule-num">3</span><div class="rule-body"><strong>Build the updated differential.</strong> Apply the shifts from step 2 to the prior values. Every confirmed finding raises relevant diagnoses by ≥0.10; every denial lowers them by ≥0.10. Before removing any diagnosis, verify the patient specifically denied a <em class="term">pathognomonic</em> finding — otherwise, keep it at a reduced probability.</div></div>
-        <div class="rule-item"><span class="rule-num">4</span><div class="rule-body"><strong>Identify the biggest uncertainty.</strong> The single information gap whose absence most limits further narrowing. This becomes the <code>biggest_uncertainty</code> field and drives question selection.</div></div>
-        <div class="rule-item"><span class="rule-num">5</span><div class="rule-body"><strong>Generate 2–4 candidate questions.</strong> Each must directly address the biggest uncertainty. Write them in plain patient language before evaluating.</div></div>
-        <div class="rule-item"><span class="rule-num">6</span><div class="rule-body"><strong>Choose the single best question.</strong> Sentence case, one question only — no bundling. If the systemic screening rule applies (joint/muscle pain, not yet asked), this question wins regardless of other candidates.</div></div>
-        <div class="rule-item"><span class="rule-num">7</span><div class="rule-body"><strong>Write the rationale.</strong> Must reference specific evidence from the dialogue (not generic "will help differentiate"). Must name the hypothesis being tested and why this question beat the others. Differential numbers should appear when they inform the choice.</div></div>
-        <div class="rule-item"><span class="rule-num">8</span><div class="rule-body"><strong>Set <code>confidence_to_stop</code>.</strong> Apply the calibration anchors. Apply the decisive closure rule: if the leading diagnosis exceeds 0.65 and the runner-up is below 0.20, commit — set ≥0.75 and <code>should_stop: true</code>. Do not manufacture questions to delay closure.</div></div>
-        <div class="rule-item"><span class="rule-num">9</span><div class="rule-body"><strong>Check <code>safety_flags</code>.</strong> Use only for: immediate patient danger, suicidal/homicidal ideation, or a minor presenting without a guardian on a sensitive topic. Never use for clinical symptoms — those belong in the differential. Leave empty in all other cases.</div></div>
-      </div>
-      <p>A worked example of how the differential actually moves across turns — one real session on a chest-pain presentation:</p>
-      <div class="turn-trace">
-        <div class="tt-head">Turn trace — pleuritic chest pain, 35F on OCP</div>
-        <div class="tt-row">
-          <div class="tt-n">T0<small>initial</small></div>
-          <div class="tt-body">
-            <div class="tt-label">Doctor asks</div>
-            <div class="tt-q">Can you describe where exactly the pain is and whether it gets worse when you take a deep breath?</div>
-            <div class="tt-diff">
-              <span class="tt-dx hi">PE 0.35</span>
-              <span class="tt-dx">Pleuritis 0.25</span>
-              <span class="tt-dx">MSK 0.20</span>
-              <span class="tt-dx">Pericarditis 0.15</span>
-              <span class="tt-dx">ACS 0.05</span>
-            </div>
-          </div>
-        </div>
-        <div class="tt-row">
-          <div class="tt-n">T1<small>+OCP</small></div>
-          <div class="tt-body">
-            <div class="tt-label">After patient reveals OCP use + confirms pleuritic quality → Doctor asks</div>
-            <div class="tt-q">Have you had any long flights or car journeys recently, or been sitting still for many hours at a stretch?</div>
-            <div class="tt-diff">
-              <span class="tt-dx hi">PE 0.55</span>
-              <span class="tt-dx">Pleuritis 0.22</span>
-              <span class="tt-dx">MSK 0.10</span>
-              <span class="tt-dx">Pericarditis 0.08</span>
-              <span class="tt-dx">ACS 0.05</span>
-            </div>
-          </div>
-        </div>
-        <div class="tt-row">
-          <div class="tt-n">T2<small>conf 0.42</small></div>
-          <div class="tt-body">
-            <div class="tt-label">Immobilisation confirmed → Doctor asks</div>
-            <div class="tt-q">Have you noticed any swelling, warmth, or tenderness in either of your legs?</div>
-            <div class="tt-diff">
-              <span class="tt-dx hi">PE 0.70</span>
-              <span class="tt-dx">Pleuritis 0.14</span>
-              <span class="tt-dx">DVT+PE 0.10</span>
-              <span class="tt-dx">Pericarditis 0.06</span>
-            </div>
-          </div>
-        </div>
-        <div class="tt-row">
-          <div class="tt-n">T3<small>stop</small></div>
-          <div class="tt-body">
-            <div class="tt-label">Leg swelling confirmed → should_stop: true · conf 0.78</div>
-            <div class="tt-q"><em style="color:var(--green)">Session closed — PE 0.70 routed to emergency care</em></div>
-            <div class="tt-diff">
-              <span class="tt-dx hi">PE 0.70</span>
-              <span class="tt-dx">DVT+PE 0.18</span>
-              <span class="tt-dx">Pleuritis 0.08</span>
-              <span class="tt-dx">Pericarditis 0.04</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 07 -->
-      <h2 id="profile"><span class="num">07 — the state</span>PatientProfile and the profile updater</h2>
-      <p>The <code>PatientProfile</code> is the Actor-Critic <em>state</em> — the structured representation of everything known about the patient at a given point in the session. It is the document passed to the doctor actor on every turn. Its schema is locked: fields can be added across versions, but nothing is renamed or removed — so evaluators and critics written today can read sessions from any prior phase.</p>
-      <div class="schema-grid">
-        <div class="scard">
-          <h4>PatientProfile</h4>
-          <div class="sfield"><span class="fn">session_id</span><span class="ft">str · UUID</span></div>
-          <div class="sfield"><span class="fn">demographics</span><span class="ft">Demographics</span></div>
-          <div class="sfield"><span class="fn">chief_complaint</span><span class="ft">str</span></div>
-          <div class="sfield"><span class="fn">symptoms</span><span class="ft">list[Symptom]  ← current only</span></div>
-          <div class="sfield"><span class="fn">history</span><span class="ft">History  ← past/chronic</span></div>
-          <div class="sfield"><span class="fn">ruled_out</span><span class="ft">list[str]  ← diagnoses only</span></div>
-          <div class="sfield"><span class="fn">ruled_in</span><span class="ft">list[str]</span></div>
-          <div class="sfield"><span class="fn">free_notes</span><span class="ft">str</span></div>
-          <div class="sfield"><span class="fn">running_summary</span><span class="ft">str  ← from compressor</span></div>
-        </div>
-        <div class="scard">
-          <h4>Symptom · History · DoctorTurnOutput</h4>
-          <div class="sfield"><span class="fn">Symptom.name</span><span class="ft">str  e.g. "pleuritic chest pain"</span></div>
-          <div class="sfield"><span class="fn">Symptom.onset</span><span class="ft">str  e.g. "2 hours ago"</span></div>
-          <div class="sfield"><span class="fn">Symptom.severity</span><span class="ft">"mild"|"moderate"|"severe"</span></div>
-          <div class="sfield"><span class="fn">History.social</span><span class="ft">lifestyle only — not symptoms</span></div>
-          <div class="sfield"><span class="fn">DoctorTurnOutput.chosen_question</span><span class="ft">str</span></div>
-          <div class="sfield"><span class="fn">DoctorTurnOutput.rationale</span><span class="ft">str</span></div>
-          <div class="sfield"><span class="fn">DoctorTurnOutput.confidence_to_stop</span><span class="ft">float 0.0–1.0</span></div>
-          <div class="sfield"><span class="fn">DoctorTurnOutput.should_stop</span><span class="ft">bool</span></div>
-        </div>
-      </div>
-      <p>After every patient answer, a <em class="term">profile updater</em> fires — a lighter LLM call (a different prompt, same model) that extracts a <code>ProfileDelta</code> from the Q&amp;A pair and merges it into the profile. The updater prompt is hard-constrained: "extract only, never infer." Key rules it enforces:</p>
-      <ul class="clean">
-        <li>Denied symptoms do <em>not</em> create new entries and do <em>not</em> go into <code>ruled_out</code>. Ruled-out is for diagnoses only, not denied symptoms.</li>
-        <li>Before adding a new symptom, check if it already exists under a different label — update severity/onset rather than duplicate.</li>
-        <li>Social history is lifestyle only: smoking, alcohol, occupation, diet, exercise. Current symptoms must never land in <code>history.social</code>.</li>
-        <li>If the answer contains nothing new, return an empty delta — do not invent updates to justify the call.</li>
-      </ul>
-      <p>The separation between the updater and the actor matters: the actor's job is to ask the best question; the updater's job is to extract what the answer revealed. Mixing them would contaminate both.</p>
-
-      <!-- 08 -->
-      <h2 id="icl"><span class="num">08 — the expertise</span>Teaching by example: how ICL works</h2>
-      <p>Before any fine-tuning exists, how does the actor know what a <em class="term">good</em> diagnostic question looks like? Through <strong>in-context learning (ICL)</strong>: hand-curated worked examples injected into the prompt at inference time, every single turn.</p>
-      <p>ICL works here because the space of "what makes a good diagnostic question" is not easily captured by a generic instruction. A good exemplar shows the model a concrete moment — this profile, this differential, this uncertainty — and demonstrates the reasoning that leads to the highest-yield question. The model generalises the reasoning pattern, not the surface question.</p>
-      <p>The pool holds roughly <strong>fifty hand-curated exemplars</strong>, all marked <code>frozen: true</code>. Frozen means they are permanent — they will never be evicted or reweighted even when future loops add machine-generated exemplars. They are the seed set that guarantees baseline coverage of core clinical scenarios.</p>
-
-      <h3>Anatomy of one exemplar</h3>
-      <div class="anatomy">
-        <div class="anatomy-head">ex_pulmonary_embolism_001.json <span>frozen seed exemplar</span></div>
-        <div class="anatomy-body">
-          <div class="af"><span class="fk">"exemplar_id"</span><span class="fv st">"ex_pulmonary_embolism_001"</span></div>
-          <div class="af"><span class="fk">"tags"</span><span class="fv">["chest_pain", "dyspnoea", "emergency", "thromboembolic", "OCP"]</span></div>
-          <div class="af"><span class="fk">"context_summary"</span><span class="fv st">"35F on OCP, sudden pleuritic chest pain, mild dyspnoea. PE and pleuritis lead differential. Wells score under construction. Immobilisation not yet asked."</span></div>
-          <div class="af"><span class="fk">&nbsp;</span><span class="ann">← this field only is embedded for retrieval — the situation, not the answer</span></div>
-          <div class="af"><span class="fk">"good_next_question"</span><span class="fv st">"Have you had any long flights, long car journeys, or been sitting still for many hours recently?"</span></div>
-          <div class="af"><span class="fk">"rationale"</span><span class="fv st">"Immobilisation is the highest-yield unanswered Wells criterion. Confirmation pushes PE above 0.65 and mandates same-day imaging. It is a closed question the patient can answer unambiguously, unlike asking about family clotting history which takes multiple turns."</span></div>
-          <div class="af"><span class="fk">"frozen"</span><span class="fv nm">true</span></div>
-          <div class="af"><span class="fk">"embedding"</span><span class="fv nm">[0.021, -0.134, 0.087, ... 384 floats]</span></div>
-        </div>
-      </div>
-      <p>Three design choices make this exemplar work. First, only <code>context_summary</code> is embedded — retrieval matches on the <em class="term">situation</em>, not the answer. Second, the rationale explains the reasoning structure: why this information gap, why this question beats the alternatives, what confirmation would change. Third, the question is specific enough to be useful as a pattern but general enough not to be copied verbatim — the doctor prompt's exemplar-usage rule forbids literal copying.</p>
-
-      <h3>The five categories of exemplars</h3>
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr><th>Category</th><th>When used</th><th>Example situation</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Vague complaint clarification</strong></td><td>Turn 0–1, non-specific chief complaint</td><td>Patient says "I feel unwell" — best move is to anchor the dominant symptom before building a differential</td></tr>
-            <tr><td><strong>Red-flag screening</strong></td><td>Any turn where an emergency diagnosis is in the differential but not yet confirmed/ruled out</td><td>Chest pain differential includes PE but immobilisation/Wells not yet asked</td></tr>
-            <tr><td><strong>Timeline pinning</strong></td><td>When onset/progression is unknown and it changes the differential</td><td>Sudden-onset headache — "thunderclap" pattern distinguishes SAH; knowing whether it was instantaneous or gradual is the key question</td></tr>
-            <tr><td><strong>Differential narrower</strong></td><td>Mid-dialogue when two leading diagnoses need a discriminating question</td><td>SLE vs RA: the malar rash question is pathognomonic for SLE and directly discriminates</td></tr>
-            <tr><td><strong>Knowing when to stop</strong></td><td>When confidence is high but the model continues asking</td><td>Leading diagnosis at 0.70, runner-up at 0.12 — demonstrates how to write a decisive closure rationale and set should_stop: true</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p>The exemplar prompt instruction explicitly says: "Apply the reasoning pattern — the type of diagnostic move that earns high information value in this situation. They are not answers to copy." The three things that transfer are: how to identify the highest-value information gap, how to evaluate candidate questions against it, and how to justify the choice with reference to specific dialogue evidence.</p>
-
-      <!-- 09 -->
-      <h2 id="retrieval"><span class="num">09 — the selection</span>FAISS + MMR: how exemplars are retrieved</h2>
-      <p>Retrieval is dynamic — it re-runs at every turn because the profile changes. The same patient presenting chest pain at turn 0 (general presentation) and at turn 4 (confirmed OCP use + pleuritic quality + immobilisation established) is in a very different diagnostic moment and needs different exemplars.</p>
-      <h3>Step 1: embed the query</h3>
-      <p>A query string is assembled from the current profile: <code>chief_complaint + " | " + running_summary + " | " + top_5_symptoms_by_severity</code>. This is embedded by <code>all-MiniLM-L6-v2</code>, a 384-dimensional sentence transformer that runs locally on device — no API call, no latency, no rate-limit exposure. All exemplar embeddings are pre-computed once via <code>embed_exemplars.py</code> and cached in the FAISS index.</p>
-      <h3>Step 2: cosine similarity via FAISS</h3>
-      <p>The FAISS index is a flat inner-product index. Exemplar embeddings are unit-normalised at index-build time, so inner product = cosine similarity. FAISS returns the top-20 most similar exemplars as candidates for the MMR pass.</p>
-      <h3>Step 3: MMR reranking for diversity</h3>
-      <p><strong>Maximal Marginal Relevance</strong> selects three exemplars that are relevant to the query <em class="term">and</em> diverse from each other. Without it, FAISS would often return three near-identical exemplars from the same disease cluster. MMR prevents that:</p>
-      <pre><span class="cm"># pick the exemplar that maximises this composite score</span>
-score(e) = λ · sim(query, e) − (1 − λ) · max_sim(e, already_selected)
-
-<span class="cm"># λ = 0.5 → equal weight on relevance vs. diversity
-# already_selected starts empty; each pick updates it
-# repeat until k=3 exemplars are selected</span></pre>
-      <p>With <code>λ = 0.5</code>, an exemplar that is very similar to the query but nearly identical to an already-selected exemplar scores no better than a slightly less relevant but genuinely different one. This guarantees the three injected exemplars cover distinct diagnostic moves rather than repeating the same pattern three times.</p>
-      <div class="callout green">
-        <p class="c-lab">Why three, not five?</p>
-        <p>More exemplars means more tokens, which crowds the patient profile and turn history. Empirically, three exemplars provide enough pattern variety without consuming more than ~15% of the prompt budget. The current <code>mmr_lambda: 0.5</code> and <code>top_k_exemplars: 3</code> are in <code>config.yaml</code> and tunable without touching any code.</p>
-      </div>
-
-      <!-- 10 -->
-      <h2 id="prompts"><span class="num">10 — the rules</span>The prompt system</h2>
-      <p>Every prompt template carries a version suffix and is treated as <strong>immutable after deployment</strong>. Old sessions record their prompt version in <code>model_metadata</code>. A session from three months ago can be replayed exactly by pointing to the same prompt file. You never edit a prompt in place; you copy it to the next version, change it, update the config, and run a bake-off comparison on fixed test cases.</p>
-      <h3>The doctor prompt — nine hard constraints</h3>
-      <p>Beyond the nine-step reasoning chain, <code>doctor_v0_6.txt</code> encodes nine clinical guardrails that fire on every turn:</p>
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr><th>Rule</th><th>What it enforces</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Base-rate calibration</strong></td><td>At turn 0, common causes collectively hold ≥ 0.55 probability. Rare/serious diseases start ≤ 0.10–0.15 unless a red flag is already present (haemoptysis, unexplained weight loss &gt;5 kg, focal neuro deficit, syncope, etc.).</td></tr>
-            <tr><td><strong>Confidence anchors</strong></td><td>0.0–0.2: major gaps. 0.3–0.5: working hypothesis. 0.6–0.75: strong lead, diminishing returns. 0.8+: should_stop must be true.</td></tr>
-            <tr><td><strong>Decisive closure</strong></td><td>If leading diagnosis &gt; 0.65 AND runner-up &lt; 0.20 → set confidence ≥ 0.75 and should_stop: true. Do not manufacture questions to delay commitment.</td></tr>
-            <tr><td><strong>Evidence-based updating</strong></td><td>Every confirmed finding raises relevant diagnoses by ≥ 0.10. Every denied finding lowers by ≥ 0.10. Static probabilities across consecutive turns = critical failure.</td></tr>
-            <tr><td><strong>Pathognomonic threshold for eviction</strong></td><td>A diagnosis leaves the differential only when the patient denies a pathognomonic or near-necessary finding — not any finding. Weak denials reduce probability; they do not evict.</td></tr>
-            <tr><td><strong>Mandatory initial breadth</strong></td><td>Chest/upper-body pain must include a thromboembolic AND an inflammatory cardiac cause. Shortness of breath must include PE, pneumonia, heart failure, and an obstructive cause. Dangerous diagnoses cannot be quietly dropped.</td></tr>
-            <tr><td><strong>Systemic screening rule</strong></td><td>Any joint/muscle/localised MSK pain: the multi-joint question ("Is the pain only here or also in other joints/areas?") must be asked at turn 1 or 2 — before any other line of questioning. It separates local injury from SLE, RA, reactive arthritis, polymyalgia.</td></tr>
-            <tr><td><strong>Plain language</strong></td><td>"Blood clot" not "DVT." "Irregular heartbeat" not "arrhythmia." "Scan of your lungs" not "CT pulmonary angiogram." The patient should never need a medical degree to answer.</td></tr>
-            <tr><td><strong>No bundling</strong></td><td>chosen_question asks exactly one thing. No "...and also, do you have...?" The prompt rejects compound questions explicitly.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <h3>Version history</h3>
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr><th>Version</th><th>Key addition</th></tr></thead>
-          <tbody>
-            <tr><td class="mono-cell">v0.1</td><td>Basic role definition + output schema</td></tr>
-            <tr><td class="mono-cell">v0.2</td><td>Chain-of-thought rationale field added to output</td></tr>
-            <tr><td class="mono-cell">v0.3</td><td>Confidence calibration anchors (0.0–0.2, 0.3–0.5, 0.6–0.75, 0.8+)</td></tr>
-            <tr><td class="mono-cell">v0.4</td><td>Mandatory differential breadth rules (ACS+PE for chest pain, SAH for severe headache, etc.)</td></tr>
-            <tr><td class="mono-cell">v0.5</td><td>Systemic screening rule for joint/muscle pain — multi-joint question mandatory at turn 1–2</td></tr>
-            <tr><td class="mono-cell">v0.6</td><td>Base-rate calibration at turn 0 + pathognomonic threshold for eviction + decisive closure rule</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <h3>The four supporting prompts</h3>
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr><th>Prompt</th><th>Fires when</th><th>Critical constraint</th></tr></thead>
-          <tbody>
-            <tr><td class="mono-cell">profile_updater_v0_3</td><td>After each patient answer</td><td>"Extract only, never infer." Denied symptoms never enter ruled_out. Social history = lifestyle only.</td></tr>
-            <tr><td class="mono-cell">compressor_v0_2</td><td>Turn 4+, older than keep_recent</td><td>"Extract only, never infer." 2–4 sentence running_summary covering confirmed symptoms, timeline, ruled in/out, open questions.</td></tr>
-            <tr><td class="mono-cell">critic_turn_v0_1</td><td>Post-session, per turn</td><td>Scores blind — no ground truth, no patient answer. Must be a different model from the doctor.</td></tr>
-            <tr><td class="mono-cell">simulated_patient_v0_1</td><td>During DDXPlus eval runs</td><td>Grounded in DDXPlus record. Forbidden from naming the diagnosis. Leakage scan regenerates on violation.</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- 11 -->
-      <h2 id="compress"><span class="num">11 — the budget</span>Keeping context small</h2>
-      <p>Fifteen turns of raw Q&amp;A plus full profile JSON would exhaust a 4 k-token context in about seven turns. From turn 4 onward, once the history window exceeds the three most-recent turns, DiffDx compresses in two stages. The deterministic stage runs first — this is the critical design choice.</p>
-      <div class="callout">
-        <p class="c-lab">Stage 1 · code-level dedup (no LLM)</p>
-        <p>Symptom merging by: exact match → substring → content-word subset → Jaccard overlap &gt;80%. History list deduplication by case-insensitive match. This catches the most common failure mode — the same symptom logged under three slightly different labels across three turns — with zero hallucination risk.</p>
-      </div>
-      <div class="callout">
-        <p class="c-lab">Stage 2 · LLM recategorization + summary</p>
-        <p>Only after dedup does an LLM see the cleaned profile. It fixes miscategorized items (current symptoms that drifted into history.medical) and generates the <code>running_summary</code>: 2–4 sentences covering confirmed symptoms with timeline, key ruled-in/out findings, and open questions. The instruction is "extract only, never infer." The last three turns always pass through verbatim; everything older lives only in the summary.</p>
-      </div>
-      <p>The sequence matters: the LLM summary step only ever operates on already-deduplicated, already-cleaned input. Running the LLM first would mean asking a generative model to summarize a document containing three copies of the same fact — a reliable path to hallucinated consolidations.</p>
-
-      <!-- 12 -->
-      <h2 id="loop2"><span class="num">12 — the judge</span>Loop 2: the critic</h2>
-      <p>Loop 2 reads the JSONL session logs written by Loop 1. It never calls back into the dialogue runtime. For every session, the critic scores each turn independently, and the DDXPlus evaluator checks the final answer against a ground-truth label.</p>
-      <h3>How the critic scores</h3>
-      <p>The critic is <strong>blind on two dimensions</strong>. It never sees the ground-truth diagnosis — so it cannot cheat by awarding high scores to turns that happened to approach the right answer. And it never sees the patient's actual response — so it scores the question as asked, before the answer lands. This is forward-looking evaluation: was this the highest-yield question to ask at this moment, given only what was known when the question was written?</p>
-      <div class="callout amber">
-        <p class="c-lab">Why a different model</p>
-        <p>The critic must be a different model from the actor. Self-scoring is not useful — a model consistently rates its own reasoning style highly regardless of actual quality. The default critic (<code>llama-3.1-70b-instruct</code>) and the actor (<code>llama-3.1-8b-instruct</code>) are different scales of the same family — the size gap ensures the critic has meaningfully broader reasoning capacity than the model it is scoring. The <code>CRITIC_MODEL</code> environment variable overrides the default without touching code.</p>
-      </div>
-      <h3>TurnCritique schema</h3>
-      <div class="schema-grid">
-        <div class="scard">
-          <h4>TurnCritique (per turn)</h4>
-          <div class="sfield"><span class="fn">question_quality_score</span><span class="ft">float 0.0–1.0</span></div>
-          <div class="sfield"><span class="fn">differential_quality_score</span><span class="ft">float 0.0–1.0</span></div>
-          <div class="sfield"><span class="fn">reasoning_quality_score</span><span class="ft">float 0.0–1.0</span></div>
-          <div class="sfield"><span class="fn">confidence_calibration</span><span class="ft">"well-calibrated" | "overconfident" | "underconfident"</span></div>
-          <div class="sfield"><span class="fn">weakness_category</span><span class="ft">str  e.g. "ignored prior evidence"</span></div>
-          <div class="sfield"><span class="fn">would_have_asked</span><span class="ft">str  the critic's preferred question</span></div>
-          <div class="sfield"><span class="fn">rationale</span><span class="ft">str  explanation of scores</span></div>
-        </div>
-        <div class="scard">
-          <h4>Score interpretation</h4>
-          <div class="sfield"><span class="fn">0.85+</span><span class="ft">Exemplary — candidate for exemplar pool</span></div>
-          <div class="sfield"><span class="fn">0.70–0.84</span><span class="ft">Competent — no major errors</span></div>
-          <div class="sfield"><span class="fn">0.50–0.69</span><span class="ft">Acceptable — missed opportunities</span></div>
-          <div class="sfield"><span class="fn">0.30–0.49</span><span class="ft">Weak — significant reasoning gap</span></div>
-          <div class="sfield"><span class="fn">&lt;0.30</span><span class="ft">Poor — question actively misleads</span></div>
-          <div class="sfield"><span class="fn">Composite reward R</span><span class="ft">= mean(Q + D + Reasoning) / 3</span></div>
-        </div>
-      </div>
-      <p>Across a session, the aggregator in <code>loop2/critic/aggregator.py</code> rolls up per-turn scores into session-level statistics. Sessions where the actor consistently produced high advantage (R &gt; V(s)) become the "chosen" side of DPO preference pairs in future training. Sessions where the actor underperformed the expected baseline become "rejected" pairs. In Actor-Critic terms, advantage A(s,a) = R &minus; V(s) is the scalar the DPO trainer will use — it measures how much better a given action was than the baseline the value function expected.</p>
-
-      <!-- 13 -->
-      <h2 id="ddxplus"><span class="num">13 — the ground truth</span>DDXPlus evaluation</h2>
-      <p>The critic scores reasoning quality — but cannot check whether the final answer is actually <em class="term">right</em>. That is the job of the DDXPlus ground-truth evaluator, which runs in the same Loop 2 pipeline and requires no LLM at all.</p>
-      <h3>What DDXPlus is</h3>
-      <p>DDXPlus is a synthetic medical dataset: <strong>70+ pathologies</strong>, approximately <strong>200 symptoms and antecedents</strong>, and thousands of patient records. Each record carries:</p>
-      <div class="pre-label">DDXPlus patient record structure</div>
-      <pre>{
-  <span class="ky">"patient_id"</span>:            <span class="st">"P_0041822"</span>,
-  <span class="ky">"age"</span>:                    <span class="nm">34</span>,
-  <span class="ky">"sex"</span>:                    <span class="st">"F"</span>,
-  <span class="ky">"initial_evidence"</span>:       <span class="st">"E_88"</span>,  <span class="cm"># chief complaint code</span>
-  <span class="ky">"evidences"</span>: {            <span class="cm"># symptom presence / value</span>
-    <span class="st">"E_12"</span>: <span class="nm">true</span>,           <span class="cm"># pleuritic chest pain: present</span>
-    <span class="st">"E_44"</span>: <span class="nm">false</span>,          <span class="cm"># haemoptysis: absent</span>
-    <span class="st">"E_71_@_3"</span>: <span class="nm">true</span>        <span class="cm"># OCP use, coded value</span>
-  },
-  <span class="ky">"antecedents"</span>: {          <span class="cm"># risk factors / history</span>
-    <span class="st">"A_05"</span>: <span class="nm">true</span>            <span class="cm"># prior DVT: present</span>
-  },
-  <span class="ky">"ground_truth_pathology"</span>: <span class="st">"Pulmonary embolism"</span>
-}</pre>
-      <p>The raw codes are decoded to human-readable text by <code>loader.py</code> using the companion <code>release_conditions.json</code> and <code>release_evidences.json</code> files. DDXPlus is too large to ship in the repo; it is downloaded separately and stored in <code>data/DDXPlus_Raw/</code> which is gitignored.</p>
-
-      <h3>The patient simulator</h3>
-      <p>During Loop 2 eval runs, a <code>SimulatedPatient</code> reads a DDXPlus record and answers doctor questions in natural language. The simulator's job is to stay truthful — it can only disclose what the record contains — without ever naming the ground-truth pathology.</p>
-      <ul class="clean">
-        <li><strong>Grounded answering.</strong> Before generating each response, the simulator cross-references the question against the decoded evidence dict. It cannot claim a symptom is present if the record marks it false, and vice versa.</li>
-        <li><strong>Consistency tracking.</strong> A <code>disclosed_symptoms</code> set grows with each answer. The simulator checks prior disclosures before responding to prevent contradictions.</li>
-        <li><strong>Leakage detection.</strong> After generating each response, the simulator scans the text for the pathology name (exact + common synonyms). If found, the response is discarded and regenerated up to three times. Persistent leakage fails the eval run for that patient and is flagged in the output.</li>
-        <li><strong>Natural language.</strong> Responses are written as a patient would speak — not clinical notation. "I've had some swelling in my left leg, it started a couple of days ago" rather than "DVT sign positive."</li>
-      </ul>
-
-      <h3>The ground-truth evaluator</h3>
-      <p>Pure string matching — no LLM, fully deterministic. After a session ends, the evaluator compares the actor's <code>primary_diagnosis</code> against the DDXPlus <code>ground_truth_pathology</code>.</p>
-      <div class="metrics">
-        <div class="mcard"><div class="mv">Top-1</div><div class="ml">Primary diagnosis exactly matches ground truth</div></div>
-        <div class="mcard"><div class="mv">Top-3</div><div class="ml">Ground truth appears anywhere in the final differential</div></div>
-        <div class="mcard"><div class="mv">Jaccard</div><div class="ml">Word overlap between prediction and ground truth</div></div>
-        <div class="mcard"><div class="mv">T2C</div><div class="ml">Turns until the correct diagnosis first appears in the differential</div></div>
-        <div class="mcard"><div class="mv">In-pool</div><div class="ml">Whether the disease was covered in the exemplar pool</div></div>
-      </div>
-      <p>The T2C (turns-to-correct) metric is particularly useful for identifying where exemplars help: in-pool diseases tend to surface in the differential earlier because the actor has seen worked examples from that disease cluster.</p>
-
-      <h3>The 20-patient eval set</h3>
-      <p>Twenty hand-curated patient IDs are committed to the repo in <code>data/ddxplus_eval_set.json</code>. The set is stratified to stress-test three distinct failure modes:</p>
-      <ul class="clean">
-        <li><strong>5 in-exemplar-pool patients.</strong> Diseases with at least one frozen exemplar. Expected performance: high. A regression here means exemplar retrieval broke or the actor stopped using exemplars.</li>
-        <li><strong>10 out-of-pool patients.</strong> Diseases not covered in the exemplar pool. Expected performance: lower, but still reasonable — tests the actor's base clinical reasoning without ICL assistance.</li>
-        <li><strong>5 deliberately ambiguous differentials.</strong> Presentations where two or more diseases have similar symptom profiles. Expected performance: top-3 containment matters more than top-1 here. Tests whether the actor keeps multiple hypotheses alive appropriately.</li>
-      </ul>
-
-      <!-- 14 -->
-      <h2 id="loop3"><span class="num">14 — the handoff</span>Loop 3: routing, safety first</h2>
-      <p>Loop 3 reads a <code>FinalRecord</code> written by Loop 1 and outputs a <code>RoutingDecision</code>: a specialty, urgency level, appointment type, and whether the case is ambiguous. All of this comes from a 70+ disease map — no LLM in the main routing path. The logic lives in three rules applied in a fixed order.</p>
-
-      <h3>Rule 1: safety override (always runs first)</h3>
-      <div class="callout warn">
-        <p class="c-lab">Emergency takes priority regardless of probability</p>
-        <p>Any emergency-level disease anywhere in the differential — at 10%, 20%, or 5% — becomes the <code>primary_routing</code> output regardless of which diagnosis leads by probability. A 20% pulmonary embolism is surfaced ahead of an 80% musculoskeletal strain. The asymmetric cost of a missed emergency is the justification: a false alarm costs a same-day visit; a missed PE can be fatal.</p>
-      </div>
-
-      <h3>Rule 2: confidence adjustment</h3>
-      <p>If the session's <code>final_confidence</code> is below 0.40 and the primary routing's base urgency is <code>routine</code>, it is bumped to <code>urgent</code>. A low-confidence routine referral is worse than a slightly over-cautious urgent one — the doctor can downgrade; the patient cannot un-miss an appointment they weren't sent to.</p>
-
-      <h3>Rule 3: ambiguity detection</h3>
-      <p>If the top specialty's probability-weighted score is less than 1.5× the second specialty's score, <code>is_ambiguous</code> is set to <code>true</code> and the decision returns two or three <code>alternative_routings</code> alongside the primary. This forces the downstream web app — and the doctor — to see the uncertainty rather than hiding it behind a single confident-looking referral.</p>
-
-      <h3>A worked routing example</h3>
+      <h2 id="loops"><span class="num">02 — architecture</span>Three loops, one session</h2>
+      <p>Every session runs through three independent model roles. They don't share a prompt, and the second
+        one's entire job is to find fault with the first.</p>
       <div class="routing-flow">
-        <div class="rcard danger">
-          <div class="rc-label">Primary routing</div>
-          <div class="rc-val">Pulmonology</div>
-          <div class="rc-sub">Emergency · same-day visit<br>PE at 0.55 → safety override fires</div>
+        <div class="rcard">
+          <div class="rc-label">Loop 1 · Actor</div>
+          <div class="rc-val">Doctor LLM</div>
+          <div class="rc-sub">Asks one question at a time, updates a live differential</div>
         </div>
         <div class="rcard">
-          <div class="rc-label">Alternative routing</div>
-          <div class="rc-val">Respiratory</div>
-          <div class="rc-sub">Urgent · next-day<br>Pneumonia at 0.30</div>
+          <div class="rc-label">Loop 2 · Critic</div>
+          <div class="rc-val">Turn scorer</div>
+          <div class="rc-sub">Grades every turn, in a background thread, live</div>
         </div>
-        <div class="rcard safe">
-          <div class="rc-label">Confidence</div>
-          <div class="rc-val">0.55 · is_ambiguous: false</div>
-          <div class="rc-sub">Single specialty dominates — single primary returned</div>
+        <div class="rcard">
+          <div class="rc-label">Loop 3 · Router</div>
+          <div class="rc-val">Urgency + specialty</div>
+          <div class="rc-sub">Runs once, after the interview ends</div>
         </div>
       </div>
-      <h3>RoutingDecision schema</h3>
-      <pre><span class="cm"># RoutingDecision — written to DB, served to web app</span>
-{
-  <span class="ky">"schema_version"</span>:        <span class="st">"0.9.0"</span>,
-  <span class="ky">"session_id"</span>:            <span class="st">"7154c644-..."</span>,
-  <span class="ky">"is_ambiguous"</span>:          <span class="nm">false</span>,
-  <span class="ky">"primary_routing"</span>: {
-    <span class="ky">"specialty"</span>:           <span class="st">"Pulmonology"</span>,
-    <span class="ky">"urgency"</span>:             <span class="st">"emergency"</span>,
-    <span class="ky">"appointment_type"</span>:    <span class="st">"emergency_visit"</span>,
-    <span class="ky">"reasoning"</span>:           <span class="st">"PE is life-threatening; safety override active"</span>
-  },
-  <span class="ky">"alternative_routings"</span>:  [],
-  <span class="ky">"final_differential"</span>:    [[<span class="st">"Pulmonary embolism"</span>, <span class="nm">0.70</span>], ...],
-  <span class="ky">"final_confidence"</span>:      <span class="nm">0.78</span>,
-  <span class="ky">"routing_model_version"</span>: <span class="st">"v0.9.0"</span>
-}</pre>
+      <div class="callout accent">
+        <p class="c-lab">Why a separate critic, not one model grading itself</p>
+        <p>A model scoring its own output tends to agree with itself. The critic is a distinct call, blind to
+          the ground truth, judging the question that was asked — not whether the session eventually landed on
+          the right answer. It runs on every real conversation in production, not as an offline eval script.</p>
+      </div>
 
-      <!-- 15 -->
-      <h2 id="web"><span class="num">15 — the surface</span>From pipeline to product</h2>
-      <p>All three loops are exposed through a FastAPI application — SQLite in development, Postgres in production via <code>DATABASE_URL</code>. The frontend is vanilla HTML, CSS, and JS with no build step. Two roles, two portals, one universal key.</p>
-      <h3><code>session_id</code> — the universal foreign key</h3>
-      <p>Every artifact in the system hangs off the <code>session_id</code>: the JSONL session log, the final record, the patient's session history entry, the appointment, the DB-stored session report, and the routing decision. Any component that needs to cross-reference data — the doctor portal loading a patient's prior differential, the patient portal showing doctor-prescribed medications — does so through this key. This is the single design decision that makes the portal coherent without a shared database schema.</p>
+      <!-- 03 -->
+      <h2 id="loop1"><span class="num">03 — the engine</span>Loop 1: the doctor turn</h2>
+      <p>Each turn, the actor receives the accumulated patient state and produces exactly one question — never
+        a bundle of several. It pulls similar past cases through vector retrieval, compresses older turns once
+        a conversation runs long so the prompt doesn't grow without bound, and checks a small, explicit set of
+        red-flag patterns on every single patient answer before doing anything else.</p>
+      <ol class="steps">
+        <li><b>Safety check first</b><span>Every answer is screened for a red flag — chest pain radiating to the arm, can't breathe — before the actor does anything else with it.</span></li>
+        <li><b>Retrieve exemplars</b><span>A small set of similar past cases is pulled by relevance and diversity, so the actor isn't just handed near-duplicates of one case.</span></li>
+        <li><b>Compress if needed</b><span>Once a conversation runs long, older turns are summarized so context stays bounded without losing the clinically relevant thread.</span></li>
+        <li><b>Ask one question</b><span>The model outputs a single question, an updated differential, and a rationale that has to reference something actually said in the conversation.</span></li>
+        <li><b>Decide whether to stop</b><span>Confidence, a turn limit, or a safety trigger — whichever comes first — ends the interview and hands off to the router.</span></li>
+      </ol>
       <div class="callout">
-        <p class="c-lab">The anonymous session problem — and how it's solved</p>
-        <p>Sessions started before the user logs in have no user association. After login, they're invisible in the sessions list. The <code>/api/auth/sessions</code> endpoint solves this by scanning all of the user's appointments for <code>session_id</code> fields and backfilling any that aren't in the user's session list — pulling their data from the stored session reports. This runs on every sessions-list load. The same backfill runs at booking time so newly linked sessions appear immediately.</p>
+        <p class="c-lab">A hard stop, not a soft one</p>
+        <p>A red-flag hit ends the interview immediately and routes straight to an emergency message. It
+          bypasses the differential, the critic, and the router entirely — safety doesn't wait for the rest of
+          the pipeline to agree.</p>
       </div>
+
+      <!-- 04 -->
+      <h2 id="loop2"><span class="num">04 — the judge</span>Loop 2: the critic</h2>
+      <p>A second, independent model grades every turn on four axes — question quality, differential quality,
+        reasoning, and calibration — in a background thread, so a slow grade never holds up the patient's next
+        question. This isn't an eval-time artifact; it's an automated QA layer sitting over every real clinical
+        decision the actor makes, live.</p>
+      <div class="component-list">
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Question quality</div></div>
+          <div class="comp-body">Was this the highest-yield question to ask at this specific moment in the conversation, given what's already known?</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Differential quality</div></div>
+          <div class="comp-body">Does the updated probability distribution actually reflect the evidence accumulated so far — not just move in a plausible direction?</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Reasoning</div></div>
+          <div class="comp-body">Does the stated rationale reference specific dialogue evidence and name the hypothesis it's testing, rather than a generic justification?</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Calibration</div></div>
+          <div class="comp-body">Does stated confidence track how much the differential has actually narrowed — an overconfident early turn is a real failure mode, not a stylistic one.</div>
+        </div>
+      </div>
+      <p>The same critic machinery doubles as the ground-truth evaluator for the project's offline DDXPlus
+        evaluation harness — one scoring engine, two jobs: judging real sessions live, and judging simulated
+        ones offline for regression testing.</p>
+
+      <!-- 05 -->
+      <h2 id="loop3"><span class="num">05 — the handoff</span>Loop 3: routing, safety first</h2>
+      <p>Once — not per turn — the router takes the finished differential and classifies both an urgency level
+        and a specialty, using a disease-to-specialty map with a fallback path for differentials that don't
+        clearly point to one specialty.</p>
+      <div class="routing-flow">
+        <div class="rcard safe">
+          <div class="rc-label">Routine</div>
+          <div class="rc-val">Standard booking flow</div>
+          <div class="rc-sub">Recommended specialist, next available slot</div>
+        </div>
+        <div class="rcard">
+          <div class="rc-label">Urgent</div>
+          <div class="rc-val">Prioritized</div>
+          <div class="rc-sub">Flagged for sooner attention in the doctor's queue</div>
+        </div>
+        <div class="rcard danger">
+          <div class="rc-label">Emergency</div>
+          <div class="rc-val">Bypasses routing entirely</div>
+          <div class="rc-sub">Handled by the safety screener during the interview, not here</div>
+        </div>
+      </div>
+
+      <!-- 06 -->
+      <h2 id="journey"><span class="num">06 — the product</span>A session, start to finish</h2>
+      <ol class="steps">
+        <li><b>Intake</b><span>Signed in or as a guest — demographics and a chief complaint. No account required to start; only to keep the result.</span></li>
+        <li><b>The interview</b><span>One question at a time, with the live differential visible in a collapsible sidebar as it narrows.</span></li>
+        <li><b>Termination</b><span>Confidence threshold, turn limit, or a safety trigger — whichever comes first, labeled plainly: "completed full assessment," not a status code.</span></li>
+        <li><b>The report</b><span>Leads with a specialist recommendation and urgency — never a named diagnosis. The full differential is one collapsed section away.</span></li>
+        <li><b>Suggested tests</b><span>Generated once, then re-checked automatically on every later visit — no button, a quiet "New" badge if anything additional turns up.</span></li>
+        <li><b>Booking</b><span>A database-level constraint makes double-booking the same doctor at the same slot structurally impossible, not just application-checked.</span></li>
+      </ol>
+
+      <!-- 07 -->
+      <h2 id="disclosure"><span class="num">07 — a deliberate choice</span>The report never says a disease name</h2>
+      <p>This was a direct response to mentor feedback: a system that explicitly isn't a diagnosis shouldn't
+        hand a patient a disease name anyway. Naming one thing — correctly or not — can trigger real panic
+        before a licensed doctor ever weighs in.</p>
+      <div class="callout accent">
+        <p class="c-lab">What the patient sees vs. what exists</p>
+        <p>The report headline is "See an Internal Medicine specialist," with an urgency badge and a plain-
+          language explanation of why. The AI's actual differential, confidence scores, and turn-by-turn
+          critique still exist in full — behind one collapsed "Technical Details" section meant for clinicians
+          and reviewers, not the patient's first read.</p>
+      </div>
+
+      <!-- 08 -->
+      <h2 id="after"><span class="num">08 — the long tail</span>Life after booking</h2>
+      <p>A diagnostic session ending is the easy part. What makes this a real clinical product is the
+        relationship it keeps working over the days and weeks after — not one conversation.</p>
+      <div class="component-list">
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Messaging</div><div class="comp-name">A 7-day window</div></div>
+          <div class="comp-body">Open for as long as an appointment is upcoming, plus seven days after it's marked seen — long enough to still flag a delayed test result, short enough that messaging never quietly becomes an unbounded inbox. Either side can flag a conversation for admin review at any point, without blocking or notifying the other person.</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Diagnosis</div><div class="comp-name">A second, deliberate field</div></div>
+          <div class="comp-body">The doctor's confirmed diagnosis is stored completely separately from the AI's own <code>primary_diagnosis</code> — never auto-filled from it. A patient only ever sees a named diagnosis once an actual licensed doctor has typed one in and saved it.</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Results</div><div class="comp-name">Visible even after "seen"</div></div>
+          <div class="comp-body">A doctor's queue filters out appointments already marked seen, by default. But test results routinely land days later. A dedicated panel and stat chip surface exactly those results, with a push notification, so nothing uploaded late gets silently missed.</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-label"><div class="comp-tag">Pre-visit</div><div class="comp-name">A second intake, per appointment</div></div>
+          <div class="comp-body">Not the same wizard that starts a new AI session — a short check-in tied to an already-booked visit: current symptoms, medication changes, and the same AI-recommended test panel, uploadable right there.</div>
+        </div>
+      </div>
+
+      <!-- 09 -->
+      <h2 id="portals"><span class="num">09 — three logins</span>One patient, one doctor, one supervisor</h2>
+      <p>Role separation isn't an access-control checkbox — each portal is built around what that specific
+        person actually needs to see, not a filtered view of one shared screen.</p>
       <div class="tbl-wrap">
         <table>
           <thead><tr><th>Patient portal</th><th>Doctor portal</th></tr></thead>
           <tbody>
-            <tr><td>Live chat diagnostic session (Loop 1)</td><td>Patient queue with urgency + completed filters</td></tr>
-            <tr><td>Differential bars updating per turn</td><td>Voice-dictated pre-consultation brief (SpeechSynthesis API)</td></tr>
-            <tr><td>Final diagnosis report + routing decision</td><td>Per-turn critic scores table (Q / D / R quality)</td></tr>
-            <tr><td>Specialist directory + slot booking</td><td>Differential timeline across all turns</td></tr>
-            <tr><td>Session &amp; appointment history (<code>my-sessions.html</code>)</td><td>Prescription pad + test orders + referrals</td></tr>
-            <tr><td>Pre-visit intake form</td><td>Async save-and-done: flushes all pending saves before dismissing</td></tr>
+            <tr><td>AI interview + live differential</td><td>Full transcript + the critic's per-turn scores</td></tr>
+            <tr><td>Report: specialist recommendation, never a diagnosis</td><td>Their own confirmed-diagnosis field, separate from the AI's</td></tr>
+            <tr><td>Real doctor + slot booking</td><td>Prescriptions, referrals, second-opinion requests</td></tr>
+            <tr><td>Suggested-test upload, always optional</td><td>New-results panel that outlives "seen"</td></tr>
+            <tr><td>Pre-visit check-in per appointment</td><td>Can cancel their own appointments</td></tr>
+            <tr><td>Messaging, health history, prescriptions</td><td>Proactive push notification for unread messages</td></tr>
           </tbody>
         </table>
       </div>
-      <h3>The doctor's voice brief</h3>
-      <p>When a doctor opens a patient in the portal, the browser's <code>SpeechSynthesis</code> API automatically dictates a pre-consultation brief: patient name, demographics, chief complaint, reported symptoms, predicted top diagnosis, allergies, medications, and past medical history. No API key — it runs fully client-side. Percentages are deliberately omitted from the verbal brief to avoid anchoring bias; the doctor hears the diagnosis name, not a confidence number.</p>
 
-      <!-- 16 -->
-      <h2 id="multilingual"><span class="num">16 — the language layer</span>Ten languages via Sarvam AI</h2>
-      <p>Medical histories don't arrive in English. A patient describing chest pain in Kannada or a parent reporting a child's fever in Bengali shouldn't need a translator to interact with the system. DiffDx handles this through <a href="https://sarvam.ai">Sarvam AI</a> — an Indian-language foundation model provider — covering ten languages without changing any of the diagnostic logic.</p>
+      <!-- 10 -->
+      <h2 id="admin"><span class="num">10 — oversight</span>Inside the admin console</h2>
+      <p>The admin console isn't a patient or doctor feature at all — it's for whoever is responsible for the
+        AI's behavior and the data it holds. Nine pages, all gated behind <code>role="admin"</code>, both
+        server-side on every API call and client-side on the page shell itself.</p>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Language</th><th>Code</th><th>TTS voice</th></tr></thead>
+          <thead><tr><th>Page</th><th>What it's for</th></tr></thead>
           <tbody>
-            <tr><td>Hindi</td><td><code>hi-IN</code></td><td>Anushka</td></tr>
-            <tr><td>Tamil</td><td><code>ta-IN</code></td><td>Anushka</td></tr>
-            <tr><td>Telugu</td><td><code>te-IN</code></td><td>Manisha</td></tr>
-            <tr><td>Kannada</td><td><code>kn-IN</code></td><td>Vidya</td></tr>
-            <tr><td>Malayalam</td><td><code>ml-IN</code></td><td>Arya</td></tr>
-            <tr><td>Bengali</td><td><code>bn-IN</code></td><td>Manisha</td></tr>
-            <tr><td>Marathi</td><td><code>mr-IN</code></td><td>Vidya</td></tr>
-            <tr><td>Gujarati</td><td><code>gu-IN</code></td><td>Anushka</td></tr>
-            <tr><td>Punjabi</td><td><code>pa-IN</code></td><td>Anushka</td></tr>
-            <tr><td>English (Indian)</td><td><code>en-IN</code></td><td>Anushka</td></tr>
+            <tr><td><strong>Overview</strong></td><td>Cost and usage at a glance, system health, model config, voice/translation usage — with a USD/INR display toggle.</td></tr>
+            <tr><td><strong>Evidence</strong></td><td>Accuracy, cost-effectiveness, and safety-recall compared against a traditional single-shot baseline.</td></tr>
+            <tr><td><strong>AI Quality</strong></td><td>Reasoning-quality and calibration breakdowns, common failure modes across sessions.</td></tr>
+            <tr><td><strong>Audit</strong></td><td>A filterable, append-only log of every sensitive action — no update or delete path exists for it anywhere in the codebase.</td></tr>
+            <tr><td><strong>DSR</strong></td><td>A GDPR-style data-subject erasure/export request queue, with a feature-flagged real-erase flow behind it.</td></tr>
+            <tr><td><strong>Reports</strong></td><td>The review queue for message threads either a patient or doctor has flagged — open, reviewed, or dismissed.</td></tr>
+            <tr><td><strong>Users</strong></td><td>Signup timeseries, engagement, and cohort retention analytics.</td></tr>
+            <tr><td><strong>Architecture Validation</strong></td><td>Maps the actor-critic-router design against a peer-reviewed multi-agent diagnosis benchmark.</td></tr>
+            <tr><td><strong>SOP</strong></td><td>An operator runbook — trigger, meaning, action, and escalate-if, for real situations an admin actually hits.</td></tr>
           </tbody>
         </table>
       </div>
-      <h3>English as the LLM's lingua franca</h3>
-      <p>The design principle is simple: the LLM always sees English. Sarvam does the boundary work. When a patient submits an answer in Tamil, <code>_sarvam_translate()</code> converts it to English before the session passes it to the doctor model. When the model produces the next question, the <code>/api/tts</code> endpoint translates English back to the session language and synthesises audio using Sarvam's <code>bulbul:v2</code> voices — returning both the translated text and a base64 WAV. The frontend plays the audio and displays the translated text in parallel.</p>
       <div class="callout">
-        <p class="c-lab">Why this boundary is the right place to translate</p>
-        <p>Translating at the API boundary — not inside the prompt — means the reasoning model never has to be multilingual. Prompts, exemplars, DDXPlus records, and critic scoring all stay in English. A future swap of the translation layer (a different provider, a local model) touches two functions, not the entire pipeline.</p>
+        <p class="c-lab">Live, not offline</p>
+        <p>Cost and latency figures come from a durable Postgres table logging every LLM call — model
+          configured vs. model actually served (after any rate-limit fallback), token counts, latency, and
+          which of four call sites made it: the doctor turn, the compressor, the critic, or the closing turn.
+          A second table tracks voice/translation calls the same way. Both are tagged by source, so an offline
+          evaluation run never pollutes a production cost figure.</p>
       </div>
-      <pre><span class="pre-label">api.py — turn boundary translation</span># Patient answer arrives in session language → translate to English for LLM
-if lang and lang != "en-IN":
-    patient_answer = _sarvam_translate(patient_answer, lang, "en-IN")
 
-result = session.submit_answer(patient_answer)   # LLM sees English
+      <!-- 11 -->
+      <h2 id="data"><span class="num">11 — persistence</span>Data model</h2>
+      <p>A relational schema under Postgres (SQLite locally, same schema either way), grouped by what each
+        table is actually for.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Group</th><th>Tables</th></tr></thead>
+          <tbody>
+            <tr><td>Identity</td><td>A shared login row per account, with 1:1 patient/doctor profile extensions, dependents, and refresh-token rotation.</td></tr>
+            <tr><td>Clinical session</td><td>The durable record of a completed AI interview, prescriptions, referrals, second opinions, refill requests, and per-appointment intake.</td></tr>
+            <tr><td>Scheduling</td><td>Appointments — with a partial unique index making double-booking structurally impossible — slots, blocked dates, reschedule proposals, waitlists.</td></tr>
+            <tr><td>Messaging</td><td>Threads and messages between a patient and doctor, plus reported-conversation rows awaiting admin review.</td></tr>
+            <tr><td>Platform</td><td>The append-only audit log, erasure requests, uploaded files, and two usage-event tables — one for LLM calls, one for voice/translation calls.</td></tr>
+          </tbody>
+        </table>
+      </div>
 
-# /api/tts: English question → target language + audio
-translated = _sarvam_translate(text, "en-IN", lang) if lang != "en-IN" else text
-audio_b64  = _sarvam_tts_b64(translated, lang)
-return {"audio_b64": audio_b64, "translated_text": translated}</pre>
+      <!-- 12 -->
+      <h2 id="auth"><span class="num">12 — access control</span>Auth, end to end</h2>
+      <p>Short-lived signed JWT access tokens (15 minutes) plus longer-lived, rotatable refresh tokens (7 days)
+        — three roles: patient, doctor, admin. A 401 on an expired access token triggers a silent
+        refresh-and-retry in the frontend before ever showing a "session expired" prompt, so an active user
+        never has to notice their token aged out mid-task.</p>
+      <div class="metrics">
+        <div class="mcard"><div class="mv">15m</div><div class="ml">Access token TTL</div></div>
+        <div class="mcard"><div class="mv">7d</div><div class="ml">Refresh token TTL</div></div>
+        <div class="mcard"><div class="mv">3</div><div class="ml">Roles enforced</div></div>
+        <div class="mcard"><div class="mv">1</div><div class="ml">Retry on 401, silent</div></div>
+      </div>
 
-      <h3>A bilingual session</h3>
-      <p>Select a language to see the same chest-pain session rendered in that language. Doctor questions flow English → target language; patient answers flow target language → English before the LLM sees them.</p>
+      <!-- 13 -->
+      <h2 id="lang"><span class="num">13 — the language layer</span>Ten languages, one model</h2>
+      <p>A patient describing chest pain in Kannada or a parent reporting a child's fever in Bengali
+        shouldn't need a translator to use this. DiffDx handles that through Sarvam AI — an Indian-language
+        model provider — covering ten languages without changing a single line of the diagnostic logic
+        itself.</p>
+      <p>The rule is simple: <strong>the doctor LLM always sees English.</strong> Translation happens at the
+        API boundary, not inside the prompt. A patient's answer in Tamil is translated to English before the
+        session ever passes it to the model; the model's question is translated back and synthesised as audio
+        in the session's language. Prompts, exemplars, and every scoring pass stay English-only — a future
+        swap of the translation provider touches two functions, not the whole pipeline.</p>
       <div class="lang-picker">
-        <label for="demoLangSelect">Language</label>
+        <label for="demoLangSelect">See the same session in</label>
         <select id="demoLangSelect">
-          <option value="ta-IN">Tamil (ta-IN)</option>
           <option value="hi-IN">Hindi (hi-IN)</option>
+          <option value="ta-IN">Tamil (ta-IN)</option>
           <option value="te-IN">Telugu (te-IN)</option>
           <option value="kn-IN">Kannada (kn-IN)</option>
           <option value="ml-IN">Malayalam (ml-IN)</option>
@@ -1320,47 +488,90 @@ return {"audio_b64": audio_b64, "translated_text": translated}</pre>
         </select>
       </div>
       <div class="bilingual-demo" id="bilingualDemo"></div>
+      <div class="callout accent">
+        <p class="c-lab">Why translate at the boundary, not in the prompt</p>
+        <p>The reasoning model never has to be multilingual. Every exemplar, every prompt, every critic score
+          stays in English regardless of what language the patient is actually speaking — so quality doesn't
+          degrade language by language, and the ten-language list can grow without retouching the diagnostic
+          logic at all.</p>
+      </div>
 
-      <!-- 17 -->
-      <h2 id="decisions"><span class="num">17 — in hindsight</span>Decisions that paid off</h2>
+      <!-- 14 -->
+      <h2 id="stack"><span class="num">14 — under the hood</span>Tech stack</h2>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Choice</th><th>Why it mattered</th></tr></thead>
+          <thead><tr><th>Layer</th><th>Choice</th></tr></thead>
           <tbody>
-            <tr><td><strong>No blocking sleeps on rate limits</strong></td><td>On 429, immediately try the next provider. Sessions stay responsive; the actual model used is always logged. Staggered critic calls (not simultaneous) avoid burst 429s without adding dead time.</td></tr>
-            <tr><td><strong>Dedup before compression</strong></td><td>The deterministic pass eliminates the most common failure before the LLM ever sees the input. The LLM summary only operates on already-clean data.</td></tr>
-            <tr><td><strong>Safety over probability in routing</strong></td><td>Any emergency-level disease routes first, regardless of probability. False negatives for emergencies cost lives; false positives cost a same-day visit.</td></tr>
-            <tr><td><strong>Frozen exemplar seed set</strong></td><td>The 50 hand-curated exemplars are never evicted. Future machine-generated exemplars with frozen: false can be pruned by critic score; the seeds cannot. This guarantees baseline clinical coverage at every future state of the pool.</td></tr>
-            <tr><td><strong>Additive-only schemas</strong></td><td>Fields can be added; none can be renamed or removed. Every evaluator written today reads day-one sessions without a migration script.</td></tr>
-            <tr><td><strong>Profile updater as a separate call</strong></td><td>Keeping extraction (updater) and generation (actor) in separate prompts prevents each from contaminating the other. The actor asks questions; it does not decide what an answer reveals.</td></tr>
-            <tr><td><strong>session_id as universal FK</strong></td><td>A single string ties together every artifact across all three loops and the web app. Cross-component joins are O(1) lookups, not schema migrations.</td></tr>
+            <tr><td>API</td><td>FastAPI, 20+ domain routers</td></tr>
+            <tr><td>Language models</td><td>Multi-provider fallback chain — a rate-limited request retries on the next provider rather than failing</td></tr>
+            <tr><td>Retrieval</td><td>Vector search over a curated case pool, selecting for relevance and diversity</td></tr>
+            <tr><td>Database</td><td>PostgreSQL in production, SQLite for zero-config local dev, via SQLAlchemy + Alembic</td></tr>
+            <tr><td>Session state</td><td>Redis while a conversation is live; an in-memory fallback if unset, logged loudly when it happens</td></tr>
+            <tr><td>Frontend</td><td>Self-contained server-rendered pages, no SPA framework, no build step</td></tr>
           </tbody>
         </table>
       </div>
 
-      <!-- 18 -->
-      <h2 id="open"><span class="num">18 — honestly</span>Open problems and what's deferred</h2>
-      <p>What exists today is the architecture and data-collection foundation. Several things are deliberately deferred.</p>
+      <!-- 14 -->
+      <h2 id="deploy"><span class="num">15 — shipping it</span>Deployment</h2>
+      <p>One blueprint provisions the web service, a Postgres instance, and a private-network-only Redis
+        instance together — connection strings auto-wired, never typed or pasted anywhere. Both the database
+        and the web service run on free tiers by default, with the trade-offs that implies.</p>
+      <div class="routing-flow">
+        <div class="rcard">
+          <div class="rc-label">Web service</div>
+          <div class="rc-val">Free tier</div>
+          <div class="rc-sub">Spins down after ~15 min idle; ~30-60s cold start on the next request</div>
+        </div>
+        <div class="rcard">
+          <div class="rc-label">Postgres</div>
+          <div class="rc-val">Free tier</div>
+          <div class="rc-sub">Deleted ~30 days after creation unless upgraded</div>
+        </div>
+        <div class="rcard">
+          <div class="rc-label">Redis</div>
+          <div class="rc-val">Free tier</div>
+          <div class="rc-sub">Private network only, not internet-reachable</div>
+        </div>
+      </div>
+
+      <!-- 15 -->
+      <h2 id="decisions"><span class="num">16 — in hindsight</span>Decisions that paid off</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Choice</th><th>Why it mattered</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Safety over probability in routing</strong></td><td>Any emergency-level pattern routes first, regardless of overall differential confidence. False negatives on emergencies cost lives; false positives cost a same-day visit.</td></tr>
+            <tr><td><strong>Never derive the confirmed diagnosis from the AI</strong></td><td>Keeping the doctor's field separate — never pre-filled from <code>primary_diagnosis</code> — means a patient's named diagnosis always required an actual human decision, not a rubber stamp.</td></tr>
+            <tr><td><strong>A grace window, not a fixed clock</strong></td><td>Messaging closes on appointment status plus a 7-day grace period, not a blanket "6 hours before, 12 after" rule — chosen specifically because a fixed window would have cut off patients flagging delayed test results.</td></tr>
+            <tr><td><strong>The critic runs live, not offline-only</strong></td><td>The same scoring machinery evaluates real sessions in production and simulated ones during regression testing — one engine, both jobs, so quality isn't only checked at eval time.</td></tr>
+            <tr><td><strong>Client-side admin page guard</strong></td><td>A server-side route guard can't work for a plain browser navigation (no auth header on it) — so the admin page shells redirect via a cached-role check before any content loads, on top of every API call already being gated.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 16 -->
+      <h2 id="open"><span class="num">17 — honestly</span>What's still open</h2>
       <ul class="clean">
-        <li><strong>No fine-tuning yet.</strong> (State, action, reward) tuples are being collected per session turn. DPO/LoRA training on high-advantage sessions — the payoff the whole A2C framing is built toward — is the next loop. The data pipeline is the current deliverable.</li>
-        <li><strong>Critic is post-hoc, not in-loop.</strong> Scores are computed after sessions end. A real-time quality gate — where a low critic score mid-session triggers a different exemplar injection or a prompt revision — is deferred.</li>
-        <li><strong>Advantage estimation is approximate.</strong> V(s) is estimated implicitly from session-level baseline performance, not from a learned value network. A proper advantage function requires enough sessions at similar profile states to establish a baseline — that data is still accumulating.</li>
-        <li><strong>Evaluation is narrow by design.</strong> Twenty stratified DDXPlus patients is enough to detect regressions and sanity-check, not to make statistical claims. Synthetic patients are also not real patients.</li>
-        <li><strong>In-memory session state.</strong> The dialogue runtime lives in a Python dict. A mid-session server restart loses the conversation. Final records survive (they're DB-persisted), but active sessions do not. A session-state store (Redis, Postgres) is the production path.</li>
-        <li><strong>Sandbox auth and booking.</strong> JWT tokens, SQLite, mock booking slots, and no real provider API integration. EHR/FHIR integration, real identity verification, multimodal input, and real scheduling APIs are all future work.</li>
+        <li><strong>Session state is Redis-backed but falls back silently to memory if unset</strong> — a single-instance deployment without Redis loses an in-progress conversation on restart.</li>
+        <li><strong>Free-tier deployment trade-offs are real</strong> — cold starts on the web service, a time-limited database plan. Fine for a demo, not for anything that needs to always respond instantly.</li>
+        <li><strong>Evidence and safety-recall figures are directional</strong> — a small evaluation set is enough to catch regressions, not to make a statistical claim.</li>
+        <li><strong>No EHR/FHIR integration, no real identity verification, no real payment or insurance flow</strong> — the booking and records system is real, the surrounding healthcare-business integrations are not yet.</li>
       </ul>
-      <p>Status: Loops 1–3 <span class="chip done">complete</span>, the web app <span class="chip active">in active development</span>, DPO fine-tuning <span class="chip soon">deferred</span>. The harder problems ahead are not missing algorithms — they are credit assignment across turns, squeezing signal from a one-bit terminal reward, and knowing which of these design choices actually survive contact with real evaluation data.</p>
+      <p>Status: the three-loop pipeline <span class="chip done">complete</span>, the product surface (booking,
+        messaging, admin console) <span class="chip active">in active development</span>, EHR/payment
+        integration <span class="chip soon">not started</span>.</p>
 
       <hr class="rule">
-      <p style="color:var(--ink-soft);font-size:17.5px;line-height:1.65">If there is a single idea worth taking from DiffDx, it is the reframing: a long diagnostic conversation is not one decision to be graded at the end. It is fifteen small ones — each asking which question had the highest information value at that specific moment, in that specific profile state. The seven A2C components described in section two name that judgment precisely. The exemplars demonstrate it at inference time. The critic measures it after the fact. Everything else — the compression, the routing, the web app — is scaffolding built to make that measurement possible and, eventually, learnable.</p>
+      <p style="color:var(--ink-soft);font-size:17px;line-height:1.7">The idea that actually holds this together isn't any single feature — it's that nothing downstream of the AI is allowed to quietly inherit its authority. The critic checks the actor. The report doesn't say what the differential says. The doctor's diagnosis is a separate field the doctor has to actually fill in. The admin console watches the system, not the patients. Every one of those is the same rule, applied at a different layer: propose, don't decide.</p>
     </article>
 
     <footer>
-      <p class="fnote">Written from the DiffDx project source and README.</p>
-      <div class="cite">@misc{diffdx-notes-2026,
-  title  = {Dense feedback for sparse rewards: the DiffDx diagnostic architecture},
-  note   = {A2C components · ICL · DDXPlus · three-loop diagnostic system},
-  year   = {2026}
+      <p class="fnote">Written from the DiffDx project source directly — routers, models, and the live deployment configuration, not marketing copy.</p>
+      <div class="cite">@misc{diffdx-field-guide-2026,
+  title = {The DiffDx Field Guide},
+  note  = {Three-loop architecture, patient/doctor/admin product surface, deployment},
+  year  = {2026}
 }</div>
     </footer>
   </main>
@@ -1368,7 +579,6 @@ return {"audio_b64": audio_b64, "translated_text": translated}</pre>
 
 <script>
 (function(){
-  /* ── TOC active-section highlight ── */
   var links = [].slice.call(document.querySelectorAll('.toc a'));
   var map = {};
   links.forEach(function(a){
@@ -1387,43 +597,33 @@ return {"audio_b64": audio_b64, "translated_text": translated}</pre>
         }
       });
     },{rootMargin:'-10% 0px -72% 0px',threshold:0});
-    ids.forEach(function(id){ obs.observe(document.getElementById(id)); });
+    ids.forEach(function(id){ var el = document.getElementById(id); if(el) obs.observe(el); });
   }
 
-  /* ── Theme toggle ── */
   var btn = document.getElementById('themeToggle');
   var root = document.documentElement;
-
   function isDark(){
-    var stored = localStorage.getItem('diffdx-theme');
+    var stored = localStorage.getItem('diffdx-fg-theme');
     if(stored) return stored === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   }
-
   function applyTheme(dark){
     root.setAttribute('data-theme', dark ? 'dark' : 'light');
-    btn.textContent = dark ? '☾' : '☀';
-    btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
-    localStorage.setItem('diffdx-theme', dark ? 'dark' : 'light');
+    if(btn) btn.textContent = dark ? '☾' : '☀';
+  }
+  try { applyTheme(isDark()); } catch(e) {}
+  if(btn){
+    btn.addEventListener('click', function(){
+      var dark = root.getAttribute('data-theme') !== 'dark';
+      try { localStorage.setItem('diffdx-fg-theme', dark ? 'dark' : 'light'); } catch(e) {}
+      applyTheme(dark);
+    });
   }
 
-  /* apply on load */
-  applyTheme(isDark());
-
-  btn.addEventListener('click', function(){
-    applyTheme(root.getAttribute('data-theme') !== 'dark');
-  });
-
-  /* sync if OS preference changes while page is open */
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e){
-    if(!localStorage.getItem('diffdx-theme')) applyTheme(e.matches);
-  });
-
-  /* ── Bilingual demo ── */
+  /* ── Bilingual demo — same chest-pain session, ten languages ── */
   var VOICES = {'hi-IN':'Anushka','ta-IN':'Anushka','te-IN':'Manisha','kn-IN':'Vidya','ml-IN':'Arya','bn-IN':'Manisha','mr-IN':'Vidya','gu-IN':'Anushka','pa-IN':'Anushka','en-IN':'Anushka'};
   var NAMES  = {'hi-IN':'Hindi','ta-IN':'Tamil','te-IN':'Telugu','kn-IN':'Kannada','ml-IN':'Malayalam','bn-IN':'Bengali','mr-IN':'Marathi','gu-IN':'Gujarati','pa-IN':'Punjabi','en-IN':'English'};
 
-  /* [doctor_primary, patient_primary] per turn — English translations are shared */
   var TURNS_EN = [
     ['Where exactly is the chest pain you are describing, and does it spread to your arm or jaw?',
      'The pain is in the centre of the chest. There is also some pain in the left arm, particularly around the elbow.'],
@@ -1434,14 +634,6 @@ return {"audio_b64": audio_b64, "translated_text": translated}</pre>
   ];
 
   var CONVOS = {
-    'ta-IN': [
-      ['நீங்கள் விவரிக்கும் மார்பு வலி சரியாக எங்கே உள்ளது, மற்றும் அது உங்கள் கை அல்லது தாடைக்கு பரவுகிறதா?',
-       'வலி மார்பின் நடுவில் உள்ளது. இடது கையிலும் கொஞ்சம் வலிக்கிறது, குறிப்பாக முழங்கையில்.'],
-      ['இந்த வலி எவ்வளவு நேரமாக இருக்கிறது, மற்றும் அது திடீரென்று தொடங்கியதா அல்லது படிப்படியாக வந்ததா?',
-       'சுமார் இரண்டு மணி நேரம் ஆகிறது. மிகவும் திடீரென்று தொடங்கியது — நான் படிகளில் ஏறும்போது.'],
-      ['நீங்கள் மூச்சு திணறல் அல்லது வியர்வை அனுபவிக்கிறீர்களா, மற்றும் உங்களுக்கு இதய நோய் வரலாறு இருக்கிறதா?',
-       'ஆம், கொஞ்சம் மூச்சு திணறல் இருக்கிறது. என் தந்தைக்கு இதய நோய் இருந்தது, எனக்கு ரத்த அழுத்தம் அதிகமாக உள்ளது.']
-    ],
     'hi-IN': [
       ['आप जिस सीने के दर्द का वर्णन कर रहे हैं वह ठीक कहाँ है, और क्या यह आपकी बाँह या जबड़े तक फैलता है?',
        'दर्द सीने के बीच में है। बाईं बाँह में भी थोड़ा दर्द है, खासकर कोहनी के पास।'],
@@ -1449,6 +641,14 @@ return {"audio_b64": audio_b64, "translated_text": translated}</pre>
        'लगभग दो घंटे से। यह बहुत अचानक शुरू हुआ — जब मैं सीढ़ियाँ चढ़ रहा था।'],
       ['क्या आपको साँस लेने में तकलीफ या पसीना आ रहा है, और क्या परिवार में हृदय रोग का इतिहास है?',
        'हाँ, थोड़ी साँस लेने में तकलीफ है। मेरे पिता को हृदय रोग था, और मुझे उच्च रक्तचाप है।']
+    ],
+    'ta-IN': [
+      ['நீங்கள் விவரிக்கும் மார்பு வலி சரியாக எங்கே உள்ளது, மற்றும் அது உங்கள் கை அல்லது தாடைக்கு பரவுகிறதா?',
+       'வலி மார்பின் நடுவில் உள்ளது. இடது கையிலும் கொஞ்சம் வலிக்கிறது, குறிப்பாக முழங்கையில்.'],
+      ['இந்த வலி எவ்வளவு நேரமாக இருக்கிறது, மற்றும் அது திடீரென்று தொடங்கியதா அல்லது படிப்படியாக வந்ததா?',
+       'சுமார் இரண்டு மணி நேரம் ஆகிறது. மிகவும் திடீரென்று தொடங்கியது — நான் படிகளில் ஏறும்போது.'],
+      ['நீங்கள் மூச்சு திணறல் அல்லது வியர்வை அனுபவிக்கிறீர்களா, மற்றும் உங்களுக்கு இதய நோய் வரலாறு இருக்கிறதா?',
+       'ஆம், கொஞ்சம் மூச்சு திணறல் இருக்கிறது. என் தந்தைக்கு இதய நோய் இருந்தது, எனக்கு ரத்த அழுத்தம் அதிகமாக உள்ளது.']
     ],
     'te-IN': [
       ['మీరు వివరిస్తున్న ఛాతీ నొప్పి సరిగ్గా ఎక్కడ ఉంది, మరియు అది మీ చేయి లేదా దవడకు వ్యాపిస్తుందా?',
@@ -1520,6 +720,7 @@ return {"audio_b64": audio_b64, "translated_text": translated}</pre>
     var demo = document.getElementById('bilingualDemo');
     if(!demo) return;
     var turns = CONVOS[lang];
+    if(!turns) return;
     var isEn = lang === 'en-IN';
     var html = '<div class="bd-header">Live session &mdash; <span>' + NAMES[lang] + ' (' + lang + ')</span> &mdash; Sarvam bulbul:v2 · voice: ' + VOICES[lang] + '</div>';
     for(var i=0;i<turns.length;i++){

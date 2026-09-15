@@ -1353,7 +1353,7 @@
     @media print {
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-shadow: none !important; animation: none !important; }
       body { background: #ffffff !important; color: #0f172a !important; font-family: 'Noto Sans', sans-serif !important; }
-      .bg-grid, .bg-glow-left, .bg-glow-right, .nav, .action-bar-bottom, .ps-listen-btn, .ps-lang-row { display: none !important; }
+      .bg-grid, .bg-glow-left, .bg-glow-right, .nav, .action-bar-bottom, .ps-listen-btn, .ps-lang-row, .final-diff-section { display: none !important; }
       .page { max-width: 100% !important; padding: 0 !important; width: 100% !important; }
       .patient-summary-card, .closing-card, .card, .metric-card {
         background: #f8f9fb !important; border: 1px solid #e2e8f0 !important; box-shadow: none !important;
@@ -3035,7 +3035,7 @@ function buildFinalDiff(diff) {
   `).join('');
 
   return `
-    <div class="report-section">
+    <div class="report-section final-diff-section">
       <div class="report-section-title">Final Differential Diagnosis</div>
       <div class="card"><div class="final-diff">${bars}</div></div>
     </div>

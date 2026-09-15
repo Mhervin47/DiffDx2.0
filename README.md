@@ -112,7 +112,7 @@ voice usage).
    (routine / urgent / emergency) and specialty using `data/disease_specialty_map.json`, with an
    ambiguity handler for differentials that don't clearly point to one specialty.
 5. **Booking** inserts a real `Appointment` row with a DB-level unique constraint on
-   `(doctor_id, slot_datetime)` — see the v1 → v2 table below for why that specific column exists.
+   `(doctor_id, slot_datetime)` — see `loop1/docs/evidence/concurrency.txt` for why that specific column exists.
 
 ## What makes it different
 
@@ -193,7 +193,7 @@ DiffDx2.0/
     │   ├── api_session.py — APISession: turn-by-turn session state machine used by the web layer
     │   ├── static/        — every patient/doctor page, plain HTML/CSS/JS, one file per screen
     │   └── admin_portal/  — the admin console's own static frontend (separate from web/static/)
-    ├── alembic/          — migrations (relational schema is the source of truth; see v1 → v2 below)
+    ├── alembic/          — migrations (relational schema is the source of truth)
     ├── prompts/          — versioned prompt files (`doctor_v0_6.txt`, etc.) — see loop1/README.md §8
     ├── exemplars/        — the few-shot pool Loop 1's retriever selects from
     ├── data/              — DDxPlus raw/curated eval data, disease→specialty map, seed data
@@ -224,7 +224,7 @@ grouped by what each table is actually for:
   `Waitlist`.
 - **Messaging** (`messaging.py`, `reports.py`) — `MessageThread`, `Message` (patient ↔ doctor chat,
   tied to an appointment; the relational tables exist but the live messaging router still reads/
-  writes the blob store — see the v1 → v2 table below), `MessageReport` (a flagged conversation
+  writes the blob store), `MessageReport` (a flagged conversation
   awaiting admin review: reason, optional details, status).
 - **Platform** (`audit.py`, `dsr.py`, `files.py`, `usage.py`, `verification.py`) — `AuditLogEntry`
   (every sensitive action, read by the admin portal), `DsrErasureRequest` (GDPR-style

@@ -3,6 +3,8 @@
 **DiffDx** is an AI diagnostic assistant that conducts adaptive multi-turn clinical interviews,
 produces a ranked differential, and scores its own reasoning on every turn.
 
+learn more about the project here https://mhervin47.github.io/DiffDx2.0/
+
 
 ## Results
 

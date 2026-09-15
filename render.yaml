@@ -6,8 +6,13 @@ services:
     buildCommand: pip install -r requirements-web.txt && pip install -e . --no-deps && PYTHONPATH=src alembic upgrade head && PYTHONPATH=src python scripts/seed_doctors.py
     startCommand: PYTHONPATH=src uvicorn web.api:app --host 0.0.0.0 --port $PORT
     envVars:
+      # Auto-wired to the Postgres instance declared below — Render fills
+      # this in itself at deploy time (its internal connection string,
+      # already including sslmode), so it's never typed/pasted anywhere.
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: diffdx-db
+          property: connectionString
       - key: GROQ_API_KEY
         sync: false
       - key: RESEND_API_KEY
@@ -36,3 +41,14 @@ services:
         sync: false
       - key: RESEND_FROM
         sync: false
+
+databases:
+  # Render's free Postgres tier is deliberately time-limited (expires ~30
+  # days after creation, then the instance is deleted) — fine for an
+  # initial deploy/demo, but plan to upgrade to a paid plan before that
+  # window closes for anything meant to stay up. plan defaults to "free"
+  # if omitted; set explicitly here so that choice is visible, not implicit.
+  - name: diffdx-db
+    plan: free
+    databaseName: diffdx
+    user: diffdx

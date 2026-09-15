@@ -2,6 +2,12 @@ services:
   - type: web
     name: diffdx
     runtime: python
+    # Omitting plan here defaults to the paid Starter tier, not free —
+    # this was missed when the database/Redis plans below were set
+    # explicitly. Free web services spin down after ~15 min idle and take
+    # ~30-60s to cold-start the next request — fine for a demo/low-traffic
+    # deploy, not for anything that needs to always respond instantly.
+    plan: free
     rootDir: loop1
     buildCommand: pip install -r requirements-web.txt && pip install -e . --no-deps && PYTHONPATH=src alembic upgrade head && PYTHONPATH=src python scripts/seed_doctors.py
     startCommand: PYTHONPATH=src uvicorn web.api:app --host 0.0.0.0 --port $PORT

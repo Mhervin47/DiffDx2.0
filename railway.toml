@@ -1,6 +1,0 @@
-[build]
-builder = "nixpacks"
-
-[deploy]
-startCommand = "cd loop1 && PYTHONPATH=src python -m uvicorn web.api:app --host 0.0.0.0 --port $PORT"
-restartPolicyType = "on_failure"

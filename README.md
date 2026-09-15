@@ -173,13 +173,13 @@ behind the infrastructure choices (sync SQLAlchemy, PBKDF2 over bcrypt, Redis si
 | In-flight session state | Redis, falls back to an in-memory dict if `REDIS_URL` is unset (single-process only, logged as a startup warning) |
 | Auth | PyJWT access + refresh tokens, PBKDF2-SHA256 password hashing, `slowapi` rate limiting |
 | Frontend | Server-rendered static HTML/CSS/vanilla JS per page (`web/static/`) — no SPA framework; each page is self-contained and talks to the API via `fetch` |
-| Deployment | Docker (multi-stage, non-root), Docker Compose (API + Postgres + Redis), Render (`render.yaml`), Railway (`railway.toml`) |
+| Deployment | Docker (multi-stage, non-root), Docker Compose (API + Postgres + Redis), Render (`render.yaml`) |
 
 ## Project structure
 
 ```
 DiffDx2.0/
-├── docker-compose.yml, render.yaml, railway.toml   — deploy configs
+├── docker-compose.yml, render.yaml                 — deploy configs
 ├── docs/                                           — briefing page, task specs (docs/tasks/)
 └── loop1/                                          — the actual application
     ├── src/

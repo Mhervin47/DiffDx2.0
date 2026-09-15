@@ -2,9 +2,8 @@
 
 This documents the infrastructure/component layer built out this cutover (persistence, auth,
 sessions, deployment) — the AI diagnostic engine itself (the Loop 1 actor / Loop 2 critic / Loop 3
-router three-loop design) is unchanged and out of scope here; see the root `README.md` and
-`architecture.svg` for that side, and the "Three-Loop Structure" section of this file's sibling,
-the top-of-`README.md` "How the Actor/Critic/Router works" sections, for its own diagram.
+router three-loop design) is unchanged and out of scope here; see the root `README.md`'s "How one
+diagnostic session actually runs" section for that side.
 
 ## Component diagram
 
@@ -18,7 +17,7 @@ flowchart TD
         Repos["Repository layer\nsrc/diffdx/repositories/*"]
         SessionStore["session_store.py\n(live diagnostic sessions)"]
         LegacyStore["legacy_store.py\n(blob-store helpers, still authoritative\nfor routes not yet flipped to the composer)"]
-        AI["AI layer (collapsed — see architecture.svg)\nLoop 1 actor / Loop 2 critic / Loop 3 router"]
+        AI["AI layer (collapsed — see README's session-lifecycle section)\nLoop 1 actor / Loop 2 critic / Loop 3 router"]
     end
 
     PG[("PostgreSQL\n(SQLite locally)")]

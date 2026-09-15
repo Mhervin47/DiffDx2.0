@@ -14,3 +14,25 @@ services:
         sync: false
       - key: PYTHON_VERSION
         value: 3.12.2
+      # Task 5: the app refuses to start with ENVIRONMENT=production unless
+      # SECRET_KEY and CORS_ALLOWED_ORIGINS are also set — see
+      # config.py's _require_production_settings. Declared here (rather
+      # than left for someone to discover via a boot-time crash) so a
+      # fresh Render deploy from this blueprint prompts for them upfront.
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      # Used by the live app (see loop1/.env.example) — declared so they're
+      # prompted for in the dashboard instead of silently defaulting/
+      # disabling the feature that depends on them.
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RESEND_FROM
+        sync: false

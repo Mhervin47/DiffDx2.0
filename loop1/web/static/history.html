@@ -1084,6 +1084,264 @@
       .progress-track { padding: 8px 14px; }
       .pr-line { width: 20px; margin: 0 6px; }
     }
+
+    /* ==========================================================================
+       Auth Gate Required Modal (Clinical & Attractive)
+       ========================================================================== */
+    .auth-gate-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
+      perspective: 1000px;
+    }
+
+    .auth-gate-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .auth-gate-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    html.dark-theme .auth-gate-backdrop {
+      background: rgba(3, 8, 16, 0.85);
+    }
+
+    .auth-gate-dialog {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      padding: 32px 28px 26px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(13, 148, 136, 0.12);
+      transform: scale(0.92) translateY(16px);
+      opacity: 0;
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease;
+      font-family: var(--font-body);
+      color: var(--text-main);
+      overflow: hidden;
+    }
+
+    html.dark-theme .auth-gate-dialog {
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(25, 198, 173, 0.2), 0 0 40px -10px rgba(25, 198, 173, 0.14);
+    }
+
+    .auth-gate-overlay.active .auth-gate-dialog {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+
+    .auth-gate-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border-card);
+      background: transparent;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .auth-gate-close:hover {
+      color: var(--text-main);
+      background: rgba(143, 162, 185, 0.14);
+      transform: scale(1.05);
+    }
+
+    .auth-gate-header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .auth-gate-icon-wrap {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-gate-pulse-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--teal-glow) 0%, transparent 70%);
+      animation: authGatePulse 2.4s infinite ease-in-out;
+    }
+
+    @keyframes authGatePulse {
+      0%, 100% { transform: scale(0.96); opacity: 0.6; }
+      50% { transform: scale(1.16); opacity: 1; }
+    }
+
+    .auth-gate-icon-box {
+      position: relative;
+      z-index: 1;
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(13, 148, 136, 0.14), rgba(37, 99, 235, 0.14));
+      border: 1.5px solid rgba(13, 148, 136, 0.35);
+      color: var(--teal-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    html.dark-theme .auth-gate-icon-box {
+      background: linear-gradient(135deg, rgba(25, 198, 173, 0.18), rgba(76, 143, 245, 0.18));
+      border-color: rgba(25, 198, 173, 0.45);
+    }
+
+    .auth-gate-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 99px;
+      background: rgba(13, 148, 136, 0.1);
+      border: 1px solid rgba(13, 148, 136, 0.25);
+      color: var(--teal-primary);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .auth-gate-title {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+
+    .auth-gate-subtitle {
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      max-width: 400px;
+    }
+
+    .auth-gate-features {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+      background: var(--fi-bg);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-align: left;
+    }
+
+    .auth-gate-feat-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .auth-gate-feat-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(13, 148, 136, 0.12);
+      color: var(--teal-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .auth-gate-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .auth-gate-btn-signin {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 20px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--teal-primary), var(--blue-secondary));
+      color: #FFFFFF;
+      font-family: var(--font-heading);
+      font-size: 14.5px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    }
+    .auth-gate-btn-signin:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(13, 148, 136, 0.35);
+      color: #FFFFFF;
+    }
+
+    .auth-gate-btn-signup {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 20px;
+      border-radius: 11px;
+      background: transparent;
+      border: 1.5px solid var(--border-card);
+      color: var(--text-main);
+      font-family: var(--font-heading);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .auth-gate-btn-signup:hover {
+      background: rgba(143, 162, 185, 0.1);
+      border-color: var(--teal-primary);
+      color: var(--teal-primary);
+    }
+
+    .auth-gate-note {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
   </style>
 </head>
 <body>
@@ -1365,6 +1623,86 @@
     </form>
   </main>
 
+  <!-- Auth Required Modal -->
+  <div class="auth-gate-overlay" id="auth-gate-modal" aria-hidden="true">
+    <div class="auth-gate-backdrop" onclick="closeAuthGateModal()"></div>
+    <div class="auth-gate-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-gate-title">
+      <button type="button" class="auth-gate-close" onclick="closeAuthGateModal()" aria-label="Close modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <div class="auth-gate-header">
+        <div class="auth-gate-icon-wrap">
+          <div class="auth-gate-pulse-ring"></div>
+          <div class="auth-gate-icon-box">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+        </div>
+        <div class="auth-gate-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Sign In Required</span>
+        </div>
+        <h3 class="auth-gate-title" id="auth-gate-title">Sign in to start diagnosis</h3>
+        <p class="auth-gate-subtitle">
+          For diagnosis you have to login first. Please sign in with your account or create a new one to begin your clinical consultation.
+        </p>
+      </div>
+
+      <div class="auth-gate-features">
+        <div class="auth-gate-feat-item">
+          <div class="auth-gate-feat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <span>Interactive AI diagnostic interview &amp; adaptive analysis</span>
+        </div>
+        <div class="auth-gate-feat-item">
+          <div class="auth-gate-feat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <span>Encrypted patient records &amp; differential diagnostic report</span>
+        </div>
+        <div class="auth-gate-feat-item">
+          <div class="auth-gate-feat-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <span>Seamless follow-up &amp; appointment booking with doctors</span>
+        </div>
+      </div>
+
+      <div class="auth-gate-actions">
+        <a href="/login.html?next=/history.html" class="auth-gate-btn-signin">
+          <span>Sign In</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+        <a href="/signup.html?next=/history.html" class="auth-gate-btn-signup">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="8.5" cy="7" r="4"></circle>
+            <line x1="20" y1="8" x2="20" y2="14"></line>
+            <line x1="23" y1="11" x2="17" y2="11"></line>
+          </svg>
+          <span>Create Account (Sign Up)</span>
+        </a>
+      </div>
+
+      <div class="auth-gate-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span>Your entered symptoms and history are safely saved in draft</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Loading overlay -->
   <div class="loading-overlay" id="loading-overlay">
     <div class="lo-glow"></div>
@@ -1423,6 +1761,7 @@
     </div>
   </div>
 
+  <script src="/auth.js"></script>
   <script>
     // Theme toggle handling
     const toggleBtn = document.getElementById('theme-toggle');
@@ -1634,8 +1973,56 @@
       }
     }
 
+    function _isAuthenticated() {
+      try {
+        if (typeof getAuthUser === 'function' && getAuthUser()) return true;
+        if (typeof getAccessToken === 'function' && getAccessToken()) return true;
+        const raw = localStorage.getItem('authUser');
+        const token = localStorage.getItem('authAccessToken');
+        return !!(raw || token);
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function openAuthGateModal() {
+      saveHistoryDraft();
+      const modal = document.getElementById('auth-gate-modal');
+      if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeAuthGateModal() {
+      const modal = document.getElementById('auth-gate-modal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+      const btn = document.getElementById('start-btn');
+      if (btn) btn.disabled = false;
+    }
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('auth-gate-modal');
+        if (modal && modal.classList.contains('active')) {
+          closeAuthGateModal();
+        }
+      }
+    });
+
     document.getElementById('history-form').addEventListener('submit', async e => {
       e.preventDefault();
+      saveHistoryDraft();
+
+      // Without login do not allow starting diagnosis — show attractive modal
+      if (!_isAuthenticated()) {
+        openAuthGateModal();
+        return;
+      }
+
       // Always show consent modal before starting diagnosis
       if (window.DiffDxConsent) {
         window.DiffDxConsent.show({
@@ -1652,7 +2039,6 @@
       }
     });
   </script>
-  <script src="/auth.js"></script>
   <script src="/consent-modal.js"></script>
 </body>
 </html>

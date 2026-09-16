@@ -5231,7 +5231,7 @@ async function selectAppointment(apptId) {
         if (ch) ch.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
       });
     });
-    // Animate bars + auto-dictate the clinical brief
+    // Animate bars
     requestAnimationFrame(() => {
       panel.querySelectorAll('.diff-evo-fill[data-width]').forEach(el => {
         el.style.width = el.dataset.width + '%';
@@ -5239,8 +5239,9 @@ async function selectAppointment(apptId) {
       panel.querySelectorAll('.brief-dx-bar[data-width]').forEach(el => {
         el.style.width = el.dataset.width + '%';
       });
-      // Auto-play voice brief — small delay so browser audio context is ready
-      setTimeout(() => toggleBriefVoice(apptId), 600);
+      // Voice brief no longer auto-plays on open — doctors found it
+      // intrusive when just browsing between patients. Still available
+      // on demand via the "Read brief aloud" button (toggleBriefVoice).
     });
   } catch (e) {
     panel.innerHTML = `<div style="padding:20px;color:var(--danger);">Error: ${escHtml(e.message)}</div>`;

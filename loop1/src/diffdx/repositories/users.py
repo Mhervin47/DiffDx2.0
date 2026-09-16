@@ -236,6 +236,12 @@ class UserRepository:
         self._session.flush()
         return _to_user_dto(user)
 
+    def update_password(self, user_id: uuid.UUID, password_hash: str) -> None:
+        user = self._session.get(User, user_id)
+        if user is not None:
+            user.password_hash = password_hash
+            self._session.flush()
+
     def update_dependent(self, dependent_id: uuid.UUID, **fields) -> DependentDTO | None:
         dep = self._session.get(Dependent, dependent_id)
         if dep is None:

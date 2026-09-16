@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from diffdx import otp
 from diffdx.audit import log_audit_event
 from diffdx.auth_tokens import (
     create_access_token,
@@ -30,15 +31,18 @@ from diffdx.auth_tokens import (
 )
 from diffdx.db.engine import get_session
 from diffdx.dependencies import get_current_user
+from diffdx.emails import send_password_reset_email, send_welcome_email
 from diffdx.rate_limit import limiter
-from diffdx.repositories.users import RefreshTokenRepository, UserRepository
+from diffdx.repositories.users import EmailOtpRepository, RefreshTokenRepository, UserRepository
 from diffdx.schemas.auth import (
     DependentRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     ProfileUpdateRequest,
     RefreshRequest,
     RegisterRequest,
+    ResetPasswordRequest,
 )
 from diffdx.legacy_store import (
     _add_session_to_user,
@@ -97,6 +101,10 @@ async def register(request: Request, req: RegisterRequest, db: Session = Depends
     user = _compose_user_dict(db, dto)
     access_token, refresh_token = _issue_token_pair(db, user)
     log_audit_event(actor=user, action="register", resource_type="user", resource_id=user["id"], ip_address=_client_ip(request))
+    # Best-effort — send_welcome_email already swallows its own errors and
+    # no-ops silently if RESEND_API_KEY isn't set, so this never blocks
+    # or fails registration.
+    send_welcome_email(user["email"], user["name"])
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -130,6 +138,56 @@ async def login(request: Request, req: LoginRequest, db: Session = Depends(get_s
             "specialty": matched.get("specialty"),
         },
     }
+
+
+@router.post("/forgot-password")
+@limiter.limit("5/minute")
+async def forgot_password(request: Request, req: ForgotPasswordRequest, db: Session = Depends(get_session)):
+    """Issue a 10-minute, 6-digit reset code and email it via Resend.
+    Always returns the same generic response whether or not the email
+    is registered, so this endpoint can't be used to enumerate accounts."""
+    dto = UserRepository(db).get_by_email(req.email)
+    if dto is not None:
+        code = otp.generate_code()
+        EmailOtpRepository(db).upsert(
+            user_id=dto.id, code_hash=otp.hash_code(code), expires_at=otp.expiry(),
+        )
+        db.commit()
+        send_password_reset_email(dto.email, dto.name, code)
+    return {"sent": True}
+
+
+@router.post("/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(request: Request, req: ResetPasswordRequest, db: Session = Depends(get_session)):
+    """Verify the code issued by /forgot-password and set a new password.
+    Reuses the same email_otps table/attempt-cap machinery as the
+    (currently unwired) registration-verification flow — one pending
+    code per user, so requesting a new one invalidates the last."""
+    dto = UserRepository(db).get_by_email(req.email)
+    if dto is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired code.")
+
+    repo = EmailOtpRepository(db)
+    record = repo.get(dto.id)
+    if record is None or otp.is_expired(record.expires_at) or record.attempts >= otp.MAX_ATTEMPTS:
+        raise HTTPException(status_code=400, detail="Invalid or expired code.")
+    if not otp.code_matches(req.code, record.code_hash):
+        repo.increment_attempts(dto.id)
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid or expired code.")
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+
+    UserRepository(db).update_password(dto.id, _hash_password(req.new_password))
+    repo.delete(dto.id)
+    # A password reset likely means the old password was compromised or
+    # forgotten under suspicious circumstances — log out every other
+    # session by revoking all of this user's outstanding refresh tokens.
+    RefreshTokenRepository(db).revoke_all_for_user(dto.id)
+    db.commit()
+    log_audit_event(actor=None, action="password_reset", resource_type="user", resource_id=str(dto.id), ip_address=_client_ip(request))
+    return {"reset": True}
 
 
 @router.post("/refresh")

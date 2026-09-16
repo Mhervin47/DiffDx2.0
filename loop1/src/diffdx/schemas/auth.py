@@ -25,6 +25,16 @@ class ResendOtpRequest(BaseModel):
     email: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

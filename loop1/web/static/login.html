@@ -669,6 +669,26 @@
       padding: 0;
       display: none;
     }
+    .fp-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(4,10,20,.55);
+      backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .fp-overlay.open { display: flex; }
+    .fp-card.auth-card {
+      display: block;
+      width: 100%; max-width: 380px;
+      background: var(--card-bg, #fff);
+      border-radius: 16px;
+      padding: 28px 26px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+      animation: card-load 220ms cubic-bezier(.16,1,.3,1) both;
+    }
+    .dark-theme .fp-card.auth-card { background: #10192b; }
+
     .glass-card.show, .auth-card.show {
       display: block;
       animation: card-load 320ms cubic-bezier(.16,1,.3,1) both;
@@ -1228,6 +1248,7 @@
           </div>
           <button class="submit-btn patient-btn" id="signin-btn" onclick="doSignIn()">Sign In</button>
           <p class="form-note">No account? <a onclick="showTab('register')">Create one</a></p>
+          <p class="form-note"><a onclick="openForgotPassword()">Forgot password?</a></p>
         </div>
 
         <div class="tab-pane" id="pane-register">
@@ -1289,9 +1310,47 @@
               onkeydown="if(event.key==='Enter') doDocSignIn()">
           </div>
           <button class="submit-btn doc-btn" id="doc-signin-btn" onclick="doDocSignIn()">Sign In to Portal</button>
+          <p class="form-note"><a onclick="openForgotPassword()">Forgot password?</a></p>
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Forgot password modal -->
+  <div class="fp-overlay" id="fp-overlay">
+    <div class="auth-card fp-card">
+      <div class="auth-head">
+        <div class="auth-title">Reset Password</div>
+        <div class="auth-subtitle" id="fp-subtitle">Enter your account email and we'll send you a reset code.</div>
+      </div>
+
+      <div class="tab-pane active" id="fp-step-email">
+        <div class="alert alert-err" id="fp-email-error"></div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="fp-email" placeholder="your@email.com" autocomplete="email"
+            onkeydown="if(event.key==='Enter') sendResetCode()">
+        </div>
+        <button class="submit-btn patient-btn" id="fp-send-btn" onclick="sendResetCode()">Send Reset Code</button>
+        <p class="form-note"><a onclick="closeForgotPassword()">Cancel</a></p>
+      </div>
+
+      <div class="tab-pane" id="fp-step-reset" style="display:none;">
+        <div class="alert alert-err" id="fp-reset-error"></div>
+        <div class="alert alert-ok" id="fp-reset-success"></div>
+        <div class="field">
+          <label>6-digit code</label>
+          <input type="text" id="fp-code" placeholder="123456" inputmode="numeric" maxlength="6">
+        </div>
+        <div class="field">
+          <label>New password</label>
+          <input type="password" id="fp-new-password" placeholder="Min 6 characters" autocomplete="new-password"
+            onkeydown="if(event.key==='Enter') submitReset()">
+        </div>
+        <button class="submit-btn patient-btn" id="fp-reset-btn" onclick="submitReset()">Reset Password</button>
+        <p class="form-note"><a onclick="closeForgotPassword()">Cancel</a></p>
+      </div>
     </div>
   </div>
 </main>
@@ -1419,6 +1478,71 @@ async function doRegister() {
     window.location.replace(dest);
   } catch (e) { showAlert('reg-error', 'Network error: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'Create Account'; }
+}
+
+function openForgotPassword() {
+  document.getElementById('fp-overlay').classList.add('open');
+  document.getElementById('fp-step-email').style.display = '';
+  document.getElementById('fp-step-reset').style.display = 'none';
+  document.getElementById('fp-subtitle').textContent = "Enter your account email and we'll send you a reset code.";
+  hideAlert('fp-email-error'); hideAlert('fp-reset-error'); hideAlert('fp-reset-success');
+  document.getElementById('fp-email').value = '';
+  setTimeout(() => document.getElementById('fp-email').focus(), 50);
+}
+
+function closeForgotPassword() {
+  document.getElementById('fp-overlay').classList.remove('open');
+}
+
+async function sendResetCode() {
+  hideAlert('fp-email-error');
+  const email = document.getElementById('fp-email').value.trim();
+  if (!email) { showAlert('fp-email-error', 'Please enter your email.'); return; }
+  const btn = document.getElementById('fp-send-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const res = await fetch('/api/auth/forgot-password', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email}) });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showAlert('fp-email-error', data.detail || 'Could not send reset code. Please try again.');
+      return;
+    }
+    // Always succeeds from the server's perspective (no account enumeration) —
+    // move to the code-entry step regardless of whether the email exists.
+    document.getElementById('fp-step-email').style.display = 'none';
+    document.getElementById('fp-step-reset').style.display = '';
+    document.getElementById('fp-subtitle').textContent = `If an account exists for ${email}, a 6-digit code was sent.`;
+    document.getElementById('fp-code').value = '';
+    document.getElementById('fp-new-password').value = '';
+    setTimeout(() => document.getElementById('fp-code').focus(), 50);
+  } catch (e) { showAlert('fp-email-error', 'Network error: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Send Reset Code'; }
+}
+
+async function submitReset() {
+  hideAlert('fp-reset-error'); hideAlert('fp-reset-success');
+  const email = document.getElementById('fp-email').value.trim();
+  const code = document.getElementById('fp-code').value.trim();
+  const newPassword = document.getElementById('fp-new-password').value;
+  if (!code || !newPassword) { showAlert('fp-reset-error', 'Please enter the code and a new password.'); return; }
+  const btn = document.getElementById('fp-reset-btn');
+  btn.disabled = true; btn.textContent = 'Resetting…';
+  try {
+    const res = await fetch('/api/auth/reset-password', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, code, new_password: newPassword}) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { showAlert('fp-reset-error', data.detail || 'Reset failed. Please try again.'); return; }
+    showAlert('fp-reset-success', 'Password reset. You can now sign in.');
+    setTimeout(() => {
+      closeForgotPassword();
+      document.getElementById('signin-email').value = email;
+      // If neither card is already showing, bring the patient sign-in card forward.
+      if (!document.getElementById('patient-card').classList.contains('show') &&
+          !document.getElementById('doctor-card').classList.contains('show')) {
+        selectRole('patient');
+      }
+    }, 1200);
+  } catch (e) { showAlert('fp-reset-error', 'Network error: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'Reset Password'; }
 }
 
 // URL query param handling for direct linking (e.g. ?role=patient&tab=register)

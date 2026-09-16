@@ -133,7 +133,12 @@ def get_routing_options(
             urgency=urgency,
             reasoning=entry["reasoning"],
             appointment_type=appointment_type,
-            confidence_weight=round(weight, 4),
+            # LLM-generated differential probabilities aren't guaranteed to sum
+            # to exactly 1.0 (observed as high as 1.05) — several diseases
+            # summing into one specialty can then push the aggregated weight
+            # past 1.0, which RoutingOption's schema (le=1.0) rejects outright.
+            # Clamp at the boundary rather than letting real sessions 500.
+            confidence_weight=min(round(weight, 4), 1.0),
         ))
 
     # Emergency-surfacing: always include additional emergency specialties alongside primary
@@ -152,7 +157,7 @@ def get_routing_options(
                     urgency=urgency,
                     reasoning=entry["reasoning"],
                     appointment_type=appointment_type,
-                    confidence_weight=round(weight, 4),
+                    confidence_weight=min(round(weight, 4), 1.0),
                 ))
                 existing_specialties.add(specialty)
 

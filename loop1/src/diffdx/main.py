@@ -96,7 +96,11 @@ _log = logging.getLogger(__name__)
 def _send_reminder_email(to_email: str, patient_name: str, doctor_name: str, slot: str) -> bool:
     """Send a 24h appointment reminder via Resend. Returns True on success."""
     resend_key = os.environ.get("RESEND_API_KEY", "")
-    from_addr  = os.environ.get("RESEND_FROM", "reminders@diffdx.app")
+    # .get(key, default) only falls back when the var is entirely unset —
+    # RESEND_FROM="" (set but empty, as it is by default in .env.example)
+    # would otherwise send "from": "", which Resend rejects outright.
+    # `or` treats both cases the same.
+    from_addr  = os.environ.get("RESEND_FROM") or "reminders@diffdx.app"
     if not resend_key:
         _log.info("RESEND_API_KEY not set — skipping reminder email to %s", to_email)
         return False
@@ -135,7 +139,15 @@ def _send_reminder_email(to_email: str, patient_name: str, doctor_name: str, slo
         req = urllib.request.Request(
             "https://api.resend.com/emails",
             data=payload,
-            headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+            # Resend sits behind Cloudflare, which blocks urllib's default
+            # "Python-urllib/x.y" User-Agent outright (HTTP 403, Cloudflare
+            # error 1010) before Resend's own logic ever runs — a real
+            # User-Agent is required for the request to get through at all.
+            headers={
+                "Authorization": f"Bearer {resend_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "DiffDx/1.0 (+https://diffdx.app)",
+            },
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=10) as r:

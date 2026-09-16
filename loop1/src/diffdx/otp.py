@@ -52,7 +52,11 @@ def send_otp_email(to_email: str, name: str, code: str) -> bool:
     resend_key = os.environ.get("RESEND_API_KEY", "")
     if resend_key:
         try:
-            from_addr = os.environ.get("RESEND_FROM", "reminders@diffdx.app")
+            # .get(key, default) only falls back when the var is entirely
+            # unset — RESEND_FROM="" (set but empty, as it is by default in
+            # .env.example) would otherwise send "from": "", which Resend
+            # rejects. `or` treats both cases the same.
+            from_addr = os.environ.get("RESEND_FROM") or "reminders@diffdx.app"
             html = f"""
             <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f8fafc;border-radius:12px;">
               <div style="background:#0a2540;border-radius:10px 10px 0 0;padding:24px 28px;">
@@ -77,7 +81,15 @@ def send_otp_email(to_email: str, name: str, code: str) -> bool:
             req = urllib.request.Request(
                 "https://api.resend.com/emails",
                 data=payload,
-                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                # Resend sits behind Cloudflare, which blocks urllib's default
+                # "Python-urllib/x.y" User-Agent outright (HTTP 403, Cloudflare
+                # error 1010) before Resend's own logic ever runs — a real
+                # User-Agent is required for the request to get through at all.
+                headers={
+                    "Authorization": f"Bearer {resend_key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "DiffDx/1.0 (+https://diffdx.app)",
+                },
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=10) as r:

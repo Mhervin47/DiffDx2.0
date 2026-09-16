@@ -742,9 +742,13 @@ FastAPI + uvicorn. ~3000 lines covering all patient and doctor workflows.
 
 ```
 # Auth
-POST /api/register                     Patient sign-up
-POST /api/login                        Returns JWT + role
-GET  /api/me                           Current user
+POST /api/auth/register                Patient sign-up (sends a Resend welcome email, best-effort)
+POST /api/auth/login                   Returns access + refresh JWT + role
+POST /api/auth/refresh                 Rotate a refresh token for a new access/refresh pair
+POST /api/auth/logout                  Revoke a refresh token
+POST /api/auth/forgot-password         Email a 6-digit reset code (generic response either way — no account enumeration)
+POST /api/auth/reset-password          Verify the code, set a new password, revoke other sessions
+GET  /api/auth/me                      Current user
 
 # Diagnostic session
 POST /api/session/start                From predefined case
@@ -810,7 +814,10 @@ When a patient is selected, the panel shows:
    - Ruled in / ruled out lists
    - Doctor's Plan section
 
-2. **Voice Brief** — browser `SpeechSynthesis` auto-dictates the brief when a patient is opened:
+2. **Voice Brief** — browser `SpeechSynthesis` reads the brief aloud on demand, via a manual
+   "Read brief aloud" button (not auto-played when a patient is opened — it used to auto-play on
+   selection, which doctors found intrusive when clicking through several patients in a row, so
+   that trigger was removed in favor of an explicit toggle):
    - Patient name + demographics
    - Chief complaint
    - Reported symptoms
@@ -832,6 +839,11 @@ When a patient is selected, the panel shows:
    - Referral to specialist
    - Follow-up scheduler
    - Status bar: Upcoming / Seen ✓ / No-show
+
+   Prescriptions, case reports, and referral letters each print/export as a consistent
+   letterhead-style PDF — gradient hospital banner, a doctor identity strip (avatar initials, name,
+   specialty, license — pulled from the signed-in doctor's own profile rather than left blank when
+   unset), a bordered patient-info card, and a signature footer.
 
 ### Save & Done
 

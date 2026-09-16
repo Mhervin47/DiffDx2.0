@@ -30,11 +30,17 @@ interview, not just a standalone chatbot. A session moves through three parties:
 **Patient** — registers or continues as a guest, fills in demographics and chief complaint
 (`patient-info.html`) plus structured history, then has an adaptive multi-turn interview with the
 AI "doctor" (`session.html`) — one question at a time, live differential updating in a
-collapsible sidebar as the conversation progresses. When the interview ends (confidence threshold
-reached, turn limit, or a safety-triggered stop), the patient lands on a report page
-(`report.html`) that leads with a specialist recommendation, urgency level, and an AI-suggested
-pre-visit test checklist — deliberately **not** a named diagnosis (see "Patient-safe diagnosis
-disclosure" below).
+collapsible sidebar as the conversation progresses, with the interview optionally read aloud
+(browser TTS in English, Sarvam-backed cloud TTS with on-the-fly translation for Indian regional
+languages) and answerable by voice via the Web Speech API. Registering sends a Resend-backed
+welcome email, and a **Forgot password** flow (`login.html`) emails a 6-digit reset code — both
+best-effort and silently no-op if `RESEND_API_KEY` isn't configured, same contract as every other
+email in the app. When the interview ends (confidence threshold reached, turn limit, or a
+safety-triggered stop), the patient lands on a report page (`report.html`) that leads with a
+specialist recommendation, urgency level, and an AI-suggested pre-visit test checklist —
+deliberately **not** a named diagnosis (see "Patient-safe diagnosis disclosure" below). The
+report, and the standalone test checklist, export as a branded, print-ready PDF via the browser's
+print dialog.
 
 The suggested-tests list is generated once from the session's differential and then persisted —
 report.html silently checks for additional tests on every load (no button; idempotent
@@ -68,7 +74,11 @@ after an appointment has already been marked "seen" (where they'd otherwise be f
 default queue view), with a push notification the doctor portal already had the plumbing for.
 Doctors get the same proactive unread-message push notification patients do, and can cancel an
 appointment on their own schedule the same way a patient can cancel theirs (mirrored logic,
-attributed separately as `cancelled_by="doctor"`).
+attributed separately as `cancelled_by="doctor"`). Prescriptions, sick notes, case reports, and
+referral letters all export as a consistent, clinic-letterhead-style PDF (hospital banner, doctor
+identity strip, signature block) via the browser's print dialog — the doctor's own profile
+(`_doctorProfile` — hospital, name, specialty, license) is pulled in automatically rather than
+left blank when unset.
 
 **Admin** — a separate static app (`web/admin_portal/`), gated behind `role="admin"` both
 server-side (every `/api/admin/*` route) and client-side (a page-shell guard redirects a
@@ -282,8 +292,13 @@ relying on this for anything real: the free web service spins down after ~15 min
 (~30-60s cold start on the next request), and the free Postgres plan is deleted ~30 days after
 creation unless upgraded.
 
-Admin accounts aren't seeded automatically (doctor accounts are) — after the first deploy, run
-`PYTHONPATH=src python scripts/seed_admin.py` from the service's Shell tab in Render's dashboard.
+Admin accounts aren't seeded automatically (doctor accounts are). Render's free web-service tier
+has no Shell tab, so `scripts/seed_admin.py` isn't run interactively — instead, `render.yaml`'s
+`buildCommand` runs it conditionally at build time, gated on `ADMIN_SEED_EMAIL` being set: fill in
+`ADMIN_SEED_EMAIL`/`ADMIN_SEED_PASSWORD`/`ADMIN_SEED_NAME` in the Environment tab and save (which
+triggers a redeploy) to create the account on that one build; the script is idempotent, so the two
+vars can be left in or removed afterward. On a self-hosted deploy with real Shell access, running
+the script directly still works the same way.
 
 **Self-hosted**: `docker compose up --build` from the repo root — runs the API alongside its own
 Postgres and Redis containers. `loop1/Dockerfile` builds a non-root, multi-stage image with

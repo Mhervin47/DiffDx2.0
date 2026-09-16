@@ -1374,9 +1374,9 @@
 
 <!-- Header Navbar -->
 <nav class="nav-bar">
-  <a href="/session.html" class="nav-home" onclick="window.location.href='/session.html'; return false;">
+  <a href="/patient-overview.html" class="nav-home" id="nav-overview-btn" onclick="navigateToOverview(event)" title="Back to Overview">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Session
+    Overview
   </a>
   <a href="/" class="nav-center-logo" aria-label="DiffDx Home">
     <svg class="logo-symbol" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1478,6 +1478,27 @@
 const API = '';
 const sessionId = sessionStorage.getItem('sessionId');
 if (!sessionId) window.location.href = '/';
+
+function getOverviewUrl() {
+  try {
+    const user = typeof getAuthUser === 'function' ? getAuthUser() : JSON.parse(localStorage.getItem('authUser') || 'null');
+    if (user?.role === 'doctor') return '/doctor-overview.html';
+    if (user?.role === 'admin') return '/admin_portal/index.html';
+    return '/patient-overview.html';
+  } catch (_) {
+    return '/patient-overview.html';
+  }
+}
+
+function navigateToOverview(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+  window.location.href = getOverviewUrl();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('nav-overview-btn');
+  if (btn) btn.href = getOverviewUrl();
+});
 
 function toggleTheme() {
   const isDark = document.documentElement.classList.contains('dark-theme');

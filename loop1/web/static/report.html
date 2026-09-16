@@ -1242,6 +1242,11 @@
       padding: 12px 16px; background: rgba(13, 148, 136, 0.05);
       border-left: 3px solid var(--teal-primary); border-radius: 0 12px 12px 0; line-height: 1.6;
     }
+    .sug-disclaimer {
+      font-size: 11.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6;
+      display: flex; align-items: flex-start; gap: 6px;
+    }
+    .sug-disclaimer svg { flex-shrink: 0; margin-top: 1px; }
     .sug-none {
       display: flex; align-items: center; gap: 12px; padding: 18px 20px;
       background: rgba(13, 148, 136, 0.06); border: 1px solid rgba(13, 148, 136, 0.25);
@@ -1677,6 +1682,10 @@ function _buildSuggestedTestsHtml(data) {
       </button>
     </div>
     ${data.rationale ? `<div class="sug-rationale">${escHtml(data.rationale)}</div>` : ''}
+    <div class="sug-disclaimer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>These are AI-suggested, completely optional — nothing here is a requirement. Getting them done beforehand can help your doctor, but you're free to skip any or all of them and discuss it at your appointment instead.</span>
+    </div>
     <div class="sug-status-bar">
       <span id="sug-status-text" class="sug-status-count">${doneCount} of ${tests.length} completed</span>
       <div class="sug-progress"><div class="sug-progress-fill" id="sug-progress-fill" style="width:${tests.length ? Math.round(doneCount/tests.length*100) : 0}%"></div></div>
@@ -1886,7 +1895,7 @@ function _printTestList() {
           <thead><tr><th>Status</th><th>Test</th><th>Why Needed</th><th>Preparation</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-        <div class="footer-note">This is an AI-generated suggestion — confirm with your doctor before proceeding. Printed from DiffDx.</div>
+        <div class="footer-note">This is an AI-generated suggestion, completely optional — confirm with your doctor before proceeding. Printed from DiffDx.</div>
       </div>
     </div>
     <script>window.onload = () => { window.print(); }<\/script>

@@ -9,7 +9,19 @@ services:
     # deploy, not for anything that needs to always respond instantly.
     plan: free
     rootDir: loop1
-    buildCommand: pip install -r requirements-web.txt && pip install -e . --no-deps && PYTHONPATH=src alembic upgrade head && PYTHONPATH=src python scripts/seed_doctors.py
+    # The admin-seed step only fires when ADMIN_SEED_EMAIL is actually set
+    # in the environment (it's a no-op shell conditional otherwise) --
+    # scripts/seed_admin.py itself is deliberately not auto-run on every
+    # boot (see its own docstring, Decision Gate D3 Option A: creating an
+    # admin account should be a deliberate, explicit step, not automatic).
+    # Originally that meant running it once by hand from a shell on the
+    # deployed instance -- Render's free web-service plan doesn't offer
+    # Shell access, so this build-time conditional is the free-tier
+    # equivalent: set ADMIN_SEED_EMAIL/ADMIN_SEED_PASSWORD in the
+    # Environment tab, save (which triggers a redeploy), the account gets
+    # created on that one build, and the two vars can be removed again
+    # afterward -- the script is idempotent either way.
+    buildCommand: pip install -r requirements-web.txt && pip install -e . --no-deps && PYTHONPATH=src alembic upgrade head && PYTHONPATH=src python scripts/seed_doctors.py && (if [ -n "$ADMIN_SEED_EMAIL" ]; then PYTHONPATH=src python scripts/seed_admin.py; fi)
     startCommand: PYTHONPATH=src uvicorn web.api:app --host 0.0.0.0 --port $PORT
     envVars:
       # Auto-wired to the Postgres instance declared below — Render fills
@@ -51,6 +63,15 @@ services:
           name: diffdx-redis
           property: connectionString
       - key: RESEND_FROM
+        sync: false
+      # Left unset by default (that's what keeps the buildCommand's admin-
+      # seed step a no-op). Fill these in via the Environment tab and save
+      # to actually create the admin account on the next build.
+      - key: ADMIN_SEED_EMAIL
+        sync: false
+      - key: ADMIN_SEED_PASSWORD
+        sync: false
+      - key: ADMIN_SEED_NAME
         sync: false
   # Optional — only used so session_store.py can share diagnostic-session
   # state across restarts/multiple instances (see src/diffdx/session_store.py);

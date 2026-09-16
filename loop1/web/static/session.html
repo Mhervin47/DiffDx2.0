@@ -4374,14 +4374,19 @@
       }
 
       const targetLang = lang || _sessionLang || 'en-US';
+      const langPrefix = targetLang.split('-')[0].toLowerCase();
       const voices = window.speechSynthesis.getVoices();
 
+      // _selectedVoiceURI comes from the voice-select dropdown, which only
+      // ever lists English voices (see _loadVoices) and persists across
+      // sessions via localStorage — so honoring it for a non-English
+      // target language would read local-language text aloud in a cached
+      // English voice. Only trust it when we're actually speaking English.
       let voice = null;
-      if (_selectedVoiceURI) {
+      if (_selectedVoiceURI && langPrefix === 'en') {
         voice = voices.find(v => v.voiceURI === _selectedVoiceURI);
       }
       if (!voice && targetLang) {
-        const langPrefix = targetLang.split('-')[0].toLowerCase();
         voice = voices.find(v => v.lang.toLowerCase() === targetLang.toLowerCase())
           || voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
       }

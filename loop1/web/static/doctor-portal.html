@@ -6981,7 +6981,7 @@ function printPrescription(apptId) {
 
   // ── Doctor details ──────────────────────────────────
   const hospital   = doc.hospital   || '';
-  const docName    = appt.doctor_name || doc.name || '';
+  const docName    = appt.doctor_name || doc.name || 'Attending Physician';
   const specialty  = appt.specialty  || doc.specialty || '';
   const license    = doc.profile?.license    || '';
   const experience = doc.profile?.experience || '';
@@ -7636,47 +7636,136 @@ function printCase(apptId) {
   if (btn) { btn.disabled = true; btn.textContent = 'Printing…'; }
   const appt = _appointments.find(a => a.appointment_id === apptId);
   if (!appt) { if (btn) { btn.disabled = false; btn.textContent = 'Print'; } return; }
+
+  const doc = _doctorProfile || {};
+  const hospital  = doc.hospital || '';
+  const docName   = appt.doctor_name || doc.name || 'Attending Physician';
+  const specialty = appt.specialty || doc.specialty || '';
+  const license   = doc.profile?.license || '';
+
   const name = appt.patient_name || 'Patient';
   const slot = formatSlot(appt.slot);
   const dx = appt.primary_diagnosis || '—';
+  const urgency = appt.urgency || 'routine';
+  const urgColor = urgency==='emergency'?'#dc2626':urgency==='urgent'?'#d97706':'#059669';
+  const urgBg    = urgency==='emergency'?'#fef2f2':urgency==='urgent'?'#fffbeb':'#f0fdf4';
   const notes = appt.doctor_notes || '';
   const summary = appt.doctor_summary || '';
-  const tests = (appt.test_orders || []).map(o =>
-    `<li>${escHtml(o.test)} (${escHtml(o.category)}, ${escHtml(o.priority)}${o.notes ? ', ' + escHtml(o.notes) : ''})</li>`
-  ).join('');
-  const results = (appt.test_results_data || []).map(r =>
-    `<li>Test ID: ${escHtml(r.test_id)}: ${escHtml(r.result)} [${escHtml(r.status)}]</li>`
-  ).join('');
-  const rxItems = (appt.prescriptions || []).map(p =>
-    `<li>${escHtml(p.drug)} ${escHtml(p.dose)} ${escHtml(p.route)}, ${escHtml(p.frequency)} for ${escHtml(p.duration)}${p.notes ? ' (' + escHtml(p.notes) + ')' : ''}</li>`
-  ).join('');
+  const dateStr = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const refNo = apptId.slice(0,8).toUpperCase();
+
+  const section = (label, bodyHtml) => bodyHtml ? `
+    <div class="sec"><div class="sec-bar"></div><span class="sec-label">${label}</span></div>
+    ${bodyHtml}` : '';
+
+  const listBlock = items => `<div class="info-block"><ul>${items}</ul></div>`;
+
   const plan = (appt.approved_plan || []).filter(p => p.approved).map(p =>
     `<li>${escHtml(p.text)}</li>`
+  ).join('');
+  const rxItems = (appt.prescriptions || []).map(p =>
+    `<li><strong>${escHtml(p.drug)}</strong> ${escHtml(p.dose)} ${escHtml(p.route)}, ${escHtml(p.frequency)} for ${escHtml(p.duration)}${p.notes ? ' — ' + escHtml(p.notes) : ''}</li>`
+  ).join('');
+  const tests = (appt.test_orders || []).map(o =>
+    `<li>${escHtml(o.test)} <span class="muted">(${escHtml(o.category)}, ${escHtml(o.priority)}${o.notes ? ', ' + escHtml(o.notes) : ''})</span></li>`
+  ).join('');
+  const results = (appt.test_results_data || []).map(r =>
+    `<li>Test ID ${escHtml(r.test_id)}: ${escHtml(r.result)} <span class="muted">[${escHtml(r.status)}]</span></li>`
   ).join('');
 
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Case Report: ${escHtml(name)}</title>
+    <title>Case Report — ${escHtml(name)}</title>
     <style>
-      body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; color: #111; line-height: 1.6; }
-      h1 { font-size: 24px; margin-bottom: 4px; }
-      h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: #555; margin: 28px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
-      p, li { font-size: 14px; margin: 4px 0; }
-      .meta { color: #666; font-size: 13px; margin-bottom: 20px; }
-      @media print { body { margin: 20px; } }
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Inter', Arial, sans-serif; color: #1a1a1a; background: #f0f4f8; }
+      .page { max-width: 800px; margin: 24px auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.12); border-radius: 12px; overflow: hidden; }
+      .banner { background: linear-gradient(135deg,#0a2540 0%,#0077a8 100%); padding: 22px 36px; display: flex; justify-content: space-between; align-items: flex-start; }
+      .banner-left h1 { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+      .banner-left p { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 3px; }
+      .banner-right { text-align: right; }
+      .banner-right .doc-type { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+      .banner-date { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 4px; }
+      .banner-ref { font-size: 10px; color: rgba(255,255,255,.5); margin-top: 2px; letter-spacing: .04em; }
+      .doc-strip { background: #f0f7fa; border-bottom: 1px solid #d0e4ef; padding: 12px 36px; display: flex; align-items: center; gap: 14px; }
+      .doc-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#0077a8,#00b4d8); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; flex-shrink: 0; }
+      .doc-name { font-size: 14px; font-weight: 700; color: #0a2540; }
+      .doc-meta { font-size: 11px; color: #555; margin-top: 2px; }
+      .content { padding: 28px 36px; }
+      .patient-card { border: 1.5px solid #d0e4ef; border-radius: 10px; overflow: hidden; margin-bottom: 22px; }
+      .patient-card-head { background: #0077a8; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; }
+      .patient-card-head span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #fff; }
+      .urgency-pill { font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: ${urgBg}; color: ${urgColor}; border: 1.5px solid ${urgColor}; }
+      .patient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+      .pat-cell { padding: 11px 16px; border-right: 1px solid #e8f0f5; border-bottom: 1px solid #e8f0f5; }
+      .pat-cell:nth-child(2n) { border-right: none; }
+      .pat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #0077a8; margin-bottom: 3px; }
+      .pat-val { font-size: 13px; font-weight: 600; color: #0a2540; }
+      .sec { margin-top: 24px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+      .sec-bar { width: 3px; height: 16px; background: #0077a8; border-radius: 2px; flex-shrink: 0; }
+      .sec-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #0077a8; }
+      .info-block { border: 1px solid #e2ecf4; border-radius: 8px; padding: 12px 16px; }
+      .info-block ul { list-style: none; }
+      .info-block li { font-size: 13px; line-height: 1.8; }
+      .info-block p { font-size: 13px; line-height: 1.7; color: #333; }
+      .muted { color: #777; font-size: 11px; }
+      .rx-footer { margin-top: 32px; padding-top: 20px; border-top: 1.5px dashed #ccdde8; display: flex; justify-content: flex-end; }
+      .sig-block { text-align: center; }
+      .sig-space { height: 40px; border-bottom: 1px solid #333; width: 180px; margin-bottom: 6px; }
+      .sig-name { font-size: 12px; font-weight: 700; color: #0a2540; }
+      .sig-meta { font-size: 10px; color: #666; margin-top: 2px; }
+      .footer-note { padding: 16px 36px 24px; font-size: 10px; color: #999; text-align: center; }
+      @media print { body { background: #fff; } .page { box-shadow: none; margin: 0; border-radius: 0; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
     </style>
   </head><body>
-    <h1>${escHtml(name)}</h1>
-    <div class="meta">Appointment: ${slot} &nbsp;|&nbsp; Diagnosis: ${escHtml(dx)}</div>
-    ${plan ? `<h2>Approved Plan</h2><ul>${plan}</ul>` : ''}
-    ${rxItems ? `<h2>Prescriptions</h2><ul>${rxItems}</ul>` : ''}
-    ${tests ? `<h2>Tests Ordered</h2><ul>${tests}</ul>` : ''}
-    ${results ? `<h2>Lab Results</h2><ul>${results}</ul>` : ''}
-    ${notes ? `<h2>Doctor's Notes</h2><p>${escHtml(notes).replace(/\n/g,'<br>')}</p>` : ''}
-    ${summary ? `<h2>Patient Summary</h2><p>${escHtml(summary).replace(/\n/g,'<br>')}</p>` : ''}
+    <div class="page">
+      <div class="banner">
+        <div class="banner-left">
+          <h1>${escHtml(hospital || 'Medical Centre')}</h1>
+          <p>${escHtml(specialty ? specialty + ' Department' : 'General Medicine')}</p>
+        </div>
+        <div class="banner-right">
+          <div class="doc-type">Case Report</div>
+          <div class="banner-date">${dateStr}</div>
+          <div class="banner-ref">REF: ${refNo}</div>
+        </div>
+      </div>
+      <div class="doc-strip">
+        <div class="doc-avatar">${escHtml((docName||'Dr').replace(/^Dr\.?\s*/i,'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()||'DR')}</div>
+        <div>
+          <div class="doc-name">${escHtml(docName)}</div>
+          <div class="doc-meta">${escHtml(specialty)}${license?' · Reg. No. '+escHtml(license):''}</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="patient-card">
+          <div class="patient-card-head"><span>Patient Information</span><span class="urgency-pill">${escHtml(urgency.toUpperCase())}</span></div>
+          <div class="patient-grid">
+            <div class="pat-cell"><div class="pat-label">Full Name</div><div class="pat-val">${escHtml(name)}</div></div>
+            <div class="pat-cell"><div class="pat-label">Appointment</div><div class="pat-val">${slot}</div></div>
+            <div class="pat-cell" style="grid-column:1/-1;"><div class="pat-label">Diagnosis</div><div class="pat-val">${escHtml(dx)}</div></div>
+          </div>
+        </div>
+        ${section('Approved Plan', plan && listBlock(plan))}
+        ${section('Prescriptions', rxItems && listBlock(rxItems))}
+        ${section('Tests Ordered', tests && listBlock(tests))}
+        ${section('Lab Results', results && listBlock(results))}
+        ${section("Doctor's Notes", notes && `<div class="info-block"><p>${escHtml(notes).replace(/\n/g,'<br>')}</p></div>`)}
+        ${section('Patient Summary', summary && `<div class="info-block"><p>${escHtml(summary).replace(/\n/g,'<br>')}</p></div>`)}
+        <div class="rx-footer">
+          <div class="sig-block">
+            <div class="sig-space"></div>
+            <div class="sig-name">${escHtml(docName)}</div>
+            <div class="sig-meta">${escHtml(specialty)}${license?' · Reg. '+escHtml(license):''}</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note">This is a computer-generated clinical case report. For queries, contact the attending physician.</div>
+    </div>
+    <script>window.onload = () => { window.print(); }<\/script>
   </body></html>`);
   win.document.close();
-  win.print();
   if (btn) {
     btn.textContent = '✓ Printed!';
     btn.style.background = 'var(--success)';
@@ -8818,7 +8907,7 @@ function updateSnPreview() {
 function printSickNote() {
   const doc      = _doctorProfile || {};
   const hospital = doc.hospital || '';
-  const docName  = doc.name || '';
+  const docName  = doc.name || 'Attending Physician';
   const specialty= doc.specialty || '';
   const license  = doc.profile?.license || '';
   const patient  = _snData.name || '';
@@ -8963,26 +9052,104 @@ async function sendReferralToPatient() {
 }
 
 function printReferral() {
-  const txt = buildReferralText();
-  const spec = document.getElementById('ref-specialty').value;
-  const toDoc = document.getElementById('ref-to-doctor').value.trim();
+  const spec     = document.getElementById('ref-specialty').value;
+  const toDoc    = document.getElementById('ref-to-doctor').value.trim();
+  const fromDoc  = document.getElementById('ref-doctor').value.trim() || '[Referring Doctor]';
+  const notes    = document.getElementById('ref-notes').value.trim() || '[Clinical notes]';
+  const today    = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  const toLine   = toDoc ? `Dr. ${toDoc} / ${spec} Department` : `Any Available ${spec} Specialist`;
+  const greeting = toDoc ? `Dear Dr. ${toDoc.split(' ').pop()},` : 'Dear Colleague,';
+
+  const doc = _doctorProfile || {};
+  const hospital  = doc.hospital || '';
+  const specialty = doc.specialty || '';
+  const license   = doc.profile?.license || '';
+
   const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html><head><title>Referral Letter</title><style>
-    body { font-family: Georgia, serif; max-width: 680px; margin: 60px auto; color: #111; line-height: 1.7; }
-    h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-    .sub { font-size: 13px; color: #555; margin-bottom: 32px; }
-    pre { font-family: Georgia, serif; font-size: 14px; white-space: pre-wrap; margin: 0; }
-    .header { border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 32px; }
-    @media print { body { margin: 40px; } }
-  </style></head><body>
-    <div class="header">
-      <h1>Medical Referral Letter</h1>
-      <div class="sub">${escHtml(spec)} Department${toDoc ? ', Attn: Dr. ' + escHtml(toDoc) : ''}</div>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Referral Letter — ${escHtml(_refData.name || 'Patient')}</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Inter', Arial, sans-serif; color: #1a1a1a; background: #f0f4f8; }
+      .page { max-width: 760px; margin: 24px auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.12); border-radius: 12px; overflow: hidden; position: relative; }
+      .banner { background: linear-gradient(135deg,#0a2540 0%,#0077a8 100%); padding: 22px 40px; display: flex; justify-content: space-between; align-items: flex-start; }
+      .banner-left h1 { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+      .banner-left p { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 3px; }
+      .banner-right { text-align: right; }
+      .banner-right .doc-type { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+      .banner-date { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 4px; }
+      .doc-strip { background: #f0f7fa; border-bottom: 1px solid #d0e4ef; padding: 12px 40px; display: flex; align-items: center; gap: 14px; }
+      .doc-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#0077a8,#00b4d8); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #fff; flex-shrink: 0; }
+      .doc-name { font-size: 14px; font-weight: 700; color: #0a2540; }
+      .doc-meta { font-size: 11px; color: #555; margin-top: 2px; }
+      .content { padding: 32px 40px; }
+      .to-line { font-size: 13px; color: #333; margin-bottom: 4px; }
+      .to-line strong { color: #0a2540; }
+      .re-line { font-size: 13px; color: #333; margin-bottom: 24px; }
+      .urgency-pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 99px; margin-left: 8px; text-transform: uppercase; letter-spacing: .04em; }
+      .greeting { font-size: 14px; margin-bottom: 16px; color: #1a1a1a; }
+      .body-text { font-size: 14px; line-height: 1.8; color: #222; }
+      .body-text p { margin-bottom: 14px; }
+      .dx-box { background: #f7fafc; border-left: 3px solid #0077a8; border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+      .dx-box .lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #0077a8; margin-bottom: 3px; }
+      .dx-box .val { font-size: 13px; font-weight: 600; color: #0a2540; }
+      .rx-footer { margin-top: 36px; padding-top: 20px; border-top: 1.5px dashed #ccdde8; display: flex; justify-content: flex-end; }
+      .sig-block { text-align: center; }
+      .sig-space { height: 40px; border-bottom: 1px solid #333; width: 180px; margin-bottom: 6px; }
+      .sig-name { font-size: 12px; font-weight: 700; color: #0a2540; }
+      .sig-meta { font-size: 10px; color: #666; margin-top: 2px; }
+      .footer-note { padding: 16px 40px 24px; font-size: 10px; color: #999; text-align: center; }
+      .watermark { position: absolute; top: 46%; left: 50%; transform: translate(-50%,-50%) rotate(-25deg); font-size: 140px; font-weight: 800; color: #0077a8; opacity: .04; pointer-events: none; letter-spacing: -.05em; }
+      @media print { body { background: #fff; } .page { box-shadow: none; margin: 0; border-radius: 0; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    </style>
+  </head><body>
+    <div class="page">
+      <div class="watermark">Rx</div>
+      <div class="banner">
+        <div class="banner-left">
+          <h1>${escHtml(hospital || 'Medical Centre')}</h1>
+          <p>${escHtml(specialty ? specialty + ' Department' : 'General Medicine')}</p>
+        </div>
+        <div class="banner-right">
+          <div class="doc-type">Referral Letter</div>
+          <div class="banner-date">${today}</div>
+        </div>
+      </div>
+      <div class="doc-strip">
+        <div class="doc-avatar">${escHtml((fromDoc||'Dr').replace(/^Dr\.?\s*/i,'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()||'DR')}</div>
+        <div>
+          <div class="doc-name">${escHtml(fromDoc)}</div>
+          <div class="doc-meta">${escHtml(specialty)}${license?' · Reg. No. '+escHtml(license):''}</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="to-line">To: <strong>${escHtml(toLine)}</strong></div>
+        <div class="re-line">Re: <strong>${escHtml(_refData.name || '[Patient]')}</strong> <span class="urgency-pill" style="background:${_refUrgency==='emergency'?'#fef2f2':_refUrgency==='urgent'?'#fffbeb':'#f0fdf4'};color:${_refUrgency==='emergency'?'#dc2626':_refUrgency==='urgent'?'#d97706':'#059669'};border:1.5px solid currentColor;">${escHtml(_refUrgency)}</span></div>
+        <div class="greeting">${escHtml(greeting)}</div>
+        <div class="body-text">
+          <p>I am referring the above-named patient to your ${escHtml(spec)} service.</p>
+          <div class="dx-box">
+            <div class="lbl">Working Diagnosis</div>
+            <div class="val">${escHtml(_refData.dx || 'Under investigation')}</div>
+          </div>
+          <p><strong>Clinical notes:</strong><br>${escHtml(notes).replace(/\n/g,'<br>')}</p>
+          <p>Please assess and advise on further management.</p>
+          <p>Kind regards,</p>
+        </div>
+        <div class="rx-footer">
+          <div class="sig-block">
+            <div class="sig-space"></div>
+            <div class="sig-name">${escHtml(fromDoc)}</div>
+            <div class="sig-meta">${escHtml(specialty)}${license?' · Reg. '+escHtml(license):''}</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note">This is a computer-generated referral letter. For queries, contact the referring physician.</div>
     </div>
-    <pre>${escHtml(txt)}</pre>
+    <script>window.onload = () => { window.print(); }<\/script>
   </body></html>`);
-  w.document.close(); w.focus();
-  setTimeout(() => w.print(), 400);
+  w.document.close();
 }
 
 // =====================================================================

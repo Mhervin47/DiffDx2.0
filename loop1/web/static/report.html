@@ -1764,24 +1764,79 @@ function _refreshSugCards(tests) {
 function _printTestList() {
   const el = document.getElementById('suggested-tests-section');
   if (!el) return;
-  const cards = [...el.querySelectorAll('.sug-test-card')].map(card => {
+  const rows = [...el.querySelectorAll('.sug-test-card')].map(card => {
     const name = card.querySelector('.sug-test-name')?.textContent || '';
     const why  = card.querySelector('.sug-test-why')?.textContent || '';
     const prep = card.querySelector('.sug-prep')?.textContent || '';
-    const state = card.classList.contains('done') ? '☑ Done'
-                : card.classList.contains('checked') ? '◉ Planned' : '☐';
-    return `<tr><td style="padding:8px 10px;font-weight:700;">${state} ${name}</td><td style="padding:8px 10px;color:#555;">${why}</td><td style="padding:8px 10px;color:#666;font-size:12px;">${prep}</td></tr>`;
+    const done = card.classList.contains('done');
+    const planned = card.classList.contains('checked');
+    const stateLabel = done ? 'Done' : planned ? 'Planned' : 'Pending';
+    const stateColor = done ? '#059669' : planned ? '#0077a8' : '#94a3b8';
+    const stateBg    = done ? '#f0fdf4' : planned ? '#f0f7fa' : '#f8fafc';
+    return `<tr>
+      <td class="td-status"><span class="status-pill" style="color:${stateColor};background:${stateBg};border-color:${stateColor};">${stateLabel}</span></td>
+      <td class="td-name">${name}</td>
+      <td class="td-why">${why}</td>
+      <td class="td-prep">${prep}</td>
+    </tr>`;
   }).join('');
+
+  const today = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  const refNo = (typeof sessionId !== 'undefined' && sessionId) ? String(sessionId).slice(0,8).toUpperCase() : '';
+
   const w = window.open('', '_blank');
   if (!w) return;
-  w.document.write(`<!DOCTYPE html><html><head><title>Test Checklist</title>
-  <style>body{font-family:Arial,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;} tr{border-bottom:1px solid #eee;} th{background:#f5f5f5;padding:8px 10px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#777;}</style>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Recommended Test Checklist</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', Arial, sans-serif; color: #1a1a1a; background: #f0f4f8; }
+    .page { max-width: 820px; margin: 24px auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.12); border-radius: 12px; overflow: hidden; }
+    .banner { background: linear-gradient(135deg,#0a2540 0%,#0077a8 100%); padding: 22px 36px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .banner-left h1 { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+    .banner-left p { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 3px; }
+    .banner-right { text-align: right; }
+    .banner-right .doc-type { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+    .banner-date { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 4px; }
+    .banner-ref { font-size: 10px; color: rgba(255,255,255,.5); margin-top: 2px; letter-spacing: .04em; }
+    .content { padding: 28px 36px; }
+    .intro { font-size: 13px; color: #555; margin-bottom: 20px; line-height: 1.6; }
+    table { width: 100%; border-collapse: collapse; border: 1px solid #e2ecf4; border-radius: 8px; overflow: hidden; }
+    th { background: #f0f7fa; padding: 9px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #0077a8; font-weight: 700; border-bottom: 1.5px solid #d0e4ef; }
+    td { padding: 10px; border-bottom: 1px solid #edf2f7; font-size: 13px; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .td-status { width: 90px; }
+    .status-pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 99px; border: 1.5px solid; text-transform: uppercase; letter-spacing: .03em; }
+    .td-name { font-weight: 700; color: #0a2540; }
+    .td-why { color: #444; }
+    .td-prep { color: #777; font-size: 12px; }
+    .footer-note { margin-top: 20px; padding-top: 16px; border-top: 1.5px dashed #ccdde8; font-size: 11px; color: #999; text-align: center; }
+    @media print { body { background: #fff; } .page { box-shadow: none; margin: 0; border-radius: 0; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style>
   </head><body>
-  <h2 style="margin-bottom:4px;">Recommended Test Checklist</h2>
-  <p style="color:#777;font-size:13px;margin-top:0;">Bring this list to your diagnostic centre. Complete before your specialist appointment.</p>
-  <table><thead><tr><th>Status / Test</th><th>Why Needed</th><th>Preparation</th></tr></thead><tbody>${cards}</tbody></table>
-  <p style="font-size:11px;color:#aaa;margin-top:24px;">AI-generated suggestion — confirm with your doctor. Printed from DiffDx.</p>
-  <script>window.onload=()=>window.print();<\/script>
+    <div class="page">
+      <div class="banner">
+        <div class="banner-left">
+          <h1>DiffDx</h1>
+          <p>AI-Assisted Diagnostic Companion</p>
+        </div>
+        <div class="banner-right">
+          <div class="doc-type">Test Checklist</div>
+          <div class="banner-date">${today}</div>
+          ${refNo ? `<div class="banner-ref">REF: ${refNo}</div>` : ''}
+        </div>
+      </div>
+      <div class="content">
+        <p class="intro">Recommended tests based on your consultation. Bring this checklist to your diagnostic centre and complete it before your specialist appointment.</p>
+        <table>
+          <thead><tr><th>Status</th><th>Test</th><th>Why Needed</th><th>Preparation</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="footer-note">This is an AI-generated suggestion — confirm with your doctor before proceeding. Printed from DiffDx.</div>
+      </div>
+    </div>
+    <script>window.onload = () => { window.print(); }<\/script>
   </body></html>`);
   w.document.close();
 }

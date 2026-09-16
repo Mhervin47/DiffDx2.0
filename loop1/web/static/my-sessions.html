@@ -2661,7 +2661,7 @@ function downloadPrescription(apptId) {
 
   const dateStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
   const refNo   = apptId.slice(0,8).toUpperCase();
-  const docName = appt.doctor_name || '';
+  const docName = appt.doctor_name || 'Attending Physician';
   const specialty = appt.specialty || '';
   const patName = appt.patient_name || '';
   const patAge  = appt.age  != null ? `${appt.age} yrs` : '';

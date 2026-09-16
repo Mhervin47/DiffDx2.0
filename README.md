@@ -126,6 +126,36 @@ voice usage).
 5. **Booking** inserts a real `Appointment` row with a DB-level unique constraint on
    `(doctor_id, slot_datetime)` — see `loop1/docs/evidence/concurrency.txt` for why that specific column exists.
 
+### The A2C design
+
+The three-loop split above is modelled on **Actor-Critic (A2C)** reinforcement learning, adapted
+to language rather than trained end-to-end:
+
+| RL concept | DiffDx equivalent |
+|---|---|
+| Actor | Doctor LLM (Loop 1) — generates the next diagnostic question |
+| Action | The chosen question + rationale + differential update |
+| State | `PatientProfile` — accumulated symptoms, history, running differential |
+| Environment | The patient — real in the web app, an LLM-driven DDXPlus simulator in eval |
+| Critic | A separate LLM (Loop 2), scoring each turn *after* it happens |
+| Reward signal | `TurnCritique`: question-quality, differential-quality, and reasoning-quality scores |
+| Policy improvement | Not yet trained on — see below |
+
+**Why a critic instead of training end-to-end on outcomes?** Medical diagnosis has a sparse,
+delayed reward (was the final diagnosis correct?) over a long horizon (up to 15 turns), which
+gives no signal about *which* questions in the middle were actually good ones. A turn-level critic
+scores reasoning quality on every turn, densely, without needing a ground-truth label for each
+individual question — closer to how a supervising physician would review a trainee's line of
+questioning than to a standard RL reward function.
+
+**What's actually implemented vs. designed**: Loop 1 (actor) and Loop 2 (critic) both run live in
+production today, not just offline — every real session gets scored, not only eval runs. What's
+*not* built yet is the last row of that table: using the accumulated critic-annotated sessions to
+actually improve the actor (e.g. DPO/LoRA fine-tuning on high-reward sessions). This repo is the
+data-collection and architecture foundation for that; policy improvement is deliberately left as
+future work rather than half-implemented. See [`loop1/README.md` §2](loop1/README.md#2-the-a2c-design)
+for the deeper version of this section.
+
 ## What makes it different
 
 - **Three-loop architecture** — an actor conducts the interview, a critic scores each turn, and a

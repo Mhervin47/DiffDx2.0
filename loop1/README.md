@@ -96,6 +96,70 @@ Medical diagnosis has sparse, delayed rewards (correct diagnosis at the end) and
 
 **Current state**: The system collects critic-annotated sessions. Fine-tuning (DPO/LoRA) is deferred to a future loop. Everything built in this repository is the data-collection and architecture foundation for that.
 
+### Turn-by-turn flow
+
+```mermaid
+flowchart TD
+    subgraph Loop1["Loop 1 — Actor: one turn"]
+        direction TB
+        PP["Patient profile<br/>complaint · symptoms · history"]
+        PA["Prompt assembly<br/>1 · System role<br/>2 · Compressed context<br/>3 · ICL exemplars ×3<br/>4 · Live turn history"]
+        Comp["Compression<br/>running summary"]
+        ICL["ICL retrieval<br/>FAISS + MMR"]
+        Actor["Actor LLM"]
+        JSON["Structured JSON<br/>dx · question · confidence"]
+        Stop{"Stop?<br/>conf > 0.75 or 15 turns"}
+        Saved["Session saved<br/>PostgreSQL → Loop 2"]
+
+        PP --> PA
+        Comp --> PA
+        ICL --> PA
+        PA --> Actor
+        Actor --> JSON
+        JSON --> Stop
+        Stop -- "no · next turn" --> PA
+        Stop -- "yes" --> Saved
+    end
+
+    subgraph Loop2["Loop 2 — Critic: scores each turn"]
+        direction TB
+        Retrieval["Loop 1 retrieval<br/>exemplar bank"]
+        TurnOut["Actor turn output<br/>structured JSON, turn N"]
+        Critic["Critic LLM<br/>scores each turn · Gemma"]
+        Score["Turn score<br/>relevance · diff · reason"]
+        Safety["Safety flag<br/>red-flag check"]
+        Accum["Accumulated scores<br/>across all turns"]
+        Bank["Exemplar bank<br/>high-scoring sessions"]
+
+        TurnOut --> Critic
+        Critic --> Score
+        Critic --> Safety
+        Score --> Accum
+        Safety --> Accum
+        Accum --> Bank
+        Bank -. "feedback into Loop 1" .-> Retrieval
+    end
+
+    JSON -.-> TurnOut
+
+    classDef purple fill:#c9bdf5,stroke:#7c5cd6,color:#1a1a2e
+    classDef teal fill:#a8e6cf,stroke:#3ba97e,color:#0d2818
+    classDef blue fill:#a8d0f0,stroke:#3b7dc9,color:#0d1a2e
+    classDef coral fill:#e8b4a8,stroke:#c9694f,color:#2e150d
+    classDef amber fill:#f5d485,stroke:#d69e1f,color:#2e2308
+
+    class PA purple
+    class Comp,ICL,Retrieval,Bank teal
+    class Actor blue
+    class Critic coral
+    class Safety amber
+```
+
+Coral = critic (runs per turn) · amber = the safety red-flag check riding alongside it · teal =
+the retrieval/exemplar-bank feedback loop back into Loop 1 (every session's turns get scored, and
+high-scoring sessions feed the exemplar bank Loop 1's retriever draws from for future sessions —
+today that's curation, not gradient-based fine-tuning; see "Current state" above).
+
 ---
 
 ## 3. Three-Loop Structure

@@ -154,7 +154,8 @@ production today, not just offline — every real session gets scored, not only 
 actually improve the actor (e.g. DPO/LoRA fine-tuning on high-reward sessions). This repo is the
 data-collection and architecture foundation for that; policy improvement is deliberately left as
 future work rather than half-implemented. See [`loop1/README.md` §2](loop1/README.md#2-the-a2c-design)
-for the deeper version of this section.
+for the deeper version of this section, including a turn-by-turn flowchart of prompt assembly on
+the actor side and per-turn scoring on the critic side.
 
 ## What makes it different
 

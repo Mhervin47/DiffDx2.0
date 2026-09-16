@@ -1516,9 +1516,16 @@ async function init() {
 
 // ── Threads ─────────────────────────────────────────────────────────
 async function loadThreads() {
+  // /api/appointments is patient-only (filters by patient_user_id, which
+  // never matches a doctor's own user id) — a doctor must hit
+  // /api/doctor/appointments instead, or this always comes back empty for
+  // them and they can never start a conversation with a patient who
+  // hasn't messaged first (the merge-in-appointments-with-no-thread-yet
+  // logic below would have nothing to merge in).
+  const apptUrl = (_me?.role === 'doctor') ? `${_API}/api/doctor/appointments` : `${_API}/api/appointments`;
   const [msgRes, apptRes] = await Promise.all([
     fetch(`${_API}/api/messages`, { headers: authHeaders() }),
-    fetch(`${_API}/api/appointments`, { headers: authHeaders() }),
+    fetch(apptUrl, { headers: authHeaders() }),
   ]);
 
   if (!msgRes.ok) {

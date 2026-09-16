@@ -98,6 +98,11 @@ Medical diagnosis has sparse, delayed rewards (correct diagnosis at the end) and
 
 ### Turn-by-turn flow
 
+![Loop 1 actor / Loop 2 critic turn-by-turn flow](docs/a2c-flow.svg)
+
+<details>
+<summary>Mermaid source (renders inline on GitHub too, if the image above doesn't load)</summary>
+
 ```mermaid
 flowchart TD
     subgraph Loop1["Loop 1 — Actor: one turn"]
@@ -154,6 +159,8 @@ flowchart TD
     class Critic coral
     class Safety amber
 ```
+
+</details>
 
 Coral = critic (runs per turn) · amber = the safety red-flag check riding alongside it · teal =
 the retrieval/exemplar-bank feedback loop back into Loop 1 (every session's turns get scored, and

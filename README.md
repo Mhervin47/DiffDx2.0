@@ -141,6 +141,8 @@ to language rather than trained end-to-end:
 | Reward signal | `TurnCritique`: question-quality, differential-quality, and reasoning-quality scores |
 | Policy improvement | Not yet trained on — see below |
 
+![Loop 1 actor / Loop 2 critic turn-by-turn flow](loop1/docs/a2c-flow.svg)
+
 **Why a critic instead of training end-to-end on outcomes?** Medical diagnosis has a sparse,
 delayed reward (was the final diagnosis correct?) over a long horizon (up to 15 turns), which
 gives no signal about *which* questions in the middle were actually good ones. A turn-level critic

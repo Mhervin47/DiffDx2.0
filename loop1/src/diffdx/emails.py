@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import urllib.error
 import urllib.request
 
 _log = logging.getLogger(__name__)
@@ -19,8 +20,8 @@ def _send_via_resend(to_email: str, subject: str, html: str) -> bool:
     if not resend_key:
         _log.info("RESEND_API_KEY not set — skipping email to %s (%s)", to_email, subject)
         return False
+    from_addr = os.environ.get("RESEND_FROM", "reminders@diffdx.app")
     try:
-        from_addr = os.environ.get("RESEND_FROM", "reminders@diffdx.app")
         payload = json.dumps({
             "from": from_addr,
             "to": [to_email],
@@ -35,8 +36,20 @@ def _send_via_resend(to_email: str, subject: str, html: str) -> bool:
         )
         with urllib.request.urlopen(req, timeout=10) as r:
             return r.status < 300
+    except urllib.error.HTTPError as exc:
+        # Resend's error body names the actual problem (e.g. "from" domain
+        # not verified, invalid recipient) — str(exc) alone is just
+        # "HTTP Error 403: Forbidden", not useful for diagnosing a silent
+        # "no mail received" report, so log the body too.
+        body = ""
+        try:
+            body = exc.read().decode(errors="replace")
+        except Exception:
+            pass
+        _log.warning("Resend email failed for %s (%s) from=%s: HTTP %s %s", to_email, subject, from_addr, exc.code, body)
+        return False
     except Exception as exc:
-        _log.warning("Resend email failed for %s (%s): %s", to_email, subject, exc)
+        _log.warning("Resend email failed for %s (%s) from=%s: %s", to_email, subject, from_addr, exc)
         return False
 
 

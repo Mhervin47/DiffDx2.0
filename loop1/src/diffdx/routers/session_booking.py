@@ -215,11 +215,17 @@ If no tests needed: set necessary=false and tests=[].
         result.setdefault("necessary", bool(result.get("tests")))
         result.setdefault("rationale", "")
         result.setdefault("tests", [])
-        # Assign stable IDs, offset past any already-suggested tests so ids
-        # stay unique when this batch gets appended to earlier ones.
+        # Assign stable IDs ourselves, offset past any already-suggested
+        # tests so ids stay unique when this batch gets appended to earlier
+        # ones. Always overwrite rather than setdefault: the prompt's JSON
+        # example shows "id": "t1" literally, and weaker models sometimes
+        # echo that same id back for every test in the batch instead of
+        # incrementing it — leaving the LLM's id in place then collapses
+        # multiple distinct tests onto one shared id, so toggling one
+        # suggested-test checkbox on the frontend toggles all of them.
         start = len(exclude_names or [])
         for i, t in enumerate(result["tests"]):
-            t.setdefault("id", f"t{start + i + 1}")
+            t["id"] = f"t{start + i + 1}"
             t.setdefault("priority", "routine")
             t.setdefault("preparation", "No special preparation required.")
             t.setdefault("duration", "")

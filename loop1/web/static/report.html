@@ -1573,7 +1573,7 @@ function _buildSuggestedTestsHtml(data) {
     const uploaded = _sugUploads[t.id];
     const badgeCls = t.priority === 'urgent' ? 'sug-badge-urgent' : 'sug-badge-routine';
     const iconCls  = _SUG_ICON_CLS[t.category] || 'sug-icon-other';
-    const icon     = _SUG_ICONS[t.category] || '🔬';
+    const icon     = _SUG_ICONS[t.category] || _SUG_ICONS.other;
     const uploadBtn = uploaded
       ? `<span class="sug-uploaded-badge">
            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -1978,7 +1978,9 @@ async function loadTestOrders() {
           <div class="report-section-title">Prescriptions</div>
           ${appt.prescriptions.map(p => `
             <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05);">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">💊</div>
+              <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M10.5 20.5L3.5 13.5a5 5 0 117.07-7.07l7 7a5 5 0 11-7.07 7.07z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg>
+              </div>
               <div style="flex:1;">
                 <div style="font-weight:700;font-size:14px;color:var(--text);">${escHtml(p.drug || '')}</div>
                 ${p.dose ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escHtml(p.dose)}${p.frequency ? ' · ' + escHtml(p.frequency) : ''}${p.duration ? ' · ' + escHtml(p.duration) : ''}</div>` : ''}
@@ -2047,7 +2049,7 @@ async function submitResultUpload() {
 }
 
 function buildTestOrdersBlock(orders, doctorName, apptId) {
-  const iconMap = { blood: '🩸', imaging: '🩻', urine: '🧪', other: '🔬' };
+  const iconMap = { blood: _SUG_ICONS.blood, imaging: _SUG_ICONS.imaging, urine: _SUG_ICONS.urine, other: _SUG_ICONS.other };
   const iconCls = { blood: 'pti-blood', imaging: 'pti-imaging', urine: 'pti-urine', other: 'pti-other' };
   const priCls  = { stat: 'ptp-stat', urgent: 'ptp-urgent', routine: 'ptp-routine' };
 
@@ -2056,14 +2058,14 @@ function buildTestOrdersBlock(orders, doctorName, apptId) {
 
   const items = orders.map(o => `
     <div class="patient-test-item">
-      <div class="patient-test-icon ${iconCls[o.category] || 'pti-other'}">${iconMap[o.category] || '🔬'}</div>
+      <div class="patient-test-icon ${iconCls[o.category] || 'pti-other'}">${iconMap[o.category] || _SUG_ICONS.other}</div>
       <div style="flex:1;min-width:0;">
         <div class="patient-test-name">${escHtml(o.test)}</div>
         <div class="patient-test-meta">
           <span class="patient-test-priority ${priCls[o.priority] || 'ptp-routine'}">${escHtml(o.priority || 'routine')}</span>
           <span style="font-size:11px;color:var(--text-muted);text-transform:capitalize;">${escHtml(o.category)}</span>
         </div>
-        ${o.notes ? `<div class="patient-test-notes">📋 ${escHtml(o.notes)}</div>` : ''}
+        ${o.notes ? `<div class="patient-test-notes">${escHtml(o.notes)}</div>` : ''}
       </div>
       <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;">
         ${o.results_uploaded
@@ -2133,7 +2135,7 @@ function buildNextSteps(r) {
     const hospitalCards = hospitals.map(h => `
       <div class="hospital-card">
         <div class="hospital-card-name">${escHtml(h.name)}</div>
-        <div class="hospital-card-dist">📍 ${escHtml(h.dist)}</div>
+        <div class="hospital-card-dist"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px;margin-right:3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${escHtml(h.dist)}</div>
         <div class="hospital-card-actions">
           <a href="tel:${escHtml(h.phone)}" class="hospital-btn hospital-btn-call">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.5 10.8 19.79 19.79 0 011.52 2.18 2 2 0 013.5 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L7.91 7.91a16 16 0 006.29 6.29l.75-.75a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>

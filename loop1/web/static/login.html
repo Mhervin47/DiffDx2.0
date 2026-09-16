@@ -1482,7 +1482,7 @@ async function doRegister() {
 
 function openForgotPassword() {
   document.getElementById('fp-overlay').classList.add('open');
-  document.getElementById('fp-step-email').style.display = '';
+  document.getElementById('fp-step-email').style.display = 'block';
   document.getElementById('fp-step-reset').style.display = 'none';
   document.getElementById('fp-subtitle').textContent = "Enter your account email and we'll send you a reset code.";
   hideAlert('fp-email-error'); hideAlert('fp-reset-error'); hideAlert('fp-reset-success');
@@ -1510,7 +1510,7 @@ async function sendResetCode() {
     // Always succeeds from the server's perspective (no account enumeration) —
     // move to the code-entry step regardless of whether the email exists.
     document.getElementById('fp-step-email').style.display = 'none';
-    document.getElementById('fp-step-reset').style.display = '';
+    document.getElementById('fp-step-reset').style.display = 'block';
     document.getElementById('fp-subtitle').textContent = `If an account exists for ${email}, a 6-digit code was sent.`;
     document.getElementById('fp-code').value = '';
     document.getElementById('fp-new-password').value = '';

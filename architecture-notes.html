@@ -1264,7 +1264,7 @@ score(e) = λ · sim(query, e) − (1 − λ) · max_sim(e, already_selected)
         </table>
       </div>
       <h3>The doctor's voice brief</h3>
-      <p>When a doctor opens a patient in the portal, the browser's <code>SpeechSynthesis</code> API automatically dictates a pre-consultation brief: patient name, demographics, chief complaint, reported symptoms, predicted top diagnosis, allergies, medications, and past medical history. No API key — it runs fully client-side. Percentages are deliberately omitted from the verbal brief to avoid anchoring bias; the doctor hears the diagnosis name, not a confidence number.</p>
+      <p>A "Read brief aloud" button in the portal uses the browser's <code>SpeechSynthesis</code> API to dictate a pre-consultation brief on demand: patient name, demographics, chief complaint, reported symptoms, predicted top diagnosis, allergies, medications, and past medical history. No API key — it runs fully client-side. Percentages are deliberately omitted from the verbal brief to avoid anchoring bias; the doctor hears the diagnosis name, not a confidence number. It used to fire automatically the moment a doctor opened a patient, before being made opt-in — doctors found it intrusive when just browsing between patients in the queue.</p>
 
       <!-- 16 -->
       <h2 id="multilingual"><span class="num">16 — the language layer</span>Ten languages via Sarvam AI</h2>

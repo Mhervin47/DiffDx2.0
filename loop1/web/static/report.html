@@ -3334,7 +3334,7 @@ async function _renderOwnDoctors(query) {
       <div class="own-doctor-not-found">
         <div class="own-doctor-not-found-title">No doctors found</div>
         <div class="own-doctor-not-found-sub">This doctor isn't listed in our network. You can print your report and share it with them directly.</div>
-        <button class="btn btn-primary btn-sm" onclick="window.print()" style="margin:0 auto;">
+        <button class="btn btn-primary btn-sm" onclick="printFullReport()" style="margin:0 auto;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Print Report
         </button>
@@ -3438,6 +3438,168 @@ document.getElementById('mismatch-overlay')?.addEventListener('click', function(
   if (e.target === this) closeMismatch();
 });
 
+// ── Full report — professional letterhead PDF ─────────────────────────────
+// Builds a dedicated print document instead of window.print()-ing the live
+// page: the live page has a navbar, buttons, collapsible search, and upload
+// controls that don't belong on paper, and printing it directly (via
+// @media print alone) still leaves site chrome bleeding into the PDF. This
+// clones the already-rendered async sections (next steps, summary, suggested
+// tests, and — when an appointment is linked — the doctor's notes/
+// prescriptions/test orders/referral) into a fresh letterhead-styled
+// document, stripping interactive-only controls (buttons, search inputs,
+// upload widgets) along the way.
+function printFullReport() {
+  const age = _reportData?.patient?.age ?? '?';
+  const sex = _reportData?.patient?.sex ?? '';
+  const totalTurns = _reportData?.total_turns ?? '';
+  const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const refNo = (typeof sessionId !== 'undefined' && sessionId) ? String(sessionId).slice(0, 8).toUpperCase() : '';
+
+  const heroEyebrow = document.getElementById('hero-diagnosis-eyebrow')?.textContent.trim() || '';
+  const heroName    = document.getElementById('hero-diagnosis-name')?.textContent.trim() || '';
+  const heroSub     = document.getElementById('hero-diagnosis-subline')?.textContent.trim() || '';
+
+  // Clone live sections and strip anything interactive-only before print.
+  const strip = (el, selectors) => { if (el) el.querySelectorAll(selectors).forEach(n => n.remove()); return el; };
+
+  const summaryClone = document.querySelector('.patient-summary-card')?.cloneNode(true);
+  strip(summaryClone, '.ps-listen-btn, .ps-lang-row');
+
+  const nextStepsClone = document.getElementById('next-steps-section')?.cloneNode(true);
+  strip(nextStepsClone, '.doctor-grid, #booking-confirmed-banner, .own-doctor-section, .hospital-card-actions, button, input, select');
+
+  const notesClone = document.getElementById('doctors-note-section')?.cloneNode(true);
+  const rxClone = document.getElementById('rx-section')?.cloneNode(true);
+
+  const testOrdersClone = document.getElementById('test-orders-section')?.cloneNode(true);
+  strip(testOrdersClone, 'button');
+
+  const referralClone = document.getElementById('referral-section')?.cloneNode(true);
+  strip(referralClone, 'button');
+
+  const confirmedDxClone = document.getElementById('confirmed-diagnosis-section')?.cloneNode(true);
+
+  // Suggested tests — same card-to-row extraction _printTestList() uses.
+  const sugEl = document.getElementById('suggested-tests-section');
+  const sugRows = sugEl ? [...sugEl.querySelectorAll('.sug-test-card')].map(card => {
+    const name = card.querySelector('.sug-test-name')?.textContent || '';
+    const why  = card.querySelector('.sug-test-why')?.textContent || '';
+    const prep = card.querySelector('.sug-prep')?.textContent || '';
+    const done = card.classList.contains('done');
+    const planned = card.classList.contains('checked');
+    const stateLabel = done ? 'Done' : planned ? 'Planned' : 'Pending';
+    const stateColor = done ? '#059669' : planned ? '#0077a8' : '#94a3b8';
+    const stateBg    = done ? '#f0fdf4' : planned ? '#f0f7fa' : '#f8fafc';
+    return `<tr>
+      <td class="td-status"><span class="status-pill" style="color:${stateColor};background:${stateBg};border-color:${stateColor};">${stateLabel}</span></td>
+      <td class="td-name">${name}</td>
+      <td class="td-why">${why}</td>
+      <td class="td-prep">${prep}</td>
+    </tr>`;
+  }).join('') : '';
+
+  const section = (label, html) => html ? `
+    <div class="sec"><div class="sec-bar"></div><span class="sec-label">${label}</span></div>
+    <div class="info-block">${html}</div>` : '';
+
+  const win = window.open('', '_blank');
+  if (!win) return;
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Session Report${refNo ? ' — ' + refNo : ''}</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Inter', Arial, sans-serif; color: #1a1a1a; background: #f0f4f8; }
+      .page { max-width: 820px; margin: 24px auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.12); border-radius: 12px; overflow: hidden; }
+      .banner { background: linear-gradient(135deg,#0a2540 0%,#0077a8 100%); padding: 22px 36px; display: flex; justify-content: space-between; align-items: flex-start; }
+      .banner-left h1 { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+      .banner-left p { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 3px; }
+      .banner-right { text-align: right; }
+      .banner-right .doc-type { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .04em; text-transform: uppercase; }
+      .banner-date { font-size: 11px; color: rgba(255,255,255,.7); margin-top: 4px; }
+      .banner-ref { font-size: 10px; color: rgba(255,255,255,.5); margin-top: 2px; letter-spacing: .04em; }
+      .content { padding: 28px 36px; }
+      .trust-note { font-size: 11px; color: #0077a8; background: #f0f7fa; border: 1px solid #d0e4ef; border-radius: 8px; padding: 8px 14px; margin-bottom: 18px; display: inline-block; }
+      .patient-card { border: 1.5px solid #d0e4ef; border-radius: 10px; overflow: hidden; margin-bottom: 22px; }
+      .patient-card-head { background: #0077a8; padding: 8px 16px; }
+      .patient-card-head span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #fff; }
+      .patient-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+      .pat-cell { padding: 11px 16px; border-right: 1px solid #e8f0f5; border-bottom: 1px solid #e8f0f5; }
+      .pat-cell:last-child { border-right: none; }
+      .pat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #0077a8; margin-bottom: 3px; }
+      .pat-val { font-size: 13px; font-weight: 600; color: #0a2540; }
+      .eyebrow { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #0077a8; margin-bottom: 6px; }
+      .hero-name { font-size: 24px; font-weight: 800; color: #0a2540; letter-spacing: -.02em; margin-bottom: 8px; }
+      .hero-sub { font-size: 13px; color: #555; line-height: 1.6; margin-bottom: 22px; }
+      .sec { margin-top: 24px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+      .sec-bar { width: 3px; height: 16px; background: #0077a8; border-radius: 2px; flex-shrink: 0; }
+      .sec-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #0077a8; }
+      .info-block { border: 1px solid #e2ecf4; border-radius: 8px; padding: 14px 18px; font-size: 13px; line-height: 1.7; color: #333; }
+      .info-block .report-section-title, .info-block .patient-summary-label, .info-block .doctors-note-label { display: none; }
+      .info-block strong { color: #0a2540; }
+      .info-block ol, .info-block ul { padding-left: 18px; margin-top: 8px; }
+      .info-block li { margin-bottom: 4px; }
+      .info-block .urgency-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: .04em; background: #f0f7fa; color: #0077a8; border: 1px solid #0077a8; margin-bottom: 8px; }
+      .info-block .doctors-note-card, .info-block .emergency-alert, .info-block .test-orders-alert { background: transparent; border: none; padding: 0; }
+      table { width: 100%; border-collapse: collapse; border: 1px solid #e2ecf4; border-radius: 8px; overflow: hidden; margin-top: 4px; }
+      th { background: #f0f7fa; padding: 9px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #0077a8; font-weight: 700; border-bottom: 1.5px solid #d0e4ef; }
+      td { padding: 10px; border-bottom: 1px solid #edf2f7; font-size: 13px; vertical-align: top; }
+      tr:last-child td { border-bottom: none; }
+      .td-status { width: 90px; }
+      .status-pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 99px; border: 1.5px solid; text-transform: uppercase; letter-spacing: .03em; }
+      .td-name { font-weight: 700; color: #0a2540; }
+      .td-why { color: #444; }
+      .td-prep { color: #777; font-size: 12px; }
+      .footer-note { margin-top: 32px; padding-top: 16px; border-top: 1.5px dashed #ccdde8; font-size: 10px; color: #999; text-align: center; line-height: 1.6; }
+      @media print { body { background: #fff; } .page { box-shadow: none; margin: 0; border-radius: 0; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    </style>
+  </head><body>
+    <div class="page">
+      <div class="banner">
+        <div class="banner-left">
+          <h1>DiffDx</h1>
+          <p>AI-Assisted Diagnostic Companion</p>
+        </div>
+        <div class="banner-right">
+          <div class="doc-type">Session Report</div>
+          <div class="banner-date">${today}</div>
+          ${refNo ? `<div class="banner-ref">REF: ${refNo}</div>` : ''}
+        </div>
+      </div>
+      <div class="content">
+        <div class="trust-note">Guidance to help you get the right care next — not a diagnosis</div>
+        <div class="patient-card">
+          <div class="patient-card-head"><span>Session Overview</span></div>
+          <div class="patient-grid">
+            <div class="pat-cell"><div class="pat-label">Patient</div><div class="pat-val">${escHtml(String(age))}${escHtml(sex)}</div></div>
+            <div class="pat-cell"><div class="pat-label">Turns</div><div class="pat-val">${escHtml(String(totalTurns))}</div></div>
+            <div class="pat-cell"><div class="pat-label">Status</div><div class="pat-val">Complete</div></div>
+          </div>
+        </div>
+        ${heroEyebrow ? `<div class="eyebrow">${escHtml(heroEyebrow)}</div>` : ''}
+        <div class="hero-name">${escHtml(heroName)}</div>
+        ${heroSub ? `<div class="hero-sub">${escHtml(heroSub)}</div>` : ''}
+        ${section('Summary', summaryClone?.innerHTML || '')}
+        ${section('Next Steps', nextStepsClone?.innerHTML || '')}
+        ${confirmedDxClone?.innerHTML ? section('Confirmed Diagnosis', confirmedDxClone.innerHTML) : ''}
+        ${notesClone?.innerHTML ? section("Doctor's Note", notesClone.innerHTML) : ''}
+        ${rxClone?.innerHTML ? section('Prescriptions', rxClone.innerHTML) : ''}
+        ${testOrdersClone?.innerHTML ? section('Tests Ordered by Your Doctor', testOrdersClone.innerHTML) : ''}
+        ${referralClone?.innerHTML ? section('Referral', referralClone.innerHTML) : ''}
+        ${sugRows ? `
+        <div class="sec"><div class="sec-bar"></div><span class="sec-label">Suggested Tests</span></div>
+        <table><thead><tr><th>Status</th><th>Test</th><th>Why Needed</th><th>Preparation</th></tr></thead><tbody>${sugRows}</tbody></table>` : ''}
+      </div>
+      <div class="footer-note">
+        This report is AI-generated guidance, not a medical diagnosis — a licensed doctor will confirm the underlying cause.
+        Any suggested tests are completely optional. Printed from DiffDx.
+      </div>
+    </div>
+    <script>window.onload = () => { window.print(); }<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
 // ── Report download (JSON) ────────────────────────────────────────────────
 let _reportData = null;
 const _origLoad = load;
@@ -3449,7 +3611,7 @@ async function load() {
     const data = await res.json();
     _reportData = data;
     el.innerHTML = buildReport(data);
-    document.getElementById('btn-pdf')?.addEventListener('click', () => window.print());
+    document.getElementById('btn-pdf')?.addEventListener('click', () => printFullReport());
     document.getElementById('btn-new')?.addEventListener('click', () => {
       sessionStorage.clear();
       window.location.href = '/';

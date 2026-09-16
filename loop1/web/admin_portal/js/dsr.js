@@ -6,6 +6,7 @@
   const { fetchWithMockFallback, renderAuthRequired, el } = AdminPortal;
 
   let selectedSubject = null;
+  let selectedSubjectDeactivated = false;
   let denyRequestId = null;
 
   // ── Pending Requests panel ──────────────────────────────────────────
@@ -107,7 +108,15 @@
     }
     for (const item of items) {
       const row = el("div", { class: "dsr-result-row" }, [
-        el("div", {}, [el("strong", {}, item.name), el("span", { class: "muted" }, ` — ${item.email}`)]),
+        el("div", {}, [
+          el("strong", {}, item.name),
+          el("span", { class: "muted" }, ` — ${item.email}`),
+          // A deactivated subject's name/email are scrubbed placeholders,
+          // not a real patient — flagged distinctly so an admin scanning
+          // results doesn't mistake one for a patient literally named
+          // "Deactivated Patient".
+          item.deactivated ? el("span", { class: "dsr-deactivated-badge" }, "DEACTIVATED") : null,
+        ]),
         el("div", { class: "muted" }, `${item.session_count} session(s) · registered ${item.created_at || "—"}`),
       ]);
       row.addEventListener("click", () => selectSubject(item.user_id));
@@ -141,7 +150,9 @@
       return;
     }
     const data = result.data;
-    document.getElementById("dsr-subject-name").textContent = `${data.name} <${data.email}>`;
+    selectedSubjectDeactivated = !!data.deactivated;
+    document.getElementById("dsr-subject-name").textContent =
+      `${data.name} <${data.email}>` + (selectedSubjectDeactivated ? " — DEACTIVATED" : "");
 
     const table = el("table", { class: "dsr-inventory-table" });
     table.appendChild(
@@ -169,7 +180,20 @@
       )
     );
 
-    document.getElementById("dsr-confirm-email").value = "";
+    const confirmInput = document.getElementById("dsr-confirm-email");
+    const confirmLabel = document.getElementById("dsr-confirm-label");
+    confirmInput.value = "";
+    if (selectedSubjectDeactivated) {
+      // This subject's real email was already scrubbed on deactivation —
+      // erase_subject can't match confirm_email for them, so the admin
+      // retypes the id instead (see admin_portal/routers/dsr.py's
+      // erase_subject and EraseRequest).
+      confirmLabel.textContent = "This subject is deactivated — type their user id to enable erase";
+      confirmInput.placeholder = data.user_id;
+    } else {
+      confirmLabel.textContent = "Type the subject's email to enable erase";
+      confirmInput.placeholder = "patient@example.com";
+    }
     document.getElementById("dsr-erase-btn").disabled = true;
   }
 
@@ -230,18 +254,22 @@
 
   document.getElementById("dsr-erase-btn").addEventListener("click", async () => {
     if (!selectedSubject) return;
-    const confirmEmail = document.getElementById("dsr-confirm-email").value.trim();
+    const confirmValue = document.getElementById("dsr-confirm-email").value.trim();
     const dryRun = document.getElementById("dsr-dry-run-toggle").checked;
     const receiptBox = document.getElementById("dsr-receipt");
     receiptBox.hidden = false;
     receiptBox.innerHTML = "<p class=\"muted\">Working…</p>";
+
+    const body = selectedSubjectDeactivated
+      ? { confirm_user_id: confirmValue }
+      : { confirm_email: confirmValue };
 
     try {
       const token = typeof getAuthToken === "function" ? getAuthToken() : null;
       const res = await fetch(`/api/admin/subjects/${selectedSubject}?dry_run=${dryRun}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ confirm_email: confirmEmail }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {

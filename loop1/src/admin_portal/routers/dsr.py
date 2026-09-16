@@ -47,20 +47,27 @@ user row itself, rather than relying on the FK cascade to do it.
 No `turn_critiques` row in the inventory — that table does not exist (1.9).
 Critiques live inside store['session_report:{id}'], covered under
 "Session reports" below.
+
+The inventory/erase mechanics described above (_build_inventory,
+_erase_relational, _erase_blob_and_disk, and everything they depend on) now
+live in diffdx.dsr_erasure, not here — this file imports them rather than
+defining them, so the patient-facing self-service deletion flow
+(diffdx/routers/account_deletion.py) can reuse the exact same logic instead
+of a second, drift-prone implementation. See that module's docstring for
+the full reasoning; every constraint above still applies unchanged, it's
+just relocated code, not relocated behavior.
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import func, or_, select
 
 from diffdx.audit import log_audit_event
 from diffdx.db.engine import get_sessionmaker
@@ -68,31 +75,29 @@ from diffdx.db.models.audit import AuditLogEntry
 from diffdx.db.models.clinical import DiagnosticSession, SessionTurn
 from diffdx.db.models.dsr import DsrErasureRequest
 from diffdx.db.models.files import UploadedFile
-from diffdx.db.models.messaging import Message, MessageThread
-from diffdx.db.models.scheduling import Appointment, Waitlist
-from diffdx.db.models.user import Dependent, Patient, User
+from diffdx.db.models.scheduling import Appointment
+from diffdx.db.models.user import Patient, User
 from diffdx.dependencies import require_role
-from diffdx.legacy_store import _db_save, _load_appointments, _save_appointments
-from diffdx.repositories.users import UserRepository
+from diffdx.dsr_erasure import _build_inventory, _erase_blob_and_disk, _erase_relational, _session_ids_for_patient
+from diffdx.legacy_store import _load_appointments
 
 router = APIRouter(tags=["admin_portal"])
 _log = logging.getLogger(__name__)
 
-# routers/dsr.py -> routers -> admin_portal -> src -> loop1 (4 parent hops)
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-_LOGS_SESSIONS_DIR = _REPO_ROOT / "logs" / "sessions"
-_LOGS_FINAL_RECORDS_DIR = _REPO_ROOT / "logs" / "final_records"
-
 _SEARCH_LIMIT = 50
 _ENABLE_ERASE_ENV = "ADMIN_PORTAL_ENABLE_DSR_ERASE"
-# Fixed, arbitrary namespace UUID for deriving stable pseudonym ids —
-# uuid.uuid5(NAMESPACE, str(user_id)) is deterministic, so the same subject
-# always pseudonymises to the same id even if erase is somehow invoked twice.
-_PSEUDONYM_NAMESPACE = uuid.UUID("6e6f7420-6120-7265-616c-207573657200")
 
 
 class EraseRequest(BaseModel):
-    confirm_email: str
+    # Exactly one of these applies, chosen by the subject's own
+    # user.deleted_at state at erase time — see erase_subject. A subject
+    # who has self-deactivated (diffdx/routers/account_deletion.py) no
+    # longer has a real email on file (it was already scrubbed to
+    # erased+{uid}@invalid), so confirm_email can't be matched against
+    # anything meaningful for them; confirm_user_id exists for exactly
+    # that case.
+    confirm_email: str | None = None
+    confirm_user_id: str | None = None
 
 
 class DenyRequestBody(BaseModel):
@@ -191,6 +196,11 @@ def search_subjects(
                 "email": u.email,
                 "created_at": u.created_at.isoformat() if u.created_at else None,
                 "session_count": session_count,
+                # A deactivated subject's name/email above are scrubbed
+                # placeholders, not real values — this flag lets the admin
+                # UI label the row distinctly rather than risk reading
+                # "Deactivated Patient" as an actual patient's name.
+                "deactivated": u.deleted_at is not None,
             })
 
     # resource_id is the result count, NOT the query string `q` itself —
@@ -205,101 +215,6 @@ def search_subjects(
 # ---------------------------------------------------------------------------
 # Inventory
 # ---------------------------------------------------------------------------
-
-def _session_ids_for_patient(db, user_id: uuid.UUID) -> list[str]:
-    rows = db.execute(select(DiagnosticSession.id).where(DiagnosticSession.patient_id == user_id)).all()
-    return [str(r[0]) for r in rows]
-
-
-def _count_disk_session_artifacts(session_ids: list[str]) -> int:
-    count = 0
-    for sid in session_ids:
-        if (_LOGS_SESSIONS_DIR / f"session_{sid}.jsonl").exists():
-            count += 1
-        if (_LOGS_FINAL_RECORDS_DIR / f"final_{sid}.json").exists():
-            count += 1
-    return count
-
-
-def _count_session_reports(session_ids: list[str]) -> int:
-    from diffdx.legacy_store import _load_session_report_from_db
-
-    return sum(1 for sid in session_ids if _load_session_report_from_db(sid) is not None)
-
-
-def _build_inventory(db, user: User) -> list[dict[str, Any]]:
-    uid = user.id
-    uid_str = str(uid)
-
-    session_ids = _session_ids_for_patient(db, uid)
-    n_sessions = len(session_ids)
-    n_turns = (
-        db.execute(select(func.count()).select_from(SessionTurn).where(SessionTurn.session_id.in_(
-            [uuid.UUID(s) for s in session_ids]
-        ))).scalar_one()
-        if session_ids else 0
-    )
-    n_reports = _count_session_reports(session_ids)
-    n_disk_artifacts = _count_disk_session_artifacts(session_ids)
-
-    n_appointments = db.execute(
-        select(func.count()).select_from(Appointment).where(Appointment.patient_id == uid)
-    ).scalar_one()
-
-    n_threads = db.execute(
-        select(func.count()).select_from(MessageThread).where(MessageThread.patient_id == uid)
-    ).scalar_one()
-    n_messages = db.execute(
-        select(func.count()).select_from(Message).join(MessageThread, Message.thread_id == MessageThread.id)
-        .where(MessageThread.patient_id == uid)
-    ).scalar_one()
-
-    n_files = db.execute(
-        select(func.count()).select_from(UploadedFile)
-        .join(Appointment, UploadedFile.appointment_id == Appointment.id)
-        .where(Appointment.patient_id == uid)
-    ).scalar_one()
-
-    n_audit = db.execute(
-        select(func.count()).select_from(AuditLogEntry).where(AuditLogEntry.actor_user_id == uid)
-    ).scalar_one()
-
-    return [
-        {"label": "Identity", "tables": ["users", "patients"], "record_count": 1, "detail": None, "retained": False},
-        {
-            "label": "Consultations", "tables": ["diagnostic_sessions", "session_turns"],
-            "record_count": n_sessions + n_turns, "detail": f"{n_sessions} sessions, {n_turns} turns",
-            "retained": False,
-        },
-        {
-            "label": "Session reports (critiques + transcript)", "tables": ["store['session_report:{id}']"],
-            "record_count": n_reports, "detail": "blob store only — no relational equivalent (see module docstring)",
-            "retained": False,
-        },
-        {
-            "label": "Appointments", "tables": ["appointments", "store['appointments']"],
-            "record_count": n_appointments, "detail": "dual-written — both cleared", "retained": False,
-        },
-        {
-            "label": "Messages", "tables": ["message_threads", "messages", "store['messages']"],
-            "record_count": n_threads + n_messages, "detail": f"{n_threads} thread(s), {n_messages} message(s)",
-            "retained": False,
-        },
-        {
-            "label": "Files", "tables": ["uploaded_files", "web/data/files/"],
-            "record_count": n_files, "detail": None, "retained": False,
-        },
-        {
-            "label": "Session logs on disk", "tables": ["logs/sessions/*.jsonl", "logs/final_records/*.json"],
-            "record_count": n_disk_artifacts, "detail": "full transcript, PHI, outside the database",
-            "retained": False,
-        },
-        {
-            "label": "Audit trail", "tables": ["audit_log_entries"],
-            "record_count": n_audit, "detail": "pseudonymised on erase, never deleted", "retained": True,
-        },
-    ]
-
 
 @router.get("/api/admin/subjects/{user_id}/inventory")
 def get_inventory(user_id: str, request: Request, _admin: dict = Depends(require_role("admin"))) -> dict[str, Any]:
@@ -319,6 +234,9 @@ def get_inventory(user_id: str, request: Request, _admin: dict = Depends(require
             "name": user.name,
             "email": user.email,
             "categories": categories,
+            # Lets the UI switch the erase confirmation from confirm_email
+            # to confirm_user_id — see erase_subject and EraseRequest.
+            "deactivated": user.deleted_at is not None,
         }
 
     _audit(request, _admin, "GET /api/admin/subjects/{id}/inventory", "user", user_id)
@@ -400,105 +318,6 @@ def export_subject(user_id: str, request: Request, _admin: dict = Depends(requir
 # Erase
 # ---------------------------------------------------------------------------
 
-def _pseudo_id(user_id: uuid.UUID) -> uuid.UUID:
-    return uuid.uuid5(_PSEUDONYM_NAMESPACE, str(user_id))
-
-
-def _erase_relational(db, user: User) -> dict[str, int]:
-    """The one real SQLAlchemy transaction: pseudonymise the audit trail,
-    explicitly delete DiagnosticSession (see module docstring re: the
-    SET NULL trap), then delete the user row — DB-level ON DELETE CASCADE
-    handles Patient -> Appointments/MessageThreads/Waitlist/Dependents and
-    Appointments -> its sub-entities/UploadedFile from there."""
-    uid = user.id
-    pseudo_id = _pseudo_id(uid)
-
-    UserRepository(db).shadow_user(
-        id=pseudo_id, name="", email=f"erased+{pseudo_id}@invalid", password_hash="", role=user.role,
-    )
-    db.execute(update(AuditLogEntry).where(AuditLogEntry.actor_user_id == uid).values(actor_user_id=pseudo_id))
-
-    session_uuids = [row[0] for row in db.execute(
-        select(DiagnosticSession.id).where(DiagnosticSession.patient_id == uid)
-    ).all()]
-    n_turns = (
-        db.execute(select(func.count()).select_from(SessionTurn).where(SessionTurn.session_id.in_(session_uuids)))
-        .scalar_one() if session_uuids else 0
-    )
-    n_sessions = len(session_uuids)
-    if session_uuids:
-        db.execute(delete(DiagnosticSession).where(DiagnosticSession.patient_id == uid))
-
-    n_appointments = db.execute(
-        select(func.count()).select_from(Appointment).where(Appointment.patient_id == uid)
-    ).scalar_one()
-    n_threads = db.execute(
-        select(func.count()).select_from(MessageThread).where(MessageThread.patient_id == uid)
-    ).scalar_one()
-    n_files = db.execute(
-        select(func.count()).select_from(UploadedFile)
-        .join(Appointment, UploadedFile.appointment_id == Appointment.id)
-        .where(Appointment.patient_id == uid)
-    ).scalar_one()
-
-    db.delete(user)  # cascades: Patient, and via DB FK CASCADE: appointments/threads/waitlist/dependents/files
-    db.commit()
-
-    return {
-        "users": 1, "diagnostic_sessions": n_sessions, "session_turns": n_turns,
-        "appointments": n_appointments, "message_threads": n_threads, "uploaded_files": n_files,
-    }, [str(s) for s in session_uuids], pseudo_id
-
-
-def _erase_blob_and_disk(user_id_str: str, session_ids: list[str]) -> tuple[dict[str, int], list[str]]:
-    """Best-effort follow-up, NOT part of the SQLAlchemy transaction above —
-    the blob store lives on a separate connection (see module docstring).
-    Failures are collected as warnings, never silently swallowed."""
-    counts = {"blob_appointments": 0, "blob_messages": 0, "session_reports": 0, "disk_artifacts": 0}
-    warnings: list[str] = []
-
-    try:
-        appts = _load_appointments()
-        remaining = {k: v for k, v in appts.items() if v.get("patient_user_id") != user_id_str}
-        counts["blob_appointments"] = len(appts) - len(remaining)
-        if counts["blob_appointments"]:
-            _save_appointments(remaining)
-    except Exception as exc:
-        warnings.append(f"Could not clear blob appointments: {exc}")
-
-    try:
-        from diffdx.routers.messaging import _load_messages, _save_messages
-
-        msgs = _load_messages()
-        remaining = [m for m in msgs if m.get("patient_user_id") != user_id_str]
-        counts["blob_messages"] = len(msgs) - len(remaining)
-        if counts["blob_messages"]:
-            _save_messages(remaining)
-    except Exception as exc:
-        warnings.append(f"Could not clear blob messages: {exc}")
-
-    for sid in session_ids:
-        try:
-            from diffdx.legacy_store import _load_session_report_from_db
-
-            if _load_session_report_from_db(sid) is not None:
-                _db_save(f"session_report:{sid}", None)
-                counts["session_reports"] += 1
-        except Exception as exc:
-            warnings.append(f"Could not clear session report {sid}: {exc}")
-
-    for sid in session_ids:
-        for path in (_LOGS_SESSIONS_DIR / f"session_{sid}.jsonl", _LOGS_FINAL_RECORDS_DIR / f"final_{sid}.json"):
-            try:
-                if path.exists():
-                    path.unlink()
-                    counts["disk_artifacts"] += 1
-            except Exception as exc:
-                warnings.append(f"Could not delete {path}: {exc}")
-
-    return counts, warnings
-
-
 @router.delete("/api/admin/subjects/{user_id}")
 def erase_subject(
     user_id: str,
@@ -525,8 +344,29 @@ def erase_subject(
         user = db.get(User, uid)
         if user is None or user.role != "patient":
             raise HTTPException(status_code=404, detail="Subject not found.")
-        if user.email.lower().strip() != body.confirm_email.lower().strip():
-            raise HTTPException(status_code=400, detail="confirm_email does not match this subject.")
+
+        # A subject who has already self-deactivated (see
+        # diffdx/routers/account_deletion.py) no longer has a real email
+        # on file — user.email was already scrubbed to
+        # erased+{uid}@invalid — so confirm_email can never legitimately
+        # match anything for them. confirm_user_id (the exact id from the
+        # request path, retyped) stands in instead: a redundant-on-purpose
+        # confirmation that the admin means to act on this specific id,
+        # sourced from wherever they found it (the Audit page, or a
+        # search-results row flagged "deactivated": true — see
+        # search_subjects) rather than from anything the (former) patient
+        # could still supply. A subject who hasn't deactivated keeps the
+        # exact original confirm_email check, unchanged.
+        if user.deleted_at is not None:
+            try:
+                confirm_uid_matches = body.confirm_user_id is not None and uuid.UUID(body.confirm_user_id.strip()) == uid
+            except ValueError:
+                confirm_uid_matches = False
+            if not confirm_uid_matches:
+                raise HTTPException(status_code=400, detail="confirm_user_id does not match this subject.")
+        else:
+            if not body.confirm_email or user.email.lower().strip() != body.confirm_email.lower().strip():
+                raise HTTPException(status_code=400, detail="confirm_email does not match this subject.")
 
         if dry_run:
             categories = _build_inventory(db, user)

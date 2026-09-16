@@ -796,6 +796,48 @@
     .ps-desc {
       font-size: 12.5px; color: var(--text-dim);
     }
+    .ps-desc-details { margin-top: 4px; }
+    .ps-desc-details summary {
+      font-size: 12px; font-weight: 700; color: var(--primary);
+      cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px;
+      user-select: none;
+    }
+    .ps-desc-details summary::-webkit-details-marker { display: none; }
+    .ps-desc-details summary::before {
+      content: '▸'; font-size: 10px; transition: transform 0.15s ease;
+    }
+    .ps-desc-details[open] summary::before { transform: rotate(90deg); }
+    .ps-desc-details-body {
+      font-size: 12.5px; color: var(--text-dim); line-height: 1.6;
+      margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle, rgba(148,163,184,.15));
+    }
+
+    /* Danger Zone — deliberately collapsed by default. Reaching account
+       deactivation costs one extra, conscious click past this point,
+       instead of sitting in plain sight next to the (reviewed, reversible)
+       request option above it. */
+    .danger-zone {
+      margin-top: 20px; padding-top: 16px;
+      border-top: 1px solid var(--border-subtle, rgba(148,163,184,.15));
+    }
+    .danger-zone-details summary {
+      font-size: 12.5px; font-weight: 700; color: var(--text-muted);
+      cursor: pointer; list-style: none; user-select: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: color 0.15s ease;
+    }
+    .danger-zone-details summary:hover { color: #EF4444; }
+    .danger-zone-details[open] summary { color: #EF4444; }
+    .danger-zone-details summary::-webkit-details-marker { display: none; }
+    .danger-zone-details summary::before {
+      content: '▸'; font-size: 10px; transition: transform 0.15s ease;
+    }
+    .danger-zone-details[open] summary::before { transform: rotate(90deg); }
+    .danger-zone-body {
+      margin-top: 14px; padding: 16px 18px;
+      background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 12px;
+    }
 
     /* Form Grid */
     .profile-grid {
@@ -1204,6 +1246,13 @@
       border: 1px solid var(--border-card);
       border-radius: 20px; padding: 28px;
       width: 100%; max-width: 480px;
+      /* .modal-overlay centers this with 20px of padding on each side —
+         cap height to the viewport minus that padding and scroll inside
+         the card itself, so a modal taller than the viewport (e.g. the
+         deactivation modal's preview list) never gets clipped top and
+         bottom with no way to reach the buttons below the fold. */
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
       box-shadow: var(--card-shadow);
     }
     .modal-header {
@@ -1591,7 +1640,13 @@
         <div id="dependents-list" style="display:flex;flex-direction:column;gap:12px;"></div>
       </div>
 
-      <!-- Section 5: Privacy & Data -->
+      <!-- Section 5: Privacy & Data — both paths to closing/removing an
+           account live in this one card, deliberately ordered: the DSR
+           request (full purge, admin-reviewed) is the primary, always-
+           visible option; deactivation (instant, shallower, self-service)
+           is tucked behind the "Danger Zone" disclosure below it — a
+           deliberate extra click, not an accident, so it never reads as
+           the easy default sitting next to the reviewed option above. -->
       <div class="profile-section" id="section-privacy">
         <div class="profile-section-header">
           <div class="ps-icon-wrap" style="background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(239,68,68,0.05));font-size:20px;display:flex;align-items:center;justify-content:center;">
@@ -1605,6 +1660,29 @@
 
         <div id="privacy-loading" style="font-size:13px;color:var(--text-muted);">Loading…</div>
         <div id="privacy-content" style="display:none;"></div>
+
+        <div class="danger-zone">
+          <details class="danger-zone-details">
+            <summary>Looking to close your account instead?</summary>
+            <div class="danger-zone-body">
+              <div class="ps-desc" style="margin-bottom:10px;">
+                Closes your account immediately, no admin review — but your appointment and consultation history is
+                <strong>kept</strong>, not deleted.
+              </div>
+              <details class="ps-desc-details">
+                <summary>What exactly happens</summary>
+                <div class="ps-desc-details-body">
+                  This happens immediately, with no review step. Your name, email, and login are removed and you'll be signed out
+                  everywhere. Your appointment and consultation history is <strong>kept</strong>, not deleted, so your care record isn't
+                  lost. If you want everything permanently deleted with nothing retained, you can still request that — while logged in,
+                  via the request option above, or afterward by contacting an administrator directly, since you won't be able to log
+                  back in to request it in-app once deactivated.
+                </div>
+              </details>
+              <button type="button" class="btn-danger-outline" style="margin-top:14px;background:rgba(239,68,68,0.1);color:#EF4444;font-weight:700;" onclick="openDeleteAccountModal()">Deactivate My Account</button>
+            </div>
+          </details>
+        </div>
       </div>
 
     </main>
@@ -1737,6 +1815,75 @@
     <div style="display:flex;gap:12px;margin-top:24px;">
       <button type="button" class="btn-ghost" style="flex:1;" onclick="closeDsrConfirmModal()">Cancel</button>
       <button type="button" class="btn-danger-outline" style="flex:1;justify-content:center;background:rgba(239,68,68,0.12);color:#EF4444;font-weight:700;" onclick="confirmAndSubmitDsrRequest()" id="dsr-confirm-btn">Confirm Deletion</button>
+    </div>
+  </div>
+</div>
+
+<!-- Self-service deactivation modal — preview + password/email entry -->
+<div class="modal-overlay" id="delacct-overlay" style="display:none;" onclick="if(event.target===this)closeDeleteAccountModal()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-icon-wrap" style="background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.3);color:#EF4444;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </div>
+      <div>
+        <div class="modal-title" style="color:#EF4444;">Deactivate My Account</div>
+      </div>
+    </div>
+
+    <div id="delacct-preview-loading" style="font-size:13px;color:var(--text-muted);margin:14px 0;">Loading what this will do…</div>
+    <div id="delacct-preview-list" style="display:none;margin:14px 0;"></div>
+    <div id="delacct-disabled-note" style="display:none;font-size:13px;line-height:1.6;color:var(--text-muted);margin:14px 0;padding:10px 12px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.25);border-radius:8px;"></div>
+
+    <div id="delacct-fields">
+      <div class="form-group">
+        <label for="delacct-password">Current Password</label>
+        <input id="delacct-password" type="password" class="form-control no-icon" placeholder="Enter your current password" oninput="updateDeleteAccountBtnState()">
+      </div>
+      <div class="form-group">
+        <label for="delacct-email">Confirm Your Email</label>
+        <input id="delacct-email" type="email" class="form-control no-icon" placeholder="Type your account email to confirm" oninput="updateDeleteAccountBtnState()">
+      </div>
+    </div>
+
+    <div id="delacct-error" style="font-size:12px;color:#EF4444;margin-top:8px;padding:8px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;display:none;"></div>
+
+    <div style="display:flex;gap:12px;margin-top:22px;">
+      <button type="button" class="btn-ghost" style="flex:1;" onclick="closeDeleteAccountModal()">Cancel</button>
+      <button type="button" class="btn-danger-outline" style="flex:1;justify-content:center;background:rgba(239,68,68,0.12);color:#EF4444;font-weight:700;" onclick="openDeleteAccountConfirmModal()" id="delacct-submit-btn" disabled>Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Self-service deactivation — final confirmation -->
+<div class="modal-overlay" id="delacct-confirm-overlay" style="display:none;z-index:350;" onclick="if(event.target===this)closeDeleteAccountConfirmModal()">
+  <div class="modal-card" style="max-width:460px;">
+    <div class="modal-header">
+      <div class="modal-icon-wrap" style="background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.3);color:#EF4444;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div>
+        <div class="modal-title" style="color:var(--text-main);">Last Chance</div>
+        <div class="modal-subtitle">This cannot be undone from here</div>
+      </div>
+    </div>
+
+    <p style="font-size:13.5px;line-height:1.6;color:var(--text-muted);margin:16px 0;">
+      This will remove your name, email, and login <strong>right now</strong> and sign you out everywhere. Any future
+      appointments will be cancelled and the doctor notified. Your appointment and consultation history is
+      <strong>kept</strong>, not deleted — if you later want it permanently and fully deleted, you'll need to contact
+      an administrator directly, since you won't be able to log back in to request it in-app.
+    </p>
+
+    <div id="delacct-confirm-error" style="font-size:12px;color:#EF4444;margin-bottom:8px;padding:8px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;display:none;"></div>
+
+    <div style="display:flex;gap:12px;margin-top:24px;">
+      <button type="button" class="btn-ghost" style="flex:1;" onclick="closeDeleteAccountConfirmModal()">Cancel</button>
+      <button type="button" class="btn-danger-outline" style="flex:1;justify-content:center;background:rgba(239,68,68,0.12);color:#EF4444;font-weight:700;" onclick="confirmAccountDeletion()" id="delacct-confirm-btn">Deactivate Now</button>
     </div>
   </div>
 </div>
@@ -2174,6 +2321,126 @@ async function confirmAndSubmitDsrRequest() {
     confirmBtn.disabled = false;
     confirmBtn.textContent = 'Confirm Deletion';
     if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = 'Submit Request'; }
+  }
+}
+
+// ── Immediate self-service deactivation ───────────────────────────────
+// Deliberately separate from the DSR-request flow above: no shared state,
+// no shared modal, no shared button — and different in DEPTH, not just
+// speed. This scrubs identity and cancels future appointments instantly
+// with no admin review; it does NOT delete consultation/appointment/
+// message history — that stays fully intact. A full, everything-deleted
+// purge is still admin-only, either via the request option above (while
+// still logged in) or by contacting an administrator afterward.
+async function openDeleteAccountModal() {
+  document.getElementById('delacct-password').value = '';
+  document.getElementById('delacct-email').value = '';
+  document.getElementById('delacct-error').style.display = 'none';
+  document.getElementById('delacct-disabled-note').style.display = 'none';
+  document.getElementById('delacct-fields').style.display = 'block';
+  document.getElementById('delacct-submit-btn').style.display = '';
+  document.getElementById('delacct-preview-list').style.display = 'none';
+  document.getElementById('delacct-preview-loading').style.display = 'block';
+  updateDeleteAccountBtnState();
+  document.getElementById('delacct-overlay').style.display = 'flex';
+
+  try {
+    const res = await fetch('/api/patient/account/deactivation-preview', { headers: { ...authHeaders() } });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    renderDeactivationPreview(data);
+  } catch {
+    document.getElementById('delacct-preview-list').innerHTML = '';
+  } finally {
+    document.getElementById('delacct-preview-loading').style.display = 'none';
+    document.getElementById('delacct-preview-list').style.display = 'block';
+  }
+}
+
+function renderDeactivationPreview(data) {
+  const el = document.getElementById('delacct-preview-list');
+  const nAppts = data.will_cancel?.future_appointments || 0;
+  const retainRows = (data.will_retain || []).map(c => `
+    <div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border-subtle,rgba(148,163,184,.15));font-size:12.5px;">
+      <span>${escHtml(c.label)}</span>
+      <span style="font-family:var(--font-mono,monospace);color:var(--text-muted);">${c.record_count}</span>
+    </div>`).join('');
+  el.innerHTML = `
+    <div style="font-size:12px;color:#EF4444;font-weight:700;margin-bottom:4px;">Removed immediately:</div>
+    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px;">
+      Your name, email, and password &middot; ${nAppts} future appointment${nAppts === 1 ? '' : 's'} cancelled
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);font-weight:700;margin-bottom:4px;">Kept, not deleted:</div>
+    ${retainRows}`;
+}
+
+function updateDeleteAccountBtnState() {
+  const pw = document.getElementById('delacct-password').value;
+  const email = document.getElementById('delacct-email').value;
+  document.getElementById('delacct-submit-btn').disabled = !(pw.trim() && email.trim());
+}
+
+function closeDeleteAccountModal() { document.getElementById('delacct-overlay').style.display = 'none'; }
+
+function openDeleteAccountConfirmModal() {
+  document.getElementById('delacct-confirm-error').style.display = 'none';
+  document.getElementById('delacct-confirm-overlay').style.display = 'flex';
+}
+function closeDeleteAccountConfirmModal() {
+  document.getElementById('delacct-confirm-overlay').style.display = 'none';
+}
+
+async function confirmAccountDeletion() {
+  const confirmBtn = document.getElementById('delacct-confirm-btn');
+  const confirmErrEl = document.getElementById('delacct-confirm-error');
+  const errEl = document.getElementById('delacct-error');
+  confirmErrEl.style.display = 'none';
+  errEl.style.display = 'none';
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Deactivating…';
+
+  const password = document.getElementById('delacct-password').value;
+  const confirm_email = document.getElementById('delacct-email').value.trim();
+
+  try {
+    const res = await fetch('/api/patient/account/deactivate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ password, confirm_email }),
+    });
+
+    if (res.status === 501) {
+      closeDeleteAccountConfirmModal();
+      document.getElementById('delacct-fields').style.display = 'none';
+      document.getElementById('delacct-submit-btn').style.display = 'none';
+      const note = document.getElementById('delacct-disabled-note');
+      note.textContent = "Immediate deactivation isn't enabled — you can still submit a request for an admin to review, above.";
+      note.style.display = 'block';
+      return;
+    }
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || 'Account deactivation failed.');
+    }
+
+    // Success — replace the modal with a brief confirmation, then sign out.
+    const card = document.querySelector('#delacct-overlay .modal-card');
+    card.innerHTML = `
+      <div style="text-align:center;padding:20px 8px;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 9"/></svg>
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px;">Your account has been deactivated</div>
+        <div style="font-size:13px;color:var(--text-muted);">Your care record is kept. Signing you out…</div>
+      </div>`;
+    closeDeleteAccountConfirmModal();
+    setTimeout(() => logout(), 1800);
+  } catch (err) {
+    closeDeleteAccountConfirmModal();
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  } finally {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Deactivate Now';
   }
 }
 

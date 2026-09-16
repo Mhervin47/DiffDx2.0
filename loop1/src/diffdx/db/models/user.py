@@ -32,6 +32,15 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False
     )
+    # Self-service deactivation (patient or doctor) — set once, never cleared.
+    # The row is NOT deleted: name/email/password_hash get scrubbed in place
+    # and login is disabled, but clinical/appointment/session content this
+    # row is referenced by stays intact. A full purge (actual row deletion)
+    # is a separate, admin-only action — see diffdx.dsr_erasure. Distinct
+    # from the account_deletion.py router's "deactivated_at" response field
+    # only in name (this IS that timestamp); the column lives on User, not
+    # a separate table, since it's a single terminal flag, not a log.
+    deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     patient: Mapped["Patient | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
     doctor: Mapped["Doctor | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")

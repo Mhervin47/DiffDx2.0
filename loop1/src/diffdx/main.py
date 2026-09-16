@@ -61,6 +61,7 @@ from diffdx.legacy_store import (
 from diffdx.rate_limit import limiter as _limiter
 from diffdx.repositories.appointments import AppointmentRepository
 
+from diffdx.routers.account_deletion import router as account_deletion_router
 from diffdx.routers.appointments import router as appointments_router
 from diffdx.routers.appointments2 import router as appointments2_router
 from diffdx.routers.appointments3 import router as appointments3_router
@@ -328,6 +329,7 @@ app.add_middleware(AuditLogMiddleware)
 
 # Task 4 (split the monolith): routers peeled off one domain at a time.
 # See TASK4_SPLIT_ROUTERS.md for what's moved and what's still here.
+app.include_router(account_deletion_router)
 app.include_router(appointments_router)
 app.include_router(appointments2_router)
 app.include_router(appointments3_router)

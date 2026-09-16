@@ -1022,6 +1022,14 @@
     .hospital-btn-call { background: #ef4444; color: #ffffff; }
     .hospital-btn-maps { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-card); }
 
+    .booking-confirmed {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success); border-radius: 10px; padding: 12px 16px;
+      font-size: 13.5px; font-weight: 600;
+    }
+    .booking-confirmed svg { flex-shrink: 0; }
+
     /* ── Own Doctor Search ── */
     .own-doctor-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-card); }
     .own-doctor-toggle {
@@ -1516,6 +1524,29 @@ let _pendingDoctor = null;
 let _pendingSlot = null;
 let _routingDoctors = {}; // id → doctor object
 
+// Appointments for this session — fetched once, shared between
+// loadTestOrders() (picks the best one for notes/rx/test-orders) and
+// loadRouting() (needs to know whether ANY non-cancelled one exists, to
+// gate the "book a doctor" UI so it doesn't invite a duplicate booking).
+let _apptsForSessionPromise = null;
+function fetchSessionAppointments() {
+  if (_apptsForSessionPromise) return _apptsForSessionPromise;
+  _apptsForSessionPromise = (async () => {
+    if (!getAuthToken()) return [];
+    try {
+      const res = await fetch(`${API}/api/appointments`, { headers: { ...authHeaders() } });
+      if (!res.ok) return [];
+      const data = await res.json();
+      const raw = data.appointments || data;
+      const appts = Array.isArray(raw) ? raw : Object.values(raw);
+      return appts.filter(a => a.session_id === sessionId);
+    } catch (_) {
+      return [];
+    }
+  })();
+  return _apptsForSessionPromise;
+}
+
 // load() is defined further below (extended version with symptom history + download)
 
 // ---- Suggested Tests ----
@@ -1891,6 +1922,7 @@ async function loadRouting() {
     const r = await res.json();
     el.innerHTML = buildNextSteps(r);
     updateHeroSpecialty(r);
+    applyExistingBookingState();
   } catch (e) {
     el.innerHTML = `<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">Specialist routing unavailable: ${escHtml(e.message)}</div>`;
     _heroFallback();
@@ -1916,11 +1948,7 @@ async function loadTestOrders() {
         </div>`;
       return;
     }
-    const res = await fetch(`${API}/api/appointments`, { headers: { ...authHeaders() } });
-    if (!res.ok) return;
-    const data = await res.json();
-    const _apptsRaw = data.appointments || data;
-    const appts = Array.isArray(_apptsRaw) ? _apptsRaw : Object.values(_apptsRaw);
+    const matching = await fetchSessionAppointments();
     // A session can have more than one appointment for it (reschedule,
     // cancel + rebook) — a plain .find() picks whichever comes first and
     // can easily land on one the doctor never touched, while their actual
@@ -1935,7 +1963,6 @@ async function loadTestOrders() {
       if (s === 'seen')      return hasData ? 25 : 10;
       /* upcoming */         return hasData ? 30 : 20;
     }
-    const matching = appts.filter(a => a.session_id === sessionId);
     const appt = matching.length
       ? matching.reduce((best, a) => _apptScore(a) > _apptScore(best) ? a : best)
       : undefined;
@@ -2238,6 +2265,46 @@ function buildNextSteps(r) {
           <div style="font-size:13px;color:var(--text-muted);padding:8px 0;">Start typing to search…</div>
         </div>
       </div>
+    </div>
+  `;
+}
+
+// Runs after buildNextSteps() has rendered the "book a doctor" UI, to
+// cover the case this bug report described: the patient already booked
+// (in this visit or a previous one) and is just reopening the report —
+// buildNextSteps() itself has no way to know that, it only has the
+// routing recommendation, not booking history. confirmBooking() already
+// swaps this same UI for a confirmation banner right after a live booking;
+// this does the equivalent for a page (re)load, from persisted state.
+async function applyExistingBookingState() {
+  const matching = await fetchSessionAppointments();
+  const active = matching
+    .filter(a => (a.status || 'upcoming') !== 'cancelled')
+    .sort((a, b) => (b.slot || '').localeCompare(a.slot || ''))[0];
+  if (!active) return;
+
+  const grid = document.getElementById('doctor-grid');
+  if (grid) grid.style.display = 'none';
+  const ownDoctorSection = document.getElementById('own-doctor-section');
+  if (ownDoctorSection) ownDoctorSection.style.display = 'none';
+  const banner = document.getElementById('booking-confirmed-banner');
+  if (!banner) return;
+
+  const docName = escHtml(active.doctor_name || 'your doctor');
+  const when = active.slot ? formatSlot(active.slot) : '';
+  const statusText = {
+    seen: `You saw ${docName}${when ? ' on ' + when : ''} for this session.`,
+    no_show: `Your appointment with ${docName}${when ? ' on ' + when : ''} was marked as a no-show.`,
+  }[active.status] || `Appointment booked with ${docName}${when ? ' on ' + when : ''}.`;
+
+  banner.style.display = 'flex';
+  banner.innerHTML = `
+    <div class="booking-confirmed">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      ${statusText}
     </div>
   `;
 }

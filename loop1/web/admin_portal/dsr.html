@@ -486,6 +486,13 @@
     font-size: 10.5px; font-weight: 800; font-family: var(--font-heading);
     letter-spacing: 0.04em;
   }
+  .dsr-deactivated-badge {
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 9999px; padding: 2px 10px; margin-left: 8px;
+    font-size: 10.5px; font-weight: 800; font-family: var(--font-heading);
+    letter-spacing: 0.04em;
+  }
   .dsr-retained-note { margin-top: 12px; font-style: italic; color: var(--text-muted); }
 
   /* Deny-request modal — replaces the native prompt() dialog */
@@ -678,7 +685,7 @@
         <input type="checkbox" id="dsr-dry-run-toggle" checked>
         <label for="dsr-dry-run-toggle" style="margin:0;">Dry run — preview only, deletes nothing</label>
       </div>
-      <label for="dsr-confirm-email">Type the subject's email to enable erase</label>
+      <label for="dsr-confirm-email" id="dsr-confirm-label">Type the subject's email to enable erase</label>
       <input type="text" id="dsr-confirm-email" placeholder="patient@example.com">
       <button id="dsr-erase-btn" disabled>Erase subject</button>
       <p class="muted" style="margin-top:10px;">

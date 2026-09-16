@@ -247,8 +247,19 @@ async def download_patient_file(appt_id: str, filename: str, request: Request):
 
 @router.delete("/api/patient/appointments/{appt_id}")
 async def cancel_patient_appointment(appt_id: str, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
-    """Patient cancels their own upcoming appointment."""
+    """Patient cancels their own upcoming appointment. Thin route wrapper —
+    see _cancel_patient_appointment_impl for the actual logic, shared with
+    diffdx.routers.account_deletion's auto-cancel-on-deactivation flow.
+    `cancelled_by` is deliberately NOT a parameter on this route function:
+    a plain typed FastAPI route parameter with no Depends()/path binding
+    becomes a caller-controlled query parameter, which would let any
+    patient spoof `?cancelled_by=whatever` on a real request — it must
+    only ever be set by trusted server-side code calling the impl function
+    directly, never by anything HTTP-reachable."""
+    return await _cancel_patient_appointment_impl(appt_id, user, db, cancelled_by="patient")
 
+
+async def _cancel_patient_appointment_impl(appt_id: str, user: dict, db: Session, cancelled_by: str):
     appointments = _load_appointments()
     appt = appointments.get(appt_id)
     if appt is None:
@@ -259,7 +270,7 @@ async def cancel_patient_appointment(appt_id: str, user: dict = Depends(get_curr
         raise HTTPException(status_code=400, detail="Only upcoming appointments can be cancelled.")
     appt["status"] = "cancelled"
     appt["cancelled_at"] = datetime.now(timezone.utc).isoformat()
-    appt["cancelled_by"] = "patient"
+    appt["cancelled_by"] = cancelled_by
     _save_appointments(appointments)
     # Return the slot to the doctor's available pool
     freed_slot = appt.get("slot", "")
@@ -275,7 +286,7 @@ async def cancel_patient_appointment(appt_id: str, user: dict = Depends(get_curr
     try:
         appt_uuid = _ensure_relational_appointment(db, appt)
         if appt_uuid is not None:
-            AppointmentRepository(db).cancel(appt_uuid, cancelled_by="patient", cancelled_at=datetime.now(timezone.utc))
+            AppointmentRepository(db).cancel(appt_uuid, cancelled_by=cancelled_by, cancelled_at=datetime.now(timezone.utc))
             db.commit()
     except Exception:
         db.rollback()

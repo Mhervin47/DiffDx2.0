@@ -424,14 +424,14 @@
 
   <section class="sop-section" id="dsr">
     <h2>Data Subject Request console</h2>
-    <p class="scope"><code>dsr.html</code>, <code>dsr.py</code>.</p>
+    <p class="scope"><code>dsr.html</code>, <code>dsr.py</code>, <code>diffdx/routers/account_deletion.py</code> (self-service deactivation).</p>
 
     <details class="methodology">
       <summary>About to run a real (non-dry-run) erasure</summary>
       <div class="sop-body"><dl>
         <dt>Trigger</dt><dd>The dry-run checkbox is unchecked and you're about to click erase.</dd>
         <dt>Meaning</dt><dd>This is irreversible. It touches the relational tables directly (<code>users</code>, <code>diagnostic_sessions</code>, <code>session_turns</code>, <code>appointments</code>, <code>message_threads</code>, <code>uploaded_files</code>, plus everything else that cascades off <code>users</code> via <code>ON DELETE CASCADE</code>), the blob store (<code>appointments</code>, <code>messages</code>, <code>session_report:{id}</code>), and two on-disk log locations (<code>logs/sessions/session_{id}.jsonl</code>, <code>logs/final_records/final_{id}.json</code>). It's gated behind <code>ADMIN_PORTAL_ENABLE_DSR_ERASE</code> (returns a clear 501 error until set) specifically because of that blast radius.</dd>
-        <dt>Action</dt><dd>Always run dry-run first and read the full inventory it returns before running the real erase. Confirm the target user/patient independently (name + email + account creation date) before proceeding — there is no undo.</dd>
+        <dt>Action</dt><dd>Always run dry-run first and read the full inventory it returns before running the real erase. Confirm the target user/patient independently (name + email + account creation date) before proceeding — there is no undo. If the subject has already self-deactivated (see below), their email is a scrubbed placeholder — the confirmation field switches to <code>confirm_user_id</code> instead of <code>confirm_email</code>, and the UI relabels itself accordingly; get the id from the Audit page or a search result flagged <code>DEACTIVATED</code>, never from anything the (former) patient supplies.</dd>
         <dt>Escalate if</dt><dd class="escalate"><code>ADMIN_PORTAL_ENABLE_DSR_ERASE</code> is not set and you believe it should be — that's a deliberate infrastructure decision, not a bug; get sign-off before changing it, don't just set the env var.</dd>
       </dl></div>
     </details>
@@ -453,6 +453,16 @@
         <dt>Meaning</dt><dd>Expected. The audit trail is never deleted, but the erased user's <code>actor_user_id</code> is deliberately repointed via <code>uuid.uuid5(fixed_namespace, real_id)</code> to a pseudonymous shadow user (empty name) so the foreign key survives without re-identifying anyone. This is the one place in the codebase an audit row is ever mutated after being written — see the Audit section below.</dd>
         <dt>Action</dt><dd>None required for this specific case.</dd>
         <dt>Escalate if</dt><dd class="escalate none">N/A — informational only. Don't confuse with the failed-login case in the Audit section, which produces the identical text for a different reason.</dd>
+      </dl></div>
+    </details>
+
+    <details class="methodology">
+      <summary>Audit entry with action: "subject_self_deactivation"</summary>
+      <div class="sop-body"><dl>
+        <dt>Trigger</dt><dd>An audit entry shows <code>action="subject_self_deactivation"</code>.</dd>
+        <dt>Meaning</dt><dd>The patient closed their own account themselves, immediately, via <code>POST /api/patient/account/deactivate</code> (<code>diffdx/routers/account_deletion.py</code>) — no admin reviewed or approved this, by design. This is a <strong>shallower</strong> action than an erasure: name/email/password are scrubbed and login is disabled, any future appointments are auto-cancelled (<code>cancelled_by="patient_deactivation"</code>), but every clinical/appointment/session/message row is retained untouched. It is gated behind its own flag, <code>SELF_SERVICE_ACCOUNT_DEACTIVATION_ENABLED</code> — distinct from this console's <code>ADMIN_PORTAL_ENABLE_DSR_ERASE</code>, so one can be on without the other. If a full purge is ever wanted for this subject, it requires a separate, deliberate admin-run erase using <code>confirm_user_id</code> (see above) since <code>confirm_email</code> no longer applies once the row is scrubbed.</dd>
+        <dt>Action</dt><dd>None required; this is expected, routine behavior whenever the self-service flag is on.</dd>
+        <dt>Escalate if</dt><dd class="escalate">(1) A pattern of self-deactivations immediately following suspicious login activity for the same account (a credential-stuffing cluster — see the Audit section below) — that combination suggests an attacker closing a victim's account to cover their tracks, not a genuine patient choice. (2) A mailed-in full-purge request arrives for a <code>user_id</code> that does not correspond to any <code>subject_self_deactivation</code> audit entry and doesn't otherwise check out — verify identity through another channel before erasing; don't erase on the strength of an email claim alone.</dd>
       </dl></div>
     </details>
   </section>

@@ -2573,6 +2573,10 @@
 
     /* Stats row */
     .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .stats-row:not(:has(> .stat-chip:not([style*="display:none"]):not([style*="display: none"]))) {
+      display: none;
+      margin-bottom: 0;
+    }
     .stat-chip {
       flex: 1; text-align: center; padding: 8px 6px; border-radius: var(--radius);
       background: var(--surface-3);
@@ -2616,116 +2620,154 @@
       background: var(--surface-1);
     }
 
-    /* Date filter row */
-    .date-filter-row {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 5px;
-      margin-bottom: 10px;
-    }
-    .date-filter-chip {
-      padding: 5px 8px; border-radius: 9999px;
-      font-size: 11px; font-weight: 600;
-      border: 1px solid var(--border);
-      background: var(--surface-3); color: var(--text-muted);
-      cursor: pointer; transition: all .15s ease;
-      font-family: var(--font-heading);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .date-filter-chip[data-df="past5"]     { grid-column: span 3; text-align: center; }
-    .date-filter-chip[data-df="yesterday"] { grid-column: span 3; text-align: center; }
-    .date-filter-chip[data-df="today"]     { grid-column: span 2; text-align: center; }
-    .date-filter-chip[data-df="upcoming"]  { grid-column: span 2; text-align: center; }
-    .date-filter-chip[data-df="all"]       { grid-column: span 2; text-align: center; }
-    .date-filter-chip:hover { color: var(--text-main); border-color: var(--border-card); }
-    .date-filter-chip.active {
-      background: var(--primary-dim); color: var(--primary);
-      border-color: var(--primary); font-weight: 700;
-      box-shadow: 0 0 10px var(--primary-dim);
+    /* ── COMPACT PROFESSIONAL SEARCH & FILTER TOOLBAR ── */
+    .sidebar-search-filter-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 2px;
     }
 
-    /* Search bar */
-    .search-bar { margin-bottom: 10px; position: relative; }
-    .search-input {
-      width: 100%; padding: 8px 12px 8px 34px;
-      background: var(--bg-input);
+    .search-box-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+    .search-box-wrap .search-icon {
+      position: absolute;
+      left: 10px;
+      pointer-events: none;
+      color: var(--text-dim);
+      transition: color .15s ease;
+    }
+    .search-box-wrap .search-input {
+      width: 100%;
+      height: 34px;
+      padding: 0 28px 0 32px;
+      background: var(--surface-2);
       border: 1px solid var(--border);
-      border-radius: 9999px; font-size: 12px; font-weight: 500;
-      color: var(--text-main); font-family: var(--font-body);
-      transition: all .15s ease;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+      font-family: var(--font-body);
+      transition: all .18s ease;
+      box-sizing: border-box;
     }
-    .search-bar::before {
-      content: '';
-      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
-      width: 14px; height: 14px;
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238fa2b9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") center/contain no-repeat;
-      pointer-events: none; z-index: 1;
-    }
-    .search-input:focus {
+    .search-box-wrap .search-input:focus {
+      background: var(--surface-1);
       border-color: var(--primary);
       box-shadow: 0 0 0 2px var(--primary-dim);
       outline: none;
     }
-
-    /* Urgency filter chips */
-    .filter-chips {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 5px;
-      margin-bottom: 7px;
+    .search-box-wrap .search-input:focus ~ .search-icon {
+      color: var(--primary);
     }
-    .filter-chip {
-      padding: 5px 8px; border-radius: 9999px; cursor: pointer;
-      font-size: 11px; font-weight: 600;
-      border: 1px solid var(--border); color: var(--text-muted);
-      background: var(--surface-3); transition: all .15s ease;
-      font-family: var(--font-heading);
-    }
-    .filter-chip[data-filter="all"]       { grid-column: span 2; text-align: center; }
-    .filter-chip.fc-emergency             { grid-column: span 2; text-align: center; }
-    .filter-chip.fc-urgent                { grid-column: span 2; text-align: center; }
-    .filter-chip.fc-routine               { grid-column: span 3; text-align: center; }
-    .filter-chip.fc-completed             { grid-column: span 3; text-align: center; }
-
-    .filter-chip:hover { color: var(--text-main); }
-    .filter-chip[data-filter="all"].active {
-      background: var(--primary-dim); color: var(--primary); border-color: var(--primary);
-      box-shadow: 0 0 10px var(--primary-dim);
-    }
-    .filter-chip.fc-emergency { border-color: rgba(239,68,68,.3); color: var(--danger); }
-    .filter-chip.fc-urgent    { border-color: rgba(245,158,11,.3); color: var(--warning); }
-    .filter-chip.fc-routine   { border-color: rgba(16,185,129,.3); color: var(--success); }
-    .filter-chip.fc-emergency.active { background: rgba(239,68,68,.15); color: var(--danger); border-color: var(--danger); }
-    .filter-chip.fc-urgent.active    { background: rgba(245,158,11,.15); color: var(--warning); border-color: var(--warning); }
-    .filter-chip.fc-routine.active   { background: var(--primary-dim); color: var(--primary); border-color: var(--primary); }
-    .filter-chip.fc-completed        { border-color: var(--border); color: var(--text-dim); }
-    .filter-chip.fc-completed:hover  { color: var(--text-main); }
-    .filter-chip.fc-completed.active { background: var(--surface-4); color: var(--text-main); border-color: var(--border); }
-
-    /* Tag filter row */
-    .tag-filter-row { width: 100%; margin-top: 2px; }
-    .tag-filter-btn {
-      width: 100%;
-      background: var(--surface-3);
-      border: 1px solid var(--border);
+    .search-clear-btn {
+      position: absolute;
+      right: 7px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--surface-4);
+      border: none;
       color: var(--text-muted);
-      border-radius: 9999px;
-      padding: 6px 14px;
+      font-size: 13px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: all .15s ease;
+    }
+    .search-clear-btn:hover {
+      background: var(--primary);
+      color: #FFFFFF;
+    }
+
+    /* 1-row compact filter controls */
+    .filter-controls-row {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 1fr;
+      gap: 5px;
+    }
+    .compact-select-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+    .compact-select {
+      width: 100%;
+      height: 28px;
+      padding: 0 18px 0 7px;
+      appearance: none;
+      -webkit-appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-family: var(--font-heading);
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
-      font-family: var(--font-body);
       transition: all .15s ease;
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238fa2b9' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
-      padding-right: 32px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
     }
-    .tag-filter-btn:hover {
-      border-color: var(--primary);
+    .compact-select:hover {
+      border-color: var(--border-card);
       color: var(--text-main);
+    }
+    .compact-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .compact-select.has-filter {
+      background: var(--primary-dim);
+      color: var(--primary);
+      border-color: var(--primary);
+      font-weight: 700;
+    }
+    .compact-select-wrap .select-chevron {
+      position: absolute;
+      right: 5px;
+      pointer-events: none;
+      color: var(--text-dim);
+    }
+
+    .queue-meta-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      color: var(--text-dim);
+      font-family: var(--font-heading);
+      padding: 1px 2px 0;
+      min-height: 15px;
+    }
+    .queue-count-badge {
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: .02em;
+    }
+    .filters-reset-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--primary);
+      font-family: var(--font-heading);
+      font-size: 10.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s ease;
+    }
+    .filters-reset-btn:hover {
+      text-decoration: underline;
+      opacity: .85;
     }
 
     /* ── PATIENT LIST ITEMS ──────────────────────────────────── */
@@ -4174,15 +4216,6 @@
     <div id="sidebar-queue">
       <div class="sidebar-header">
         <div class="stats-row" id="stats-row">
-          <div class="stat-chip" id="chip-today" onclick="setDateFilter('today')">
-            <strong id="stat-total">0</strong>Today
-          </div>
-          <div class="stat-chip" id="chip-pending" onclick="setDateFilter('upcoming')">
-            <strong id="stat-pending">0</strong>Pending
-          </div>
-          <div class="stat-chip stat-chip-total" id="chip-all" onclick="setDateFilter('all')" style="grid-column: span 2;">
-            <strong id="stat-all">0</strong>Total
-          </div>
           <div class="stat-chip stat-emergency" id="stat-emergency-chip" style="display:none; grid-column: span 2;">
             <strong id="stat-emergency">0</strong>Emergency
           </div>
@@ -4193,34 +4226,59 @@
             <strong id="stat-new-results">0</strong>New Test Results
           </div>
         </div>
-        <div class="date-filter-row" id="date-filter-row">
-          <span class="date-filter-chip"        data-df="past5"     onclick="setDateFilter('past5')">Past 5 Days</span>
-          <span class="date-filter-chip"        data-df="yesterday" onclick="setDateFilter('yesterday')">Yesterday</span>
-          <span class="date-filter-chip"        data-df="today"     onclick="setDateFilter('today')">Today</span>
-          <span class="date-filter-chip"        data-df="upcoming"  onclick="setDateFilter('upcoming')">Upcoming</span>
-          <span class="date-filter-chip active" data-df="all"       onclick="setDateFilter('all')">All</span>
-        </div>
-        <div class="search-bar">
-          <input class="search-input" id="search-input" type="text" placeholder="Search patient or diagnosis…"
-            oninput="applyFilters()">
-        </div>
-        <div class="filter-chips">
-          <span class="filter-chip active" data-filter="all" onclick="setFilter('all')">All</span>
-          <span class="filter-chip fc-emergency" data-filter="emergency" onclick="setFilter('emergency')">Emergency</span>
-          <span class="filter-chip fc-urgent" data-filter="urgent" onclick="setFilter('urgent')">Urgent</span>
-          <span class="filter-chip fc-routine" data-filter="routine" onclick="setFilter('routine')">Routine</span>
-          <span class="filter-chip fc-completed" id="fc-completed-chip" onclick="toggleCompleted()" title="Show seen, no-show, and cancelled appointments">Completed</span>
-        </div>
-        <div class="tag-filter-row">
-          <select id="tag-filter-select" class="tag-filter-btn" onchange="applyFilters()" title="Filter by tag">
-            <option value="">All Tags</option>
-            <option value="high risk">High Risk</option>
-            <option value="urgent">Urgent</option>
-            <option value="complex">Complex</option>
-            <option value="follow-up needed">Follow-up Needed</option>
-            <option value="stable">Stable</option>
-            <option value="new patient">New Patient</option>
-          </select>
+        <!-- Professional Compact Search & Filter Toolbar -->
+        <div class="sidebar-search-filter-wrap">
+          <div class="search-box-wrap">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input class="search-input" id="search-input" type="text" placeholder="Search patient, diagnosis, tag…" oninput="applyFilters()">
+            <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search" style="display:none;">&times;</button>
+          </div>
+
+          <!-- Single-row compact filters -->
+          <div class="filter-controls-row">
+            <div class="compact-select-wrap">
+              <select id="date-filter-select" class="compact-select" onchange="setDateFilter(this.value)" title="Filter by date">
+                <option value="all" selected>All Dates</option>
+                <option value="today">Today</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="past5">Past 5 Days</option>
+              </select>
+              <svg class="select-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+
+            <div class="compact-select-wrap">
+              <select id="status-filter-select" class="compact-select" onchange="onStatusSelectChange(this.value)" title="Filter by status / priority">
+                <option value="all" selected>All Status</option>
+                <option value="emergency">Emergency</option>
+                <option value="urgent">Urgent</option>
+                <option value="routine">Routine</option>
+                <option value="completed">Completed</option>
+              </select>
+              <svg class="select-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+
+            <div class="compact-select-wrap">
+              <select id="tag-filter-select" class="compact-select" onchange="applyFilters()" title="Filter by clinical tag">
+                <option value="" selected>All Tags</option>
+                <option value="high risk">High Risk</option>
+                <option value="urgent">Urgent</option>
+                <option value="complex">Complex</option>
+                <option value="follow-up needed">Follow-up</option>
+                <option value="stable">Stable</option>
+                <option value="new patient">New Patient</option>
+              </select>
+              <svg class="select-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <div class="queue-meta-bar" id="queue-meta-bar">
+            <span class="queue-count-badge" id="queue-count-badge">Patient Queue</span>
+            <button class="filters-reset-btn" id="filters-reset-btn" onclick="resetAllFilters()" style="display:none;" title="Reset all active filters">Reset filters</button>
+          </div>
         </div>
       </div>
       <div class="appt-list" id="appt-list">
@@ -4318,52 +4376,6 @@
             <span>Open Consultation</span>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
-        </div>
-
-        <!-- Clinical Workflows -->
-        <div class="ws-features-section">
-          <div class="ws-section-title">Clinical Workflow Capabilities</div>
-          <div class="workspace-workflow-grid">
-            <div class="workflow-card">
-              <div class="workflow-card-sticker-wrap">
-                <img src="/sticker_vitals.png" class="workflow-card-sticker" alt="Patient History &amp; Vitals" loading="lazy">
-              </div>
-              <div class="workflow-card-body">
-                <div class="workflow-card-label">Patient History &amp; Vitals</div>
-                <div class="workflow-card-sub">Instant access to prior diagnoses, medications &amp; biometric charts</div>
-              </div>
-            </div>
-
-            <div class="workflow-card">
-              <div class="workflow-card-sticker-wrap">
-                <img src="/sticker_ai.png" class="workflow-card-sticker" alt="AI Differential Reasoning" loading="lazy">
-              </div>
-              <div class="workflow-card-body">
-                <div class="workflow-card-label">AI Differential Reasoning</div>
-                <div class="workflow-card-sub">Dual-engine clinical insights, probability scoring &amp; red-flag alerts</div>
-              </div>
-            </div>
-
-            <div class="workflow-card">
-              <div class="workflow-card-sticker-wrap">
-                <img src="/sticker_video.png" class="workflow-card-sticker" alt="Voice &amp; Video Consults" loading="lazy">
-              </div>
-              <div class="workflow-card-body">
-                <div class="workflow-card-label">Voice &amp; Video Consults</div>
-                <div class="workflow-card-sub">Real-time bilingual transcription, symptom triage &amp; live chat</div>
-              </div>
-            </div>
-
-            <div class="workflow-card">
-              <div class="workflow-card-sticker-wrap">
-                <img src="/sticker_rx.png" class="workflow-card-sticker" alt="E-Prescribing &amp; Documentation" loading="lazy">
-              </div>
-              <div class="workflow-card-body">
-                <div class="workflow-card-label">E-Prescribing &amp; Documentation</div>
-                <div class="workflow-card-sub">Automated clinical encounter notes and instant prescription delivery</div>
-              </div>
-            </div>
-          </div>
         </div>
 
       </div>
@@ -4618,52 +4630,6 @@ function getMainEmptyHtml() {
         </div>
 
         ${nextApptHtml}
-
-        <!-- Clinical Workflows -->
-        <div class="ws-features-section">
-          <div class="ws-section-title">Clinical Workflow Capabilities</div>
-          <div class="workspace-workflow-grid">
-            <div class="workflow-card">
-              <div class="workflow-card-sticker-wrap">
-                <img src="/sticker_vitals.png" class="workflow-card-sticker" alt="Patient History &amp; Vitals" loading="lazy">
-              </div>
-              <div class="workflow-card-body">
-                <div class="workflow-card-label">Patient History &amp; Vitals</div>
-                <div class="workflow-card-sub">Instant access to prior diagnoses, medications &amp; biometric charts</div>
-              </div>
-            </div>
-
-            <div class="workflow-card">
-              <div class="workflow-card-sticker-wrap">
-                <img src="/sticker_ai.png" class="workflow-card-sticker" alt="AI Differential Reasoning" loading="lazy">
-              </div>
-              <div class="workflow-card-body">
-                <div class="workflow-card-label">AI Differential Reasoning</div>
-                <div class="workflow-card-sub">Dual-engine clinical insights, probability scoring &amp; red-flag alerts</div>
-              </div>
-            </div>
-
-            <div class="workflow-card">
-              <div class="workflow-card-sticker-wrap">
-                <img src="/sticker_video.png" class="workflow-card-sticker" alt="Voice &amp; Video Consults" loading="lazy">
-              </div>
-              <div class="workflow-card-body">
-                <div class="workflow-card-label">Voice &amp; Video Consults</div>
-                <div class="workflow-card-sub">Real-time bilingual transcription, symptom triage &amp; live chat</div>
-              </div>
-            </div>
-
-            <div class="workflow-card">
-              <div class="workflow-card-sticker-wrap">
-                <img src="/sticker_rx.png" class="workflow-card-sticker" alt="E-Prescribing &amp; Documentation" loading="lazy">
-              </div>
-              <div class="workflow-card-body">
-                <div class="workflow-card-label">E-Prescribing &amp; Documentation</div>
-                <div class="workflow-card-sub">Automated clinical encounter notes and instant prescription delivery</div>
-              </div>
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>
@@ -5116,26 +5082,64 @@ function _setTodayWidgetOpen(open) {
 }
 
 // ---- Search + filter ----
+function onStatusSelectChange(val) {
+  if (val === 'completed') {
+    _showCompleted = true;
+    _activeFilter = 'all';
+  } else {
+    _showCompleted = false;
+    _activeFilter = val;
+  }
+  applyFilters();
+}
+
 function setFilter(f) {
   _activeFilter = f;
-  document.querySelectorAll('.filter-chip').forEach(c => {
-    c.classList.toggle('active', c.dataset.filter === f);
-  });
+  _showCompleted = false;
+  const sel = document.getElementById('status-filter-select');
+  if (sel) sel.value = f;
   applyFilters();
 }
 
 function toggleCompleted() {
   _showCompleted = !_showCompleted;
-  const chip = document.getElementById('fc-completed-chip');
-  if (chip) chip.classList.toggle('active', _showCompleted);
+  const sel = document.getElementById('status-filter-select');
+  if (sel) sel.value = _showCompleted ? 'completed' : 'all';
   applyFilters();
 }
 
 function setDateFilter(df) {
   _activeDateFilter = df;
-  document.querySelectorAll('.date-filter-chip').forEach(c => {
-    c.classList.toggle('active', c.dataset.df === df);
-  });
+  const sel = document.getElementById('date-filter-select');
+  if (sel && sel.value !== df) sel.value = df;
+  applyFilters();
+}
+
+function clearSearch() {
+  const input = document.getElementById('search-input');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+  applyFilters();
+}
+
+function resetAllFilters() {
+  const sInput = document.getElementById('search-input');
+  if (sInput) sInput.value = '';
+
+  _activeDateFilter = 'all';
+  const dSel = document.getElementById('date-filter-select');
+  if (dSel) dSel.value = 'all';
+
+  _activeFilter = 'all';
+  _showCompleted = false;
+  const stSel = document.getElementById('status-filter-select');
+  if (stSel) stSel.value = 'all';
+
+  const tSel = document.getElementById('tag-filter-select');
+  if (tSel) tSel.value = '';
+
   applyFilters();
 }
 
@@ -5193,6 +5197,28 @@ function applyFilters() {
   const tagSel = (document.getElementById('tag-filter-select')?.value || '').toLowerCase();
   if (tagSel) {
     filtered = filtered.filter(a => (a.patient_tags || []).map(t => t.toLowerCase()).includes(tagSel));
+  }
+
+  // UI state synchronizations
+  const clearBtn = document.getElementById('search-clear-btn');
+  if (clearBtn) clearBtn.style.display = q ? 'inline-flex' : 'none';
+
+  const dateSel = document.getElementById('date-filter-select');
+  if (dateSel) dateSel.classList.toggle('has-filter', _activeDateFilter !== 'all');
+
+  const statusSel = document.getElementById('status-filter-select');
+  if (statusSel) statusSel.classList.toggle('has-filter', _activeFilter !== 'all' || _showCompleted);
+
+  const tagEl = document.getElementById('tag-filter-select');
+  if (tagEl) tagEl.classList.toggle('has-filter', !!tagSel);
+
+  const isFiltered = !!q || _activeDateFilter !== 'all' || _activeFilter !== 'all' || _showCompleted || !!tagSel;
+  const resetBtn = document.getElementById('filters-reset-btn');
+  if (resetBtn) resetBtn.style.display = isFiltered ? 'inline-flex' : 'none';
+
+  const countBadge = document.getElementById('queue-count-badge');
+  if (countBadge) {
+    countBadge.textContent = `${filtered.length} ${filtered.length === 1 ? 'patient' : 'patients'}`;
   }
 
   renderSidebar(filtered);

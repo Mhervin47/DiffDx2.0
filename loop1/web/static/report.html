@@ -2787,13 +2787,7 @@ function _buildSummaryText(c, finalDx) {
   // see REPORT_PAGE_REDESIGN.md §3b. This is also the text read aloud by
   // the "Listen" button, so it must stay in sync with buildPatientSummary()'s
   // on-screen copy below.
-  const steps = (c.recommended_next_steps || []);
-  let text = `Based on your answers, we've identified the specialist and tests that make sense for your symptoms. `;
-  if (steps.length) {
-    text += 'Here are the recommended next steps: ';
-    text += steps.map((s, i) => `${i + 1}. ${s}`).join('. ') + '.';
-  }
-  return text.trim();
+  return `Based on your answers, we've identified the specialist and tests that make sense for your symptoms.`;
 }
 
 // BCP-47 lang codes per language code
@@ -2888,16 +2882,7 @@ function _updatePsBtn(speaking) {
 }
 
 function buildPatientSummary(c, finalDx) {
-  const steps = (c.recommended_next_steps || []);
   const summaryText = _buildSummaryText(c, finalDx);
-
-  const stepsHtml = steps.length ? `
-    <div style="margin-top:14px;">
-      <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(16,185,129,.7);margin-bottom:8px;">Recommended Next Steps</div>
-      <ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;">
-        ${steps.map(s => `<li style="font-size:14px;line-height:1.6;color:var(--text-dim);">${escHtml(s)}</li>`).join('')}
-      </ol>
-    </div>` : '';
 
   const langOptions = [
     { code: 'en', label: 'English' },
@@ -2939,7 +2924,6 @@ function buildPatientSummary(c, finalDx) {
       <div class="patient-summary-text">
         Based on your answers, we've identified the specialist and tests that make sense for your symptoms — see the recommendations below. A licensed doctor will confirm the underlying cause at your appointment.
       </div>
-      ${stepsHtml}
       <div class="ps-lang-row">
         <span class="ps-lang-label">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px;"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
